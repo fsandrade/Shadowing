@@ -176,6 +176,16 @@ test('help modal opens, describes features, and closes', async ({ page }) => {
   await expect(page.locator('#helpModal')).not.toBeVisible();
 });
 
+test('mobile keeps the topics bar as a single compact row', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  const height = await page.locator('.decks').evaluate((el) => el.getBoundingClientRect().height);
+  expect(height).toBeLessThan(120);
+  await expect(page.locator('.lines p').first()).toBeVisible();
+});
+
 test('shows a one-time dismissible Edge tip snack bar on non-Edge desktop browsers', async ({ page }) => {
   installFakeAudio(page);
   await page.goto(APP_URL);
