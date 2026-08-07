@@ -2,7 +2,16 @@
   'use strict';
 
   function stripTags(html) {
-    return String(html).replace(/<[^>]*>/g, '');
+    var s = String(html);
+    var depth = 0;
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (ch === '<') { depth++; continue; }
+      if (ch === '>' && depth > 0) { depth--; continue; }
+      if (depth === 0) { out += ch; }
+    }
+    return out;
   }
 
   function deckOptions(data) {

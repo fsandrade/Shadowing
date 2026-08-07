@@ -21,6 +21,13 @@ test('stripTags is a no-op on plain text', () => {
   assert.strictEqual(C.stripTags('no markup here'), 'no markup here');
 });
 
+test('stripTags keeps stripping when a tag straddles another tag', () => {
+  const out = C.stripTags('<sc<script>ript>alert(1)</sc<script>ript>');
+  assert.ok(!out.includes('<'), 'no < remains');
+  assert.ok(!out.includes('>'), 'no > remains');
+  assert.ok(!out.toLowerCase().includes('script'), 'no script tag reassembles');
+});
+
 test('deckOptions puts All first with the grand total', () => {
   const opts = C.deckOptions(DATA);
   assert.deepStrictEqual(opts[0], { id: 'all', name: 'All', count: 3 });
