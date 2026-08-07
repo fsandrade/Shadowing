@@ -216,3 +216,29 @@ test('in blur mode only already-spoken lines are revealed during playback', asyn
   await expect.poll(() => filterOf(page, '.lines p.current .text')).toBe('blur(6px)');
   expect(await filterOf(page, '.lines p:not(.current):not(.spoken) .text')).toBe('blur(6px)');
 });
+
+test('ArrowLeft pressed twice in a row steps to the previous line', async ({ page }) => {
+  installFakeAudio(page, { speakMs: 2000 });
+  await page.goto(APP_URL);
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(3);
+
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(3);
+
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(2);
+});
+
+test('ArrowLeft pressed twice on the first line does not move', async ({ page }) => {
+  installFakeAudio(page, { speakMs: 2000 });
+  await page.goto(APP_URL);
+
+  await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(0);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(0);
+});
