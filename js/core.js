@@ -8,7 +8,7 @@
   function deckOptions(data) {
     var decks = (data && data.decks) || [];
     var total = decks.reduce(function (n, d) { return n + d.lines.length; }, 0);
-    return [{ id: 'all', name: 'Todos', count: total }].concat(
+    return [{ id: 'all', name: 'All', count: total }].concat(
       decks.map(function (d) { return { id: d.id, name: d.name, count: d.lines.length }; })
     );
   }

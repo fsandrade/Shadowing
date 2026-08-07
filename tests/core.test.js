@@ -21,9 +21,9 @@ test('stripTags is a no-op on plain text', () => {
   assert.strictEqual(C.stripTags('no markup here'), 'no markup here');
 });
 
-test('deckOptions puts Todos first with the grand total', () => {
+test('deckOptions puts All first with the grand total', () => {
   const opts = C.deckOptions(DATA);
-  assert.deepStrictEqual(opts[0], { id: 'all', name: 'Todos', count: 3 });
+  assert.deepStrictEqual(opts[0], { id: 'all', name: 'All', count: 3 });
 });
 
 test('deckOptions lists the decks in data order with their counts', () => {
