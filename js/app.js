@@ -25,6 +25,9 @@
     slack: document.getElementById('slack'),
     slackOut: document.getElementById('slackOut'),
     voice: document.getElementById('voice'),
+    snackbar: document.getElementById('snackbar'),
+    snackbarClose: document.querySelector('.snackbar-close'),
+    edgeLink: document.getElementById('edge-link'),
     durations: document.getElementById('durations'),
     clock: document.getElementById('clock'),
   };
@@ -470,6 +473,7 @@
     els.next.addEventListener('click', nextLine);
     els.shuffle.addEventListener('click', doShuffle);
     els.blur.addEventListener('click', function () { setBlur(!state.blur); });
+    els.snackbarClose.addEventListener('click', function () { hideEdgeTip(true); });
 
 
 
@@ -489,6 +493,37 @@
   }
 
   var STORE_KEY = 'shadowing.settings';
+
+  var EDGE_TIP_KEY = 'shadowing.edgeTip';
+
+  function isEdgeBrowser() {
+    return /Edg\//i.test(navigator.userAgent || '');
+  }
+
+  var edgeTipTimer = null;
+
+  function hideEdgeTip(remember) {
+    clearTimeout(edgeTipTimer);
+    edgeTipTimer = null;
+    els.snackbar.classList.remove('show');
+    if (remember) {
+      try { localStorage.setItem(EDGE_TIP_KEY, '1'); } catch (e) { }
+    }
+  }
+
+  function maybeShowEdgeTip() {
+    if (isEdgeBrowser()) { return; }
+    if (!window.matchMedia || !matchMedia('(pointer: fine)').matches) { return; }
+    var tipped = false;
+    try { tipped = localStorage.getItem(EDGE_TIP_KEY) === '1'; } catch (e) { }
+    if (tipped) { return; }
+    var target = /^https?:/.test(location.protocol)
+      ? location.href
+      : 'https://fsandrade.github.io/Shadowing/';
+    els.edgeLink.href = 'microsoft-edge:' + target;
+    els.snackbar.classList.add('show');
+    edgeTipTimer = setTimeout(function () { hideEdgeTip(false); }, 8000);
+  }
 
   function saveSettings() {
     try {
@@ -563,6 +598,7 @@
 
     bindControls();
     bindKeyboard();
+    maybeShowEdgeTip();
     loadVoices();
     synth.addEventListener('voiceschanged', loadVoices);
 

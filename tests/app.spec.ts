@@ -151,6 +151,21 @@ test('next (ArrowRight) reveals the line just passed in blur mode', async ({ pag
   await expect.poll(() => filterOf(page, '.lines p.current .text')).toBe('blur(6px)');
 });
 
+test('shows a one-time dismissible Edge tip snack bar on non-Edge desktop browsers', async ({ page }) => {
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  await expect(page.locator('#snackbar')).toBeVisible();
+  await expect(page.locator('#snackbar')).toContainText(/Edge/i);
+  await expect(page.locator('#edge-link')).toHaveAttribute('href', /^microsoft-edge:/);
+
+  await page.locator('.snackbar-close').click();
+  await expect(page.locator('#snackbar')).not.toBeVisible();
+
+  await page.reload();
+  await expect(page.locator('#snackbar')).not.toBeVisible();
+});
+
 test('in blur mode only already-spoken lines are revealed during playback', async ({ page }) => {
   installFakeAudio(page, { speakMs: 600 });
   await page.goto(APP_URL);
