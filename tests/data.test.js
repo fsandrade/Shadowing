@@ -87,8 +87,16 @@ test('escapes the two non-ASCII characters of the corpus', () => {
 });
 
 
-test('build script rejects uppercase tags (case-sensitive whitelist)', () => {
+// The tag whitelist in scripts/build.ps1 must be case-sensitive: only exactly
+// '<b>' and '</b>' may pass, because this build-time abort is the sole guarantee
+// that later innerHTML rendering is safe. The fixture is gitignored, so CI skips
+// this test when it is not present.
+test('build script rejects uppercase tags (case-sensitive whitelist)', (t) => {
   const cardsPath = path.join(__dirname, '..', 'scripts', 'cards-chunks.json');
+  if (!fs.existsSync(cardsPath)) {
+    t.skip('cards-chunks.json not present - build fixture not available');
+    return;
+  }
   const cards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
   const before = cards[0].fields.Example1;
   assert.match(before, /<b>.*<\/b>/, 'fixture note is expected to carry a lowercase <b> pair');
