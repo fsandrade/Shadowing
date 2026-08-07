@@ -99,7 +99,15 @@
     state.lines.forEach(function (line, i) {
       var p = document.createElement('p');
 
-      p.innerHTML = line;
+      var num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = String(i + 1);
+      p.appendChild(num);
+
+      var content = document.createElement('span');
+      content.innerHTML = line;
+      p.appendChild(content);
+
       p.addEventListener('click', function () { onLineClick(i); });
       els.lines.appendChild(p);
     });

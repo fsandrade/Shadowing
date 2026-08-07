@@ -79,6 +79,12 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 }
 .lines p:hover { color: var(--text); background: #1a1f24; }
 .lines p b { color: inherit; font-weight: 600; }
+.lines .num {
+  display: inline-block; min-width: 34px; margin-right: 12px;
+  text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--dim); font-size: 0.72em;
+}
+.lines p.current .num { color: var(--accent); }
 .lines p.current {
   color: var(--text); font-size: 26px; line-height: 1.4;
   border-left-color: var(--accent); background: #1a1f24;
