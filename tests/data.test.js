@@ -30,13 +30,23 @@ const EXPECTED = [
   ['travel', 'Travel', 72],
   ['restaurants', 'Restaurants', 48],
   ['shopping', 'Shopping', 57],
+  ['job-interview', 'Job Interview', 102],
+  ['doctor-health', 'At the Doctor / Health & Appointments', 102],
+  ['weather-seasons', 'Weather & Seasons', 102],
+  ['groceries-supermarket', 'Groceries & Supermarket', 102],
+  ['directions-transport', 'Getting Around / Directions', 102],
+  ['hobbies-free-time', 'Hobbies & Free Time', 102],
+  ['banking-money', 'Banking & Money', 99],
+  ['customer-service', 'Customer Service & Tech Support', 103],
+  ['renting-housing', 'Renting & Housing', 99],
+  ['school-learning', 'School & Learning', 99],
 ];
 
 test('exposes generatedAt as an ISO-ish UTC stamp', () => {
   assert.match(data.generatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
 });
 
-test('has the 14 decks in file order with the right names and counts', () => {
+test('has the 24 decks in file order with the right names and counts', () => {
   assert.strictEqual(data.decks.length, EXPECTED.length);
   data.decks.forEach((deck, i) => {
     const [id, name, count] = EXPECTED[i];
@@ -46,9 +56,9 @@ test('has the 14 decks in file order with the right names and counts', () => {
   });
 });
 
-test('has 1230 lines in total', () => {
+test('has 2242 lines in total', () => {
   const total = data.decks.reduce((n, d) => n + d.lines.length, 0);
-  assert.strictEqual(total, 1230);
+  assert.strictEqual(total, 2242);
 });
 
 test('contains no tag other than <b> and </b>', () => {
@@ -71,7 +81,7 @@ test('has no line that is empty once tags are stripped', () => {
 
 test('keeps the highlighted chunk: most lines carry a <b> pair', () => {
   const withBold = data.decks.flatMap(d => d.lines).filter(l => l.includes('<b>')).length;
-  assert.ok(withBold > 1000, `expected most of 1230 lines to be highlighted, got ${withBold}`);
+  assert.ok(withBold > 2000, `expected most of 2242 lines to be highlighted, got ${withBold}`);
 });
 
 test('the file on disk is pure ASCII', () => {

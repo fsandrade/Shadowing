@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { installFakeAudio } from './helpers/fake-audio';
 
 const APP_URL = pathToFileURL(path.join(__dirname, '..', 'index.html')).href;
-const TOTAL_LINES = 1230;
+const TOTAL_LINES = 2242;
 
 async function currentIndex(page: Page): Promise<number> {
   return page.evaluate(() => (window as any).__shadowing.state.index);
@@ -16,7 +16,7 @@ test('loads the corpus with numbered lines', async ({ page }) => {
 
   await expect(page).toHaveTitle('Shadowing');
   await expect(page.locator('.topics-title')).toHaveText('Topics');
-  await expect(page.locator('#decks button')).toHaveCount(15);
+  await expect(page.locator('#decks button')).toHaveCount(25);
   await expect(page.locator('.durations button').first()).toHaveAttribute('title', /minute/i);
   await expect(page.locator('.sliders label').first()).toHaveAttribute('title', /speed/i);
   await expect(page.locator('.lines p')).toHaveCount(TOTAL_LINES);
