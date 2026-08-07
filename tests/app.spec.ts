@@ -154,6 +154,28 @@ test('next (ArrowRight) reveals the line just passed in blur mode', async ({ pag
   await expect.poll(() => filterOf(page, '.lines p.current .text')).toBe('blur(6px)');
 });
 
+test('help modal opens, describes features, and closes', async ({ page }) => {
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  await page.locator('#help').click();
+  await expect(page.locator('#helpModal')).toBeVisible();
+  await expect(page.locator('#helpModal')).toContainText(/How to use this app/i);
+  await expect(page.locator('#helpModal')).toContainText(/Blur/i);
+  await expect(page.locator('#helpModal')).toContainText(/gap/i);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#helpModal')).not.toBeVisible();
+
+  await page.locator('#help').click();
+  await page.locator('#helpModal').click({ position: { x: 10, y: 10 } });
+  await expect(page.locator('#helpModal')).not.toBeVisible();
+
+  await page.locator('#help').click();
+  await page.locator('#helpClose').click();
+  await expect(page.locator('#helpModal')).not.toBeVisible();
+});
+
 test('shows a one-time dismissible Edge tip snack bar on non-Edge desktop browsers', async ({ page }) => {
   installFakeAudio(page);
   await page.goto(APP_URL);

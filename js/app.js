@@ -29,6 +29,9 @@
     snackbar: document.getElementById('snackbar'),
     snackbarClose: document.querySelector('.snackbar-close'),
     edgeLink: document.getElementById('edge-link'),
+    help: document.getElementById('help'),
+    helpModal: document.getElementById('helpModal'),
+    helpClose: document.getElementById('helpClose'),
     durations: document.getElementById('durations'),
     clock: document.getElementById('clock'),
   };
@@ -476,6 +479,12 @@
     els.blur.addEventListener('click', function () { setBlur(!state.blur); });
     els.snackbarClose.addEventListener('click', function () { hideEdgeTip(true); });
 
+    els.help.addEventListener('click', openHelp);
+    els.helpClose.addEventListener('click', closeHelp);
+    els.helpModal.addEventListener('click', function (e) {
+      if (e.target === els.helpModal) { closeHelp(); }
+    });
+
 
 
 
@@ -496,6 +505,20 @@
   var STORE_KEY = 'shadowing.settings';
 
   var EDGE_TIP_KEY = 'shadowing.edgeTip';
+
+  var helpFocus = null;
+
+  function openHelp() {
+    helpFocus = document.activeElement;
+    els.helpModal.classList.add('show');
+    els.helpClose.focus();
+  }
+
+  function closeHelp() {
+    els.helpModal.classList.remove('show');
+    if (helpFocus && helpFocus.focus) { helpFocus.focus(); }
+    helpFocus = null;
+  }
 
   function isEdgeBrowser() {
     return /Edg\//i.test(navigator.userAgent || '');
@@ -559,6 +582,9 @@
 
 
       if (els.play.disabled) { return; }
+      if (e.key === 'Escape' && els.helpModal.classList.contains('show')) {
+        e.preventDefault(); closeHelp(); return;
+      }
       if (e.key === ' ') { e.preventDefault(); togglePlay(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); nextLine(); }
       else if (e.key === 'ArrowLeft') {
