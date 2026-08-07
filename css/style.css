@@ -103,3 +103,40 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 .banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
 .banner.show { display: block; }
 .banner code { background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 3px; }
+
+/* mobile ---------------------------------------------------------------- */
+@media (max-width: 640px) {
+  button { touch-action: manipulation; }
+
+  header { flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; }
+  header h1 { font-size: 15px; }
+  .clock { margin-left: auto; font-size: 16px; }
+
+  .app { grid-template-columns: 1fr; }
+
+  .decks {
+    display: flex; overflow-x: auto; gap: 8px;
+    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line);
+    -webkit-overflow-scrolling: touch;
+  }
+  .decks button {
+    flex: 0 0 auto; width: auto; gap: 6px;
+    border: 1px solid var(--line); border-radius: 999px;
+    border-left-width: 1px; padding: 6px 12px; white-space: nowrap;
+  }
+  .decks button[aria-current="true"] { border-color: var(--accent); }
+
+  .controls { padding: 12px 14px; }
+  #play { flex: 1; }
+
+  .sliders { gap: 12px; }
+  .sliders label { flex: 1 1 100%; justify-content: space-between; }
+  .sliders select { max-width: none; flex: 1; }
+
+  .lines { padding: 12px 0 45vh; }
+  .lines p { padding: 10px 12px; font-size: 16px; }
+  .lines p.current { font-size: 21px; line-height: 1.35; padding-top: 12px; padding-bottom: 12px; }
+  .lines .num { min-width: 26px; margin-right: 10px; }
+
+  .banner { margin: 12px 14px; }
+}
