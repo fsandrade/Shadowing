@@ -21,6 +21,7 @@
     next: document.getElementById('next'),
     shuffle: document.getElementById('shuffle'),
     blur: document.getElementById('blur'),
+    validate: document.getElementById('validate'),
     rate: document.getElementById('rate'),
     rateOut: document.getElementById('rateOut'),
     slack: document.getElementById('slack'),
@@ -44,6 +45,9 @@
     playing: false,
     generation: 0,
     blur: false,
+    sttEnabled: false,
+    sttSupported: false,
+    sttSession: null,
     rate: 1,
     slack: 1,
     voiceName: '',
@@ -229,6 +233,7 @@
     state.generation++;
     clearTimeout(state.timer);
     state.timer = null;
+    clearValidation();
 
 
 
@@ -254,13 +259,21 @@
     state.resumedAt = Date.now();
   }
 
-  function wait(ms) {
+  function wait(ms, until) {
     return new Promise(function (resolve) {
       state.timerResolve = resolve;
       state.timer = setTimeout(function () {
         state.timerResolve = null;
         resolve();
       }, ms);
+      if (until) {
+        until.then(function () {
+          if (state.timerResolve !== resolve) { return; }
+          clearTimeout(state.timer);
+          state.timerResolve = null;
+          resolve();
+        });
+      }
     });
   }
 
@@ -273,6 +286,111 @@
     els.lines.classList.toggle('blurred', on);
     els.blur.setAttribute('aria-pressed', String(on));
     saveSettings();
+  }
+
+  function setValidate(on) {
+    if (on && !state.sttSupported) { return; }
+    state.sttEnabled = on;
+    els.validate.setAttribute('aria-pressed', String(on));
+    saveSettings();
+  }
+
+  function renderStars(el, n) {
+    var s = '';
+    for (var i = 0; i < 5; i++) { s += i < n ? '\u2605' : '\u2606'; }
+    el.textContent = s;
+  }
+
+  function startValidation(baseText) {
+    var lineEl = els.lines.children[state.index];
+    if (!lineEl || !state.sttSupported) { return null; }
+
+    var stale = els.lines.querySelector('.validate-box');
+    if (stale) { stale.remove(); }
+
+    var box = document.createElement('div');
+    box.className = 'validate-box';
+    var mic = document.createElement('span');
+    mic.className = 'mic-dot';
+    box.appendChild(mic);
+    var transcript = document.createElement('span');
+    transcript.className = 'transcript';
+    transcript.textContent = 'Listening\u2026';
+    box.appendChild(transcript);
+    var stars = document.createElement('span');
+    stars.className = 'stars';
+    box.appendChild(stars);
+    lineEl.parentNode.insertBefore(box, lineEl.nextSibling);
+
+    var settled = false;
+    var message = '';
+    var resolveWait = null;
+    var waitPromise = new Promise(function (resolve) { resolveWait = resolve; });
+
+    function settle() {
+      if (settled) { return; }
+      settled = true;
+      if (resolveWait) { resolveWait(); }
+    }
+
+    var rec = window.ShadowingSTT.recognize({
+      lang: 'en-US',
+      onInterim: function (t) {
+        if (settled || !t) { return; }
+        transcript.textContent = t;
+      },
+      onResult: function (finalText) {
+        if (settled) { return; }
+        var rating = C.starsFor(baseText, finalText || '');
+        if (rating === null) {
+          transcript.textContent = 'No speech detected';
+        } else {
+          transcript.textContent = finalText || '';
+          renderStars(stars, rating);
+        }
+        settle();
+      },
+      onError: function (code) {
+        if (settled || code === 'aborted') { return; }
+        if (code === 'not-allowed' || code === 'service-not-allowed') {
+          message = 'Microphone denied';
+          showBanner('Microphone access was denied \u2014 the validator is off for this session. ' +
+            'Allow the microphone and reload to use it.', 'stt-denied');
+        } else {
+          message = 'Could not listen \u2014 validation skipped';
+        }
+        transcript.textContent = message;
+        settle();
+      },
+    });
+
+    state.sttSession = {
+      abort: rec.abort,
+      stop: rec.stop,
+      done: waitPromise,
+    };
+    rec.start();
+    return waitPromise;
+  }
+
+  function disposeValidation() {
+    if (state.sttSession) {
+      state.sttSession.abort();
+      state.sttSession = null;
+    }
+    var box = els.lines.querySelector('.validate-box');
+    if (box) {
+      var t = box.querySelector('.transcript');
+      if (t && t.textContent === 'Listening\u2026') {
+        t.textContent = 'No speech detected';
+      }
+    }
+  }
+
+  function clearValidation() {
+    disposeValidation();
+    var box = els.lines.querySelector('.validate-box');
+    if (box) { box.remove(); }
   }
 
   function stop() {
@@ -403,7 +521,12 @@
         if (p < 1 && ring.isConnected) { requestAnimationFrame(tick); }
       })();
 
-      await wait(waitMs);
+      var sttWait = null;
+      if (state.sttEnabled && state.sttSupported) {
+        sttWait = startValidation(text);
+      }
+      await wait(waitMs, sttWait);
+      disposeValidation();
       if (ring.isConnected) { ring.remove(); }
       if (gen !== state.generation || !state.playing) { return; }
 
@@ -477,6 +600,7 @@
     els.next.addEventListener('click', nextLine);
     els.shuffle.addEventListener('click', doShuffle);
     els.blur.addEventListener('click', function () { setBlur(!state.blur); });
+    els.validate.addEventListener('click', function () { setValidate(!state.sttEnabled); });
     els.snackbarClose.addEventListener('click', function () { hideEdgeTip(true); });
 
     els.help.addEventListener('click', openHelp);
@@ -558,6 +682,7 @@
         voiceName: state.voiceName,
         durationMin: state.durationMin,
         blur: state.blur,
+        stt: state.sttEnabled,
       }));
     } catch (e) { }
   }
@@ -626,6 +751,9 @@
     state.slack = Number(saved.slack) || 1;
     state.voiceName = saved.voiceName || '';
     state.blur = saved.blur === true;
+    state.sttSupported = !!(window.ShadowingSTT && window.ShadowingSTT.supported());
+    els.validate.disabled = !state.sttSupported;
+    state.sttEnabled = saved.stt === true && state.sttSupported;
     els.rate.value = state.rate;
     els.slack.value = state.slack;
     els.rateOut.textContent = state.rate.toFixed(2) + '\u00d7';
@@ -647,6 +775,7 @@
     var wanted = saved.deckId || 'all';
     selectDeck(C.linesFor(state.data, wanted).length ? wanted : 'all');
     setBlur(state.blur);
+    setValidate(state.sttEnabled);
   }
 
   init();
