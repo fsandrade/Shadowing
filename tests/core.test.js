@@ -204,3 +204,46 @@ test('hasEnglishVoice detects the presence of an en-* voice', () => {
   assert.strictEqual(C.hasEnglishVoice([VOICES[0]]), false);
   assert.strictEqual(C.hasEnglishVoice([]), false);
 });
+
+test('normalizeSpeech lowercases, strips punctuation and collapses apostrophes', () => {
+  assert.deepStrictEqual(
+    C.normalizeSpeech("I'm on the bus, be there in five!"),
+    ['im', 'on', 'the', 'bus', 'be', 'there', 'in', 'five']
+  );
+});
+
+test('normalizeSpeech handles null, numbers and collapsed whitespace', () => {
+  assert.deepStrictEqual(C.normalizeSpeech(null), []);
+  assert.deepStrictEqual(C.normalizeSpeech('   '), []);
+  assert.deepStrictEqual(C.normalizeSpeech('It\'s 2pm \u2014 right?'), ['its', '2pm', 'right']);
+});
+
+test('wordSimilarity is 1 for identical text and 0 for disjoint text', () => {
+  assert.strictEqual(C.wordSimilarity('hello world', 'hello world'), 1);
+  assert.strictEqual(C.wordSimilarity('hello world', 'goodbye moon'), 0);
+});
+
+test('wordSimilarity ignores punctuation, case and spacing', () => {
+  assert.strictEqual(C.wordSimilarity('Hello, world!', 'hello world'), 1);
+});
+
+test('wordSimilarity scores a missing tail word below 1', () => {
+  assert.strictEqual(C.wordSimilarity('i hit the snooze button', 'i hit the snooze'), 8 / 9);
+});
+
+test('wordSimilarity handles empties', () => {
+  assert.strictEqual(C.wordSimilarity('', ''), 1);
+  assert.strictEqual(C.wordSimilarity('a b', ''), 0);
+});
+
+test('starsFor gives 5 stars on an exact match and null on silence', () => {
+  assert.strictEqual(C.starsFor('i hit the snooze button', 'I hit the snooze button.'), 5);
+  assert.strictEqual(C.starsFor('i hit the snooze button', '   '), null);
+});
+
+test('starsFor maps similarity to the approved thresholds', () => {
+  assert.strictEqual(C.starsFor('i hit the snooze button', 'i hit the snooze'), 4);
+  assert.strictEqual(C.starsFor('i hit the snooze button', 'nothing to do'), 0);
+  assert.strictEqual(C.starsFor('a b c d e', 'a b c d'), 4);
+  assert.strictEqual(C.starsFor('a b c d e', 'a b'), 1);
+});

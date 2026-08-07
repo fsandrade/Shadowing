@@ -85,6 +85,49 @@
     return (voices || []).some(isEnglish);
   }
 
+  function normalizeSpeech(text) {
+    return String(text == null ? '' : text)
+      .toLowerCase()
+      .replace(/'/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  function wordSimilarity(base, transcript) {
+    var a = normalizeSpeech(base);
+    var b = normalizeSpeech(transcript);
+    var m = a.length, n = b.length;
+    if (!m && !n) { return 1; }
+    if (!m || !n) { return 0; }
+    var dp = [];
+    for (var i = 0; i <= m; i++) {
+      dp[i] = [];
+      for (var j = 0; j <= n; j++) { dp[i][j] = 0; }
+    }
+    for (i = 1; i <= m; i++) {
+      for (j = 1; j <= n; j++) {
+        if (a[i - 1] === b[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+    return (2 * dp[m][n]) / (m + n);
+  }
+
+  function starsFor(base, transcript) {
+    if (!normalizeSpeech(transcript).length) { return null; }
+    var sim = wordSimilarity(base, transcript);
+    if (sim < 0.45) { return 0; }
+    if (sim < 0.60) { return 1; }
+    if (sim < 0.70) { return 2; }
+    if (sim < 0.80) { return 3; }
+    if (sim < 0.95) { return 4; }
+    return 5;
+  }
+
   var API = {
     stripTags: stripTags,
     deckOptions: deckOptions,
@@ -96,6 +139,9 @@
     formatClock: formatClock,
     pickVoice: pickVoice,
     hasEnglishVoice: hasEnglishVoice,
+    normalizeSpeech: normalizeSpeech,
+    wordSimilarity: wordSimilarity,
+    starsFor: starsFor,
   };
 
   root.ShadowingCore = API;
