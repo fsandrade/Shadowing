@@ -50,6 +50,7 @@
     sttSession: null,
     sttDenied: false,
     sttDeniedBanner: false,
+    micStream: null,
     rate: 1,
     slack: 1,
     voiceName: '',
@@ -308,6 +309,39 @@
     el.textContent = s;
   }
 
+  function markMicDenied() {
+    state.sttDenied = true;
+    if (!state.sttDeniedBanner) {
+      state.sttDeniedBanner = true;
+      showBanner('Microphone access was denied \u2014 the validator is off for this session. ' +
+        'Allow the microphone and reload to use it.', 'stt-denied');
+    }
+  }
+
+  function ensureMic() {
+    return new Promise(function (resolve, reject) {
+      if (state.micStream) { resolve(state.micStream); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        resolve(null);
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        state.micStream = stream;
+        resolve(stream);
+      }, function () {
+        markMicDenied();
+        reject();
+      });
+    });
+  }
+
+  function releaseMic() {
+    if (state.micStream) {
+      state.micStream.getTracks().forEach(function (t) { t.stop(); });
+      state.micStream = null;
+    }
+  }
+
   function startValidation(baseText) {
     if (state.sttDenied) { return null; }
     var lineEl = lineElAt(state.index);
@@ -360,12 +394,7 @@
       onError: function (code) {
         if (settled || code === 'aborted') { return; }
         if (code === 'not-allowed' || code === 'service-not-allowed') {
-          state.sttDenied = true;
-          if (!state.sttDeniedBanner) {
-            state.sttDeniedBanner = true;
-            showBanner('Microphone access was denied \u2014 the validator is off for this session. ' +
-              'Allow the microphone and reload to use it.', 'stt-denied');
-          }
+          markMicDenied();
           transcript.textContent = 'Microphone denied';
           return;
         }
@@ -608,7 +637,20 @@
     els.next.addEventListener('click', nextLine);
     els.shuffle.addEventListener('click', doShuffle);
     els.blur.addEventListener('click', function () { setBlur(!state.blur); });
-    els.validate.addEventListener('click', function () { setValidate(!state.sttEnabled); });
+    els.validate.addEventListener('click', function () {
+      if (!state.sttEnabled) {
+        ensureMic().then(function () {
+          state.sttEnabled = true;
+          els.validate.setAttribute('aria-pressed', 'true');
+          saveSettings();
+        }, function () {});
+      } else {
+        state.sttEnabled = false;
+        els.validate.setAttribute('aria-pressed', 'false');
+        saveSettings();
+        clearValidation();
+      }
+    });
     els.snackbarClose.addEventListener('click', function () { hideEdgeTip(true); });
 
     els.help.addEventListener('click', openHelp);
@@ -761,7 +803,7 @@
     state.blur = saved.blur === true;
     state.sttSupported = !!(window.ShadowingSTT && window.ShadowingSTT.supported());
     els.validate.disabled = !state.sttSupported;
-    state.sttEnabled = saved.stt === true && state.sttSupported;
+    state.sttEnabled = saved.stt === true && state.sttSupported && !state.sttDenied;
     els.rate.value = state.rate;
     els.slack.value = state.slack;
     els.rateOut.textContent = state.rate.toFixed(2) + '\u00d7';
@@ -784,6 +826,8 @@
     selectDeck(C.linesFor(state.data, wanted).length ? wanted : 'all');
     setBlur(state.blur);
     setValidate(state.sttEnabled);
+    window.addEventListener('pagehide', releaseMic);
+    window.addEventListener('beforeunload', releaseMic);
   }
 
   init();
