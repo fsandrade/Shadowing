@@ -48,6 +48,8 @@
     sttEnabled: false,
     sttSupported: false,
     sttSession: null,
+    sttDenied: false,
+    sttDeniedBanner: false,
     rate: 1,
     slack: 1,
     voiceName: '',
@@ -128,8 +130,12 @@
     highlight(state.index);
   }
 
+  function lineElAt(i) {
+    return els.lines.querySelectorAll('p')[i] || null;
+  }
+
   function highlight(i) {
-    var kids = els.lines.children;
+    var kids = els.lines.querySelectorAll('p');
     for (var k = 0; k < kids.length; k++) { kids[k].classList.remove('current'); }
     var el = kids[i];
     if (!el) { return; }
@@ -290,6 +296,7 @@
 
   function setValidate(on) {
     if (on && !state.sttSupported) { return; }
+    if (!on) { clearValidation(); }
     state.sttEnabled = on;
     els.validate.setAttribute('aria-pressed', String(on));
     saveSettings();
@@ -302,7 +309,8 @@
   }
 
   function startValidation(baseText) {
-    var lineEl = els.lines.children[state.index];
+    if (state.sttDenied) { return null; }
+    var lineEl = lineElAt(state.index);
     if (!lineEl || !state.sttSupported) { return null; }
 
     var stale = els.lines.querySelector('.validate-box');
@@ -323,7 +331,6 @@
     lineEl.parentNode.insertBefore(box, lineEl.nextSibling);
 
     var settled = false;
-    var message = '';
     var resolveWait = null;
     var waitPromise = new Promise(function (resolve) { resolveWait = resolve; });
 
@@ -353,21 +360,22 @@
       onError: function (code) {
         if (settled || code === 'aborted') { return; }
         if (code === 'not-allowed' || code === 'service-not-allowed') {
-          message = 'Microphone denied';
-          showBanner('Microphone access was denied \u2014 the validator is off for this session. ' +
-            'Allow the microphone and reload to use it.', 'stt-denied');
-        } else {
-          message = 'Could not listen \u2014 validation skipped';
+          state.sttDenied = true;
+          if (!state.sttDeniedBanner) {
+            state.sttDeniedBanner = true;
+            showBanner('Microphone access was denied \u2014 the validator is off for this session. ' +
+              'Allow the microphone and reload to use it.', 'stt-denied');
+          }
+          transcript.textContent = 'Microphone denied';
+          return;
         }
-        transcript.textContent = message;
+        transcript.textContent = 'Could not listen \u2014 validation skipped';
         settle();
       },
     });
 
     state.sttSession = {
       abort: rec.abort,
-      stop: rec.stop,
-      done: waitPromise,
     };
     rec.start();
     return waitPromise;
@@ -440,7 +448,7 @@
   }
 
   function nextLine() {
-    var passed = els.lines.children[state.index];
+    var passed = lineElAt(state.index);
     state.index = C.nextIndex(state.index, state.lines.length);
     if (passed) { passed.classList.add('spoken'); }
     highlight(state.index);
@@ -511,7 +519,7 @@
       ring.appendChild(mkCircle('ring-track'));
       var ringFill = mkCircle('ring-fill', RING_LEN);
       ring.appendChild(ringFill);
-      var lineEl = els.lines.children[state.index];
+      var lineEl = lineElAt(state.index);
       if (lineEl) { lineEl.appendChild(ring); }
       var started = performance.now();
       (function tick() {
@@ -533,7 +541,7 @@
 
       if (sessionExpired()) { finishSession(); return; }
 
-      var passed = els.lines.children[state.index];
+      var passed = lineElAt(state.index);
       state.index = C.nextIndex(state.index, state.lines.length);
       if (passed) { passed.classList.add('spoken'); }
     }
