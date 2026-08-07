@@ -99,6 +99,11 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 }
 .lines p.current b { color: var(--accent); }
 
+/* blur mode -------------------------------------------------------------- */
+.lines.blurred .text { filter: blur(6px); transition: filter .18s ease; }
+.lines.blurred p:hover .text,
+.lines.blurred p.spoken .text { filter: none; }
+
 /* banner ----------------------------------------------------------------- */
 .banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
 .banner.show { display: block; }

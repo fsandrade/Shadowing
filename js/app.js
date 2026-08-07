@@ -19,6 +19,7 @@
     play: document.getElementById('play'),
     next: document.getElementById('next'),
     shuffle: document.getElementById('shuffle'),
+    blur: document.getElementById('blur'),
     rate: document.getElementById('rate'),
     rateOut: document.getElementById('rateOut'),
     slack: document.getElementById('slack'),
@@ -35,6 +36,7 @@
     index: 0,
     playing: false,
     generation: 0,
+    blur: false,
     rate: 1,
     slack: 1,
     voiceName: '',
@@ -105,6 +107,7 @@
       p.appendChild(num);
 
       var content = document.createElement('span');
+      content.className = 'text';
       content.innerHTML = line;
       p.appendChild(content);
 
@@ -258,6 +261,13 @@
     els.play.innerHTML = state.playing ? '\u23F8 Pause' : '\u25B6 Play';
   }
 
+  function setBlur(on) {
+    state.blur = on;
+    els.lines.classList.toggle('blurred', on);
+    els.blur.setAttribute('aria-pressed', String(on));
+    saveSettings();
+  }
+
   function stop() {
     bump();
     accrue();
@@ -305,7 +315,9 @@
   }
 
   function nextLine() {
+    var passed = els.lines.children[state.index];
     state.index = C.nextIndex(state.index, state.lines.length);
+    if (passed) { passed.classList.add('spoken'); }
     highlight(state.index);
     if (state.playing) { play(); } else { bump(); }
   }
@@ -391,7 +403,9 @@
 
       if (sessionExpired()) { finishSession(); return; }
 
+      var passed = els.lines.children[state.index];
       state.index = C.nextIndex(state.index, state.lines.length);
+      if (passed) { passed.classList.add('spoken'); }
     }
   }
 
@@ -455,6 +469,7 @@
     els.play.addEventListener('click', togglePlay);
     els.next.addEventListener('click', nextLine);
     els.shuffle.addEventListener('click', doShuffle);
+    els.blur.addEventListener('click', function () { setBlur(!state.blur); });
 
 
 
@@ -483,6 +498,7 @@
         slack: state.slack,
         voiceName: state.voiceName,
         durationMin: state.durationMin,
+        blur: state.blur,
       }));
     } catch (e) { }
   }
@@ -539,6 +555,7 @@
     state.rate = Number(saved.rate) || 1;
     state.slack = Number(saved.slack) || 1;
     state.voiceName = saved.voiceName || '';
+    state.blur = saved.blur === true;
     els.rate.value = state.rate;
     els.slack.value = state.slack;
     els.rateOut.textContent = state.rate.toFixed(2) + '\u00d7';
@@ -558,6 +575,7 @@
 
     var wanted = saved.deckId || 'all';
     selectDeck(C.linesFor(state.data, wanted).length ? wanted : 'all');
+    setBlur(state.blur);
   }
 
   init();

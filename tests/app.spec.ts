@@ -110,3 +110,59 @@ test('space toggles playback and ArrowRight advances the index', async ({ page }
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => currentIndex(page), { timeout: 5000 }).toBe(before + 1);
 });
+
+function filterOf(page: Page, selector: string) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    return el ? getComputedStyle(el).filter : null;
+  }, selector);
+}
+
+test('blur mode blurs sentence text, keeps numbers, reveals on hover', async ({ page }) => {
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  await page.locator('#blur').click();
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#lines')).toHaveClass(/blurred/);
+  await expect.poll(() => filterOf(page, '.lines p .text')).toBe('blur(6px)');
+  expect(await filterOf(page, '.lines p .num')).toBe('none');
+
+  await page.hover('.lines p .text >> nth=0');
+  await expect.poll(() => filterOf(page, '.lines p .text')).toBe('none');
+
+  await page.locator('#blur').click();
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#lines')).not.toHaveClass(/blurred/);
+  await expect.poll(() => filterOf(page, '.lines p .text')).toBe('none');
+});
+
+test('next (ArrowRight) reveals the line just passed in blur mode', async ({ page }) => {
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  await page.locator('#blur').click();
+  await expect.poll(() => currentIndex(page)).toBe(0);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => currentIndex(page)).toBe(1);
+
+  await expect(page.locator('.lines p').first()).toHaveClass(/spoken/);
+  await expect.poll(() => filterOf(page, '.lines p.spoken .text')).toBe('none');
+  await expect.poll(() => filterOf(page, '.lines p.current .text')).toBe('blur(6px)');
+});
+
+test('in blur mode only already-spoken lines are revealed during playback', async ({ page }) => {
+  installFakeAudio(page, { speakMs: 600 });
+  await page.goto(APP_URL);
+
+  await page.locator('#blur').click();
+  await page.locator('#play').click();
+  await expect(page.locator('#play')).toHaveText(/Pause/);
+
+  await expect.poll(() => currentIndex(page), { timeout: 8000 }).toBeGreaterThan(0);
+
+  await expect(page.locator('.lines p.spoken').first()).toHaveClass(/spoken/);
+  await expect.poll(() => filterOf(page, '.lines p.spoken .text')).toBe('none');
+  await expect.poll(() => filterOf(page, '.lines p.current .text')).toBe('blur(6px)');
+  expect(await filterOf(page, '.lines p:not(.current):not(.spoken) .text')).toBe('blur(6px)');
+});
