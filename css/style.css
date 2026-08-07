@@ -85,6 +85,13 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
   color: var(--dim); font-size: 0.72em;
 }
 .lines p.current .num { color: var(--accent); }
+.lines p.current .ring {
+  display: inline-block; width: 18px; height: 18px;
+  margin-left: 8px; vertical-align: middle;
+  transform: rotate(-90deg);
+}
+.lines p.current .ring .ring-track { stroke: rgba(255,255,255,.28); }
+.lines p.current .ring .ring-fill { stroke: var(--accent); stroke-linecap: round; }
 .lines p.current {
   color: var(--text); font-size: 26px; line-height: 1.4;
   border-left-color: var(--accent); background: #1a1f24;

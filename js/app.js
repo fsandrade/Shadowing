@@ -351,7 +351,41 @@
 
 
 
-      await wait(Math.max(400, C.pauseMs(performance.now() - t0, state.slack)));
+      var waitMs = Math.max(400, C.pauseMs(performance.now() - t0, state.slack));
+      var NS = 'http://www.w3.org/2000/svg';
+      var RING_R = 8, RING_LEN = 2 * Math.PI * RING_R;
+      var ring = document.createElementNS(NS, 'svg');
+      ring.setAttribute('class', 'ring');
+      ring.setAttribute('viewBox', '0 0 20 20');
+      ring.setAttribute('width', '18');
+      ring.setAttribute('height', '18');
+      ring.setAttribute('aria-hidden', 'true');
+      var mkCircle = function (cls, offset) {
+        var c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', '10'); c.setAttribute('cy', '10'); c.setAttribute('r', String(RING_R));
+        c.setAttribute('fill', 'none'); c.setAttribute('stroke-width', '3');
+        c.setAttribute('class', cls);
+        if (offset !== undefined) {
+          c.setAttribute('stroke-dasharray', RING_LEN.toFixed(2));
+          c.setAttribute('stroke-dashoffset', offset.toFixed(2));
+        }
+        return c;
+      };
+      ring.appendChild(mkCircle('ring-track'));
+      var ringFill = mkCircle('ring-fill', RING_LEN);
+      ring.appendChild(ringFill);
+      var lineEl = els.lines.children[state.index];
+      if (lineEl) { lineEl.appendChild(ring); }
+      var started = performance.now();
+      (function tick() {
+        var p = (performance.now() - started) / waitMs;
+        if (p >= 1) { p = 1; }
+        ringFill.setAttribute('stroke-dashoffset', (RING_LEN * (1 - p)).toFixed(2));
+        if (p < 1 && ring.isConnected) { requestAnimationFrame(tick); }
+      })();
+
+      await wait(waitMs);
+      if (ring.isConnected) { ring.remove(); }
       if (gen !== state.generation || !state.playing) { return; }
 
 
@@ -488,8 +522,8 @@
 
   function init() {
     if (!window.SHADOWING || !window.SHADOWING.decks) {
-      showBanner('N&atilde;o encontrei <code>shadowing-data.js</code>. ' +
-        'Rode <code>build-shadowing.ps1</code> para gerar o arquivo.', 'missing-data');
+      showBanner('N&atilde;o encontrei <code>data/data.js</code>. ' +
+        'Rode <code>scripts/build.ps1</code> para gerar o arquivo.', 'missing-data');
       setControlsEnabled(false);
       return;
     }

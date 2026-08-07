@@ -1,5 +1,5 @@
-// Assertions over the generated shadowing-data.js.
-// Run: node --test test-shadowing-data.js
+
+
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -7,14 +7,14 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 
-const DATA_FILE = path.join(__dirname, 'shadowing-data.js');
+const DATA_FILE = path.join(__dirname, '..', 'data', 'data.js');
 
-// The generated file is browser-shaped (assigns to `window`), so give it a window.
+
 global.window = {};
 require(DATA_FILE);
 const data = global.window.SHADOWING;
 
-// Deck order is first-appearance order in cards-chunks.json.
+
 const EXPECTED = [
   ['daily-life', 'Daily Life', 135],
   ['small-talk', 'Small Talk', 87],
@@ -86,14 +86,9 @@ test('escapes the two non-ASCII characters of the corpus', () => {
   assert.ok(raw.includes('\\u00e9'), 'e-acute should appear escaped');
 });
 
-// The tag whitelist in build-shadowing.ps1 must be case-sensitive: only exactly
-// '<b>' and '</b>' may pass, because this build-time abort is the sole guarantee
-// that later innerHTML rendering is safe. This drives the build against a
-// throwaway copy of cards-chunks.json with an uppercase <B>/</B> pair injected,
-// and asserts the process exits non-zero. Neither the real cards-chunks.json
-// nor the real shadowing-data.js is touched.
+
 test('build script rejects uppercase tags (case-sensitive whitelist)', () => {
-  const cardsPath = path.join(__dirname, 'cards-chunks.json');
+  const cardsPath = path.join(__dirname, '..', 'scripts', 'cards-chunks.json');
   const cards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
   const before = cards[0].fields.Example1;
   assert.match(before, /<b>.*<\/b>/, 'fixture note is expected to carry a lowercase <b> pair');
@@ -105,7 +100,7 @@ test('build script rejects uppercase tags (case-sensitive whitelist)', () => {
 
   try {
     const result = spawnSync('pwsh', [
-      '-File', path.join(__dirname, 'build-shadowing.ps1'),
+      '-File', path.join(__dirname, '..', 'scripts', 'build.ps1'),
       '-CardsFile', tmpCards,
       '-OutFile', tmpOut,
     ], { encoding: 'utf8' });

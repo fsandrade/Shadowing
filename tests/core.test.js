@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const C = require('./shadowing-core.js');
+const C = require('../js/core.js');
 
 const DATA = {
   generatedAt: '2026-08-06T00:00:00Z',
@@ -65,11 +65,11 @@ test('shuffle returns a new array and leaves the input alone', () => {
 });
 
 test('shuffle applies the rng to the algorithm, not just the input', () => {
-  // Trace of Fisher-Yates with rng sequence [0.1, 0.2, 0.3, 0.4]:
-  // i=4: j=floor(0.1*5)=0, swap [4]↔[0] → [e,b,c,d,a]
-  // i=3: j=floor(0.2*4)=0, swap [3]↔[0] → [d,b,c,e,a]
-  // i=2: j=floor(0.3*3)=0, swap [2]↔[0] → [c,b,d,e,a]
-  // i=1: j=floor(0.4*2)=0, swap [1]↔[0] → [b,c,d,e,a]
+ 
+ 
+ 
+ 
+ 
   const seq = [0.1, 0.2, 0.3, 0.4];
   let i = 0;
   const rng = () => seq[i++];
@@ -99,7 +99,7 @@ test('shuffle handles the empty list', () => {
   assert.deepStrictEqual(C.shuffle([], Math.random), []);
 });
 
-// --- timing -----------------------------------------------------------------
+
 
 test('pauseMs is the speech duration times the slack', () => {
   assert.strictEqual(C.pauseMs(4000, 1.0), 4000);
@@ -116,7 +116,7 @@ test('pauseMs never returns a negative wait', () => {
 });
 
 test('safetyTimeoutMs allows the sentence plus a five second margin', () => {
-  // 56 chars is the corpus mean: 56/12 = 4.67s of speech, +5s margin.
+ 
   assert.strictEqual(C.safetyTimeoutMs('x'.repeat(56), 1.0), 9667);
 });
 
@@ -153,7 +153,7 @@ test('formatClock keeps counting in minutes past an hour', () => {
   assert.strictEqual(C.formatClock(4500), '75:00');
 });
 
-// --- voices -----------------------------------------------------------------
+
 
 const VOICES = [
   { name: 'Microsoft Maria', lang: 'pt-BR' },
