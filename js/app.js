@@ -14,6 +14,7 @@
 
   var els = {
     decks: document.getElementById('decks'),
+    decksList: document.querySelector('.decks-list'),
     lines: document.getElementById('lines'),
     banner: document.getElementById('banner'),
     play: document.getElementById('play'),
@@ -85,7 +86,7 @@
   }
 
   function renderDecks() {
-    els.decks.innerHTML = '';
+    els.decksList.innerHTML = '';
     C.deckOptions(state.data).forEach(function (opt) {
       var b = document.createElement('button');
       b.type = 'button';
@@ -95,7 +96,7 @@
       b.firstChild.textContent = opt.name;
       b.lastChild.textContent = opt.count;
       b.addEventListener('click', function () { selectDeck(opt.id); });
-      els.decks.appendChild(b);
+      els.decksList.appendChild(b);
     });
   }
 

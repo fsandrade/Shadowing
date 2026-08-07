@@ -11,35 +11,38 @@
 <header>
   <h1>Shadowing</h1>
   <div class="durations" id="durations">
-    <button type="button" data-min="5">5 min</button>
-    <button type="button" data-min="10">10 min</button>
-    <button type="button" data-min="15">15 min</button>
-    <button type="button" data-min="0" aria-pressed="true">&#8734;</button>
+    <button type="button" data-min="5" title="Set a 5-minute session">5 min</button>
+    <button type="button" data-min="10" title="Set a 10-minute session">10 min</button>
+    <button type="button" data-min="15" title="Set a 15-minute session">15 min</button>
+    <button type="button" data-min="0" aria-pressed="true" title="Practice with no time limit">&#8734;</button>
   </div>
   <div class="clock" id="clock">00:00</div>
 </header>
 
 <div class="app">
-  <nav class="decks" id="decks" aria-label="Decks"></nav>
+  <aside class="sidebar">
+    <h2 class="topics-title">Topics</h2>
+    <nav class="decks" id="decks" aria-label="Topics"><div class="decks-list"></div></nav>
+  </aside>
 
   <main>
     <div class="controls">
       <div class="transport">
         <button type="button" id="play" title="Play/Pause (space) &middot; Repeat current sentence (&larr;)">&#9654; Play</button>
         <button type="button" id="next" title="Next (&rarr;)">&#9197;</button>
-        <button type="button" id="shuffle" title="Shuffle">&#8644; shuffle</button>
+        <button type="button" id="shuffle" title="Shuffle the sentences randomly">&#8644; shuffle</button>
         <button type="button" id="blur" aria-pressed="false" title="Blur the text to practice from memory (hover or playback reveals)">&#9682; blur</button>
       </div>
       <div class="sliders">
-        <label>speed
-          <input type="range" id="rate" min="0.2" max="2" step="0.1" value="1">
+<label title="Speech speed: slower to catch every word, faster for a challenge">speed
+          <input type="range" id="rate" min="0.7" max="1.2" step="0.05" value="1">
           <output id="rateOut">1.00&times;</output>
         </label>
-        <label>gap
-          <input type="range" id="slack" min="0.5" max="2" step="0.1" value="1">
+        <label title="Gap between sentences: how long you have to repeat aloud">gap
+          <input type="range" id="slack" min="0.8" max="1.5" step="0.05" value="1">
           <output id="slackOut">1.00&times;</output>
         </label>
-        <label>voice
+        <label title="Voice used to read the sentences">voice
           <select id="voice"></select>
         </label>
       </div>
