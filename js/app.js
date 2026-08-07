@@ -51,6 +51,7 @@
     sttDenied: false,
     sttDeniedBanner: false,
     micStream: null,
+    micPending: false,
     rate: 1,
     slack: 1,
     voiceName: '',
@@ -320,6 +321,7 @@
 
   function ensureMic() {
     return new Promise(function (resolve, reject) {
+      if (state.sttDenied) { reject(); return; }
       if (state.micStream) { resolve(state.micStream); return; }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         resolve(null);
@@ -639,11 +641,16 @@
     els.blur.addEventListener('click', function () { setBlur(!state.blur); });
     els.validate.addEventListener('click', function () {
       if (!state.sttEnabled) {
+        if (state.micPending) { return; }
+        state.micPending = true;
         ensureMic().then(function () {
+          state.micPending = false;
           state.sttEnabled = true;
           els.validate.setAttribute('aria-pressed', 'true');
           saveSettings();
-        }, function () {});
+        }, function () {
+          state.micPending = false;
+        });
       } else {
         state.sttEnabled = false;
         els.validate.setAttribute('aria-pressed', 'false');
