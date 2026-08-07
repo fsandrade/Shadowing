@@ -95,6 +95,10 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 .sliders output { color: var(--text); font-variant-numeric: tabular-nums; min-width: 38px; }
 .sliders select { background: var(--line); color: var(--text); border: 0; border-radius: 6px; padding: 5px 8px; font: inherit; max-width: 260px; }
 
+.transport button[aria-pressed="true"]:not(:disabled) {
+  background: var(--accent); color: #10241a;
+}
+
 /* edge tip ---------------------------------------------------------------- */
 .edge-tip { display: none; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
 .edge-tip.show { display: inline-flex; }
@@ -198,6 +202,26 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 .lines.blurred p:hover .text,
 .lines.blurred p.spoken .text { filter: none; }
 
+/* speech validator ------------------------------------------------------- */
+.validate-box {
+  display: flex; align-items: center; gap: 12px;
+  margin: 6px 24px 0; padding: 10px 16px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: #16202a; font-size: 16px;
+}
+.validate-box .mic-dot {
+  flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  animation: mic-pulse 1.4s infinite;
+}
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(76, 195, 138, .45); }
+  70% { box-shadow: 0 0 0 8px rgba(76, 195, 138, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 195, 138, 0); }
+}
+.validate-box .transcript { flex: 1; min-width: 0; color: var(--text); font-style: italic; }
+.validate-box .stars { flex: 0 0 auto; color: var(--accent); font-size: 20px; letter-spacing: 2px; }
+
 /* banner ----------------------------------------------------------------- */
 .banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
 .banner.show { display: block; }
@@ -241,4 +265,6 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
   .lines .num { min-width: 26px; margin-right: 10px; }
 
   .banner { margin: 12px 14px; }
+
+  .validate-box { margin: 6px 14px 0; }
 }
