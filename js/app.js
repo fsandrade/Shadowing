@@ -568,6 +568,9 @@
     } catch (e) { return {}; }
   }
 
+  var DOUBLE_PRESS_MS = 500;
+  var lastLeftTime = 0;
+
   function bindKeyboard() {
     document.addEventListener('keydown', function (e) {
 
@@ -581,6 +584,7 @@
 
 
 
+      if (e.key !== 'ArrowLeft') { lastLeftTime = 0; }
       if (els.play.disabled) { return; }
       if (e.key === 'Escape' && els.helpModal.classList.contains('show')) {
         e.preventDefault(); closeHelp(); return;
@@ -589,10 +593,14 @@
       else if (e.key === 'ArrowRight') { e.preventDefault(); nextLine(); }
       else if (e.key === 'ArrowLeft') {
         e.preventDefault();
+        var now = Date.now();
+        if (state.index > 0 && now - lastLeftTime <= DOUBLE_PRESS_MS) {
+          state.index -= 1;
+          lastLeftTime = 0;
+        } else {
+          lastLeftTime = now;
+        }
         highlight(state.index);
-
-
-
         startPlaying();
       }
     });
