@@ -5,7 +5,7 @@
 <button type="button" id="validate" [disabled]="!sttSupported"
   [attr.aria-pressed]="settings.sttEnabled()" [title]="VALIDATE_TITLE"
   (click)="toggleValidate()">&#10003; validate</button>
-<button type="button" id="options" class="options-btn"
+<button type="button" id="options" class="options-btn" aria-label="Options"
   [attr.aria-expanded]="optionsOpen()" aria-controls="optionsPanel"
   title="Show or hide the advanced options"
-  (click)="toggleOptions.emit()">&#9881; options</button>
+  (click)="toggleOptions.emit()">&#9881;<span class="options-label"> options</span></button>

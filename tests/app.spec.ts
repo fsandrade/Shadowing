@@ -221,6 +221,26 @@ test('mobile keeps the topics bar as a single compact row', async ({ page }) => 
   await expect(page.locator('.lines p').first()).toBeVisible();
 });
 
+test('mobile keeps every control on screen with the options panel open', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+  await openOptions(page);
+
+  const offscreen = await page.evaluate(() => {
+    const controls = '#play, #next, #validate, #options, #shuffle, #blur, #repeat, #rate, #slack, #voice, #rateOut, #slackOut';
+    return [...document.querySelectorAll(controls)]
+      .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 0.5)
+      .map((el) => el.id);
+  });
+  expect(offscreen).toEqual([]);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBe(0);
+});
+
 test('shows a one-time dismissible Edge tip snack bar on non-Edge desktop browsers', async ({ page }) => {
   installFakeAudio(page);
   await page.goto(APP_URL);
