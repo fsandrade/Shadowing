@@ -58,6 +58,15 @@ test('warns and disables the controls when no English voice is available', async
   await expect(page.locator('#shuffle')).toBeDisabled();
 });
 
+test('a banner can be dismissed with its close button', async ({ page }) => {
+  installFakeAudio(page, { voices: [{ name: 'Maria', lang: 'pt-BR' }] });
+  await page.goto(APP_URL);
+
+  await expect(page.locator('#banner')).toBeVisible();
+  await page.locator('#banner .banner-close').click();
+  await expect(page.locator('#banner')).not.toBeVisible();
+});
+
 test('switching decks narrows the list and renumbers from one', async ({ page }) => {
   installFakeAudio(page);
   await page.goto(APP_URL);

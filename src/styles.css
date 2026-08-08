@@ -237,7 +237,16 @@ main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
 
 /* banner ----------------------------------------------------------------- */
 .banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
-.banner.show { display: block; }
+.banner.show { display: flex; align-items: flex-start; gap: 12px; }
+.banner-text { flex: 1; min-width: 0; }
+.banner-close {
+  flex: 0 0 auto; background: none; border: 1px solid rgba(255, 180, 162, .4);
+  border-radius: 4px; color: inherit; width: 20px; height: 20px; line-height: 1;
+  cursor: pointer; padding: 0; font-size: 13px;
+}
+.banner-close:hover, .banner-close:focus-visible {
+  border-color: currentColor; background: rgba(255, 180, 162, .12);
+}
 .banner code { background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 3px; }
 
 /* mobile ---------------------------------------------------------------- */
