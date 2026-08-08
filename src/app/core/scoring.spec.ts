@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  coverage, normalizeSpeech, soundsComplete, starsFor, wordSimilarity,
+  COMPLETE_COVERAGE, coverage, normalizeSpeech, reachedLastWord,
+  soundsComplete, starsFor, wordSimilarity,
 } from './scoring';
 
 describe('normalizeSpeech', () => {
@@ -105,6 +106,45 @@ describe('scoring around recognizer formatting', () => {
 
   it('still penalizes leaving the sentence unfinished', () => {
     expect(soundsComplete(agenda, '1st on the agenda')).toBe(false);
+  });
+});
+
+describe('finishing the sentence', () => {
+  const clarify = 'Before we move on, let me jump in with a quick clarification.';
+  const stoppedShort = 'Before we move on, let me jump in with a quick.';
+
+  it('does not call a sentence complete while its last word is missing', () => {
+    expect(coverage(clarify, stoppedShort)).toBeGreaterThan(COMPLETE_COVERAGE);
+    expect(soundsComplete(clarify, stoppedShort)).toBe(false);
+  });
+
+  it('does not award full marks for a sentence that stopped short', () => {
+    expect(wordSimilarity(clarify, stoppedShort)).toBeGreaterThan(0.95);
+    expect(starsFor(clarify, stoppedShort)).toBe(4);
+  });
+
+  it('calls it complete as soon as the last word arrives', () => {
+    expect(soundsComplete(clarify, clarify)).toBe(true);
+    expect(starsFor(clarify, clarify)).toBe(5);
+  });
+
+  it('still forgives a word dropped in the middle', () => {
+    const dropped = 'Before we move on, let me jump in with quick clarification.';
+    expect(reachedLastWord(clarify, dropped)).toBe(true);
+    expect(soundsComplete(clarify, dropped)).toBe(true);
+    expect(starsFor(clarify, dropped)).toBe(5);
+  });
+
+  it('reports the end unreached for a transcript that is still building', () => {
+    expect(reachedLastWord(clarify, 'Before we')).toBe(false);
+    expect(reachedLastWord(clarify, 'Before we move on, let me jump')).toBe(false);
+    expect(reachedLastWord(clarify, '')).toBe(false);
+  });
+
+  it('needs the last word in place, not merely somewhere in the transcript', () => {
+    const target = 'Take the road past the old road';
+    expect(reachedLastWord(target, 'Take the road past the old road')).toBe(true);
+    expect(soundsComplete(target, 'Take the road past the old')).toBe(false);
   });
 });
 

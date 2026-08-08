@@ -29,14 +29,6 @@ function joinSplitWords(
   return out;
 }
 
-function align(base: string, transcript: string): [string[], string[]] {
-  const spoken = normalizeSpeech(transcript);
-  const target = normalizeSpeech(base);
-  const spokenJoined = joinSplitWords(spoken, new Set(target));
-  const targetJoined = joinSplitWords(target, new Set(spokenJoined));
-  return [targetJoined, spokenJoined];
-}
-
 function lcsLength(a: readonly string[], b: readonly string[]): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0),
@@ -51,32 +43,67 @@ function lcsLength(a: readonly string[], b: readonly string[]): number {
   return dp[a.length][b.length];
 }
 
+interface Alignment {
+  readonly targetLength: number;
+  readonly spokenLength: number;
+  readonly matched: number;
+  readonly reachedEnd: boolean;
+}
+
+function align(base: string, transcript: string): Alignment {
+  const rawTarget = normalizeSpeech(base);
+  const rawSpoken = normalizeSpeech(transcript);
+  const spoken = joinSplitWords(rawSpoken, new Set(rawTarget));
+  const target = joinSplitWords(rawTarget, new Set(spoken));
+
+  const matched = lcsLength(target, spoken);
+  const reachedEnd = target.length > 0
+    && spoken.length > 0
+    && matched > lcsLength(target.slice(0, -1), spoken);
+
+  return {
+    targetLength: target.length,
+    spokenLength: spoken.length,
+    matched,
+    reachedEnd,
+  };
+}
+
 export function wordSimilarity(base: string, transcript: string): number {
-  const [a, b] = align(base, transcript);
-  if (!a.length && !b.length) { return 1; }
-  if (!a.length || !b.length) { return 0; }
-  return (2 * lcsLength(a, b)) / (a.length + b.length);
+  const { targetLength, spokenLength, matched } = align(base, transcript);
+  if (!targetLength && !spokenLength) { return 1; }
+  if (!targetLength || !spokenLength) { return 0; }
+  return (2 * matched) / (targetLength + spokenLength);
 }
 
 export function coverage(base: string, transcript: string): number {
-  const [a, b] = align(base, transcript);
-  if (!a.length || !b.length) { return 0; }
-  return lcsLength(a, b) / a.length;
+  const { targetLength, spokenLength, matched } = align(base, transcript);
+  if (!targetLength || !spokenLength) { return 0; }
+  return matched / targetLength;
+}
+
+export function reachedLastWord(base: string, transcript: string): boolean {
+  return align(base, transcript).reachedEnd;
 }
 
 export const COMPLETE_COVERAGE = 0.9;
 
 export function soundsComplete(base: string, transcript: string): boolean {
-  return coverage(base, transcript) >= COMPLETE_COVERAGE;
+  const { targetLength, spokenLength, matched, reachedEnd } = align(base, transcript);
+  if (!targetLength || !spokenLength) { return false; }
+  return reachedEnd && matched / targetLength >= COMPLETE_COVERAGE;
 }
 
 export function starsFor(base: string, transcript: string): number | null {
-  if (!normalizeSpeech(transcript).length) { return null; }
-  const sim = wordSimilarity(base, transcript);
+  const { targetLength, spokenLength, matched, reachedEnd } = align(base, transcript);
+  if (!spokenLength) { return null; }
+  if (!targetLength) { return 0; }
+
+  const sim = (2 * matched) / (targetLength + spokenLength);
   if (sim < 0.45) { return 0; }
   if (sim < 0.60) { return 1; }
   if (sim < 0.70) { return 2; }
   if (sim < 0.80) { return 3; }
-  if (sim < 0.95) { return 4; }
+  if (sim < 0.95 || !reachedEnd) { return 4; }
   return 5;
 }
