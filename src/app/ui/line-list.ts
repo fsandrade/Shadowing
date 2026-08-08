@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  afterRenderEffect, ChangeDetectionStrategy, Component, ElementRef, inject, untracked,
+} from '@angular/core';
 import { PlaybackService } from '../playback/playback-service';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
@@ -22,4 +24,19 @@ export class LineList {
   protected readonly settings = inject(SettingsStore);
   protected readonly playback = inject(PlaybackService);
   protected readonly validation = inject(ValidationService);
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    afterRenderEffect(() => {
+      this.practice.index();
+      untracked(() => this.revealCurrentLine());
+    });
+  }
+
+  private revealCurrentLine(): void {
+    this.host.nativeElement
+      .querySelector('p.current')
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 }

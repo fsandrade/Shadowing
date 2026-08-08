@@ -1,4 +1,4 @@
-@for (line of practice.lines(); track $index) {
+@for (line of practice.lines(); track line) {
   <p
     [class.current]="$index === practice.index()"
     [class.spoken]="practice.spoken().has($index)"

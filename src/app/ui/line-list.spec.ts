@@ -156,6 +156,42 @@ describe('LineList interaction', () => {
   });
 });
 
+describe('LineList follows the current line', () => {
+  it('scrolls the current line into view when the index moves', async () => {
+    const { fixture, lines, practice } = render();
+    const calls: Array<ScrollIntoViewOptions | boolean | undefined> = [];
+    for (const p of lines.querySelectorAll('p')) {
+      (p as HTMLElement).scrollIntoView = (opts?: ScrollIntoViewOptions | boolean) => {
+        calls.push(opts);
+      };
+    }
+
+    practice.goTo(2);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.at(-1)).toEqual({ block: 'center', behavior: 'smooth' });
+  });
+
+  it('reveals the line that is current, not some other row', async () => {
+    const { fixture, lines, practice } = render();
+    const scrolled: string[] = [];
+    for (const p of lines.querySelectorAll('p')) {
+      const el = p as HTMLElement;
+      el.scrollIntoView = () => {
+        scrolled.push(el.querySelector('.num')?.textContent ?? '');
+      };
+    }
+
+    practice.goTo(1);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(scrolled.at(-1)).toBe('2');
+  });
+});
+
 describe('LineList validator results', () => {
   it('shows no boxes until a line has a result', () => {
     expect(render().lines.querySelectorAll('.validate-box').length).toBe(0);

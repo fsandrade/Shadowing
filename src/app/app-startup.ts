@@ -1,4 +1,4 @@
-import { effect, inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable, untracked } from '@angular/core';
 import { ALL_DECK_ID, linesFor } from './core/deck';
 import { DebugBridge } from './debug-bridge';
 import { PlaybackService } from './playback/playback-service';
@@ -53,11 +53,13 @@ export class AppStartup {
     let firstRun = true;
     effect(() => {
       this.practice.lines();
-      if (firstRun) {
-        firstRun = false;
-        return;
-      }
-      this.validation.reset();
+      untracked(() => {
+        if (firstRun) {
+          firstRun = false;
+          return;
+        }
+        this.validation.reset();
+      });
     });
   }
 
