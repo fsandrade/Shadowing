@@ -1,20 +1,15 @@
-const GROUPS: ReadonlyArray<readonly [string, readonly string[]]> = [
-  ['okay', ['ok', 'okey', 'okays']],
+const SAME_SOUND_SPELLINGS: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ['okay', ['ok', 'okey']],
   ['alright', ['allright']],
   ['gray', ['grey']],
-  ['yeah', ['yea', 'ya', 'yep', 'yup']],
+  ['yeah', ['yea']],
   ['till', ['til']],
-  ['gonna', ['goingto']],
-  ['wanna', ['wantto']],
-  ['gotta', ['gotto']],
-  ['kinda', ['kindof']],
-  ['sorta', ['sortof']],
 ];
 
 const CANONICAL = new Map<string, string>(
-  GROUPS.flatMap(([canonical, variants]) =>
+  SAME_SOUND_SPELLINGS.flatMap(([canonical, spellings]) =>
     [[canonical, canonical] as [string, string]]
-      .concat(variants.map((v) => [v, canonical] as [string, string])),
+      .concat(spellings.map((s) => [s, canonical] as [string, string])),
   ),
 );
 

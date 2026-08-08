@@ -82,16 +82,20 @@ describe('scoring around recognizer formatting', () => {
     expect(soundsComplete(greeting, heard)).toBe(true);
   });
 
-  it('accepts either spelling of the same word in either direction', () => {
+  it('accepts either spelling of the same sound in either direction', () => {
     expect(starsFor('It looks gray outside', 'It looks grey outside')).toBe(5);
     expect(starsFor('It looks grey outside', 'It looks gray outside')).toBe(5);
-    expect(starsFor('Yeah, that works', 'Yep, that works')).toBe(5);
   });
 
-  it('accepts a two-word spelling of a single word', () => {
+  it('accepts a two-word spelling when the sound is the same', () => {
     expect(starsFor('Alright, let us go', 'All right, let us go')).toBe(5);
-    expect(starsFor('You gotta try this', 'You got to try this')).toBe(5);
-    expect(starsFor('We are gonna be late', 'We are going to be late')).toBe(5);
+  });
+
+  it('leaves the speaker responsible for the sounds they chose', () => {
+    expect(starsFor('We are gonna be late', 'We are going to be late')).toBeLessThan(5);
+    expect(starsFor('You gotta try this', 'You got to try this')).toBeLessThan(5);
+    expect(starsFor('Yeah, that works', 'Yep, that works')).toBeLessThan(5);
+    expect(starsFor("I'm on my way", 'I am on my way')).toBeLessThan(5);
   });
 
   it('still penalizes actually saying the wrong words', () => {
