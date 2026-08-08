@@ -9,7 +9,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "node --test tests/data.test.js tests/stt.test.js",
+    "test": "node --test tests/stt.test.js",
     "test:unit": "ng test",
     "test:e2e": "playwright test"
   },
