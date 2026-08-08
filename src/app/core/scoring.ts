@@ -1,11 +1,13 @@
 import { spellNumbers } from './numbers';
+import { canonicalWord } from './variants';
 
 export function normalizeSpeech(text: unknown): string[] {
   return spellNumbers(String(text ?? '').toLowerCase())
     .replace(/'/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(canonicalWord);
 }
 
 function joinSplitWords(
@@ -14,7 +16,9 @@ function joinSplitWords(
 ): string[] {
   const out: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
-    const joined = i + 1 < tokens.length ? tokens[i] + tokens[i + 1] : '';
+    const joined = i + 1 < tokens.length
+      ? canonicalWord(tokens[i] + tokens[i + 1])
+      : '';
     if (joined && vocabulary.has(joined) && !vocabulary.has(tokens[i])) {
       out.push(joined);
       i++;

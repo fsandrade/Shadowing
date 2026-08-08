@@ -75,6 +75,25 @@ describe('scoring around recognizer formatting', () => {
     expect(starsFor('Send me the white board photo', 'Send me the whiteboard photo')).toBe(5);
   });
 
+  it('gives full marks when the recognizer picks another spelling', () => {
+    const greeting = "Okay, I think everyone's here, so let's get started.";
+    const heard = "Ok, I think everyone's here, so let's get started.";
+    expect(starsFor(greeting, heard)).toBe(5);
+    expect(soundsComplete(greeting, heard)).toBe(true);
+  });
+
+  it('accepts either spelling of the same word in either direction', () => {
+    expect(starsFor('It looks gray outside', 'It looks grey outside')).toBe(5);
+    expect(starsFor('It looks grey outside', 'It looks gray outside')).toBe(5);
+    expect(starsFor('Yeah, that works', 'Yep, that works')).toBe(5);
+  });
+
+  it('accepts a two-word spelling of a single word', () => {
+    expect(starsFor('Alright, let us go', 'All right, let us go')).toBe(5);
+    expect(starsFor('You gotta try this', 'You got to try this')).toBe(5);
+    expect(starsFor('We are gonna be late', 'We are going to be late')).toBe(5);
+  });
+
   it('still penalizes actually saying the wrong words', () => {
     expect(starsFor(agenda, 'Second on the agenda is the Q4 roadmap.')).toBeLessThan(5);
     expect(starsFor(agenda, 'the agenda roadmap')).toBeLessThan(4);
