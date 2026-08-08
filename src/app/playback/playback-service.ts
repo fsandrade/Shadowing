@@ -1,8 +1,8 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { type Rng } from '../core/shuffle';
 import { stripTags } from '../core/text';
 import { pauseMs } from '../core/timing';
-import { Clock, type PendingWait } from '../platform/clock';
+import { Clock } from '../platform/clock';
 import { Speaker } from '../platform/speaker';
 import { BannerStore } from '../state/banner-store';
 import { MESSAGES } from '../state/messages';
@@ -10,6 +10,7 @@ import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
+import { GapRunner } from './gap-runner';
 
 /**
  * Called at the start of each gap when the speech validator is on. Returning a
@@ -28,13 +29,12 @@ const DEAD_VOICE_MS = 150;
 const DEAD_VOICE_MIN_CHARS = 15;
 /** Consecutive silent utterances before we blame the voice. */
 const DEAD_VOICE_STREAK = 3;
-/** How often the gap ring samples its progress. */
-const PROGRESS_SAMPLE_MS = 50;
 
 @Injectable({ providedIn: 'root' })
 export class PlaybackService {
   private readonly speaker = inject(Speaker);
   private readonly clock = inject(Clock);
+  private readonly gap = inject(GapRunner);
   private readonly practice = inject(PracticeStore);
   private readonly settings = inject(SettingsStore);
   private readonly timer = inject(SessionTimerStore);
@@ -47,19 +47,12 @@ export class PlaybackService {
    * cancellation safe without tearing down mid-utterance state.
    */
   private generation = 0;
-  private gap: PendingWait | null = null;
   private silentStreak = 0;
   private validate: ValidationHook | null = null;
 
-  /** Gap completion, 0 to 1, for the progress ring. */
-  readonly progress = signal(0);
-
-  /**
-   * True for the whole duration of a gap. The ring mounts and unmounts on this
-   * rather than on `progress > 0`, so it is present at offset-full from the
-   * first frame and visibly drains, as the vanilla ring did.
-   */
-  readonly inGap = signal(false);
+  /** Gap progress for the ring; the mechanics live in GapRunner. */
+  readonly progress = this.gap.progress.asReadonly();
+  readonly inGap = this.gap.active.asReadonly();
 
   setValidationHook(fn: ValidationHook | null): void {
     this.validate = fn;
@@ -92,8 +85,6 @@ export class PlaybackService {
     this.bump();
     this.timer.accrue();
     this.practice.setPlaying(false);
-    this.progress.set(0);
-    this.inGap.set(false);
   }
 
   /** Advances one line, restarting playback if it was running. */
@@ -125,7 +116,7 @@ export class PlaybackService {
       return;
     }
     this.bump();
-    void this.speakCurrent();
+    void this.speak(this.practice.index());
   }
 
   /**
@@ -134,53 +125,40 @@ export class PlaybackService {
    */
   private bump(): number {
     this.generation++;
-    this.gap?.resolveNow();
-    this.gap = null;
+    this.gap.cancel();
     this.speaker.cancel();
     return this.generation;
   }
 
-  private speakCurrent(): Promise<void> {
-    const text = stripTags(this.practice.lines()[this.practice.index()] ?? '');
-    return this.speaker.speak(text, {
+  private speak(index: number): Promise<void> {
+    return this.speaker.speak(this.textAt(index), {
       rate: this.settings.rate(),
       voice: this.voices.selected(),
     });
   }
 
+  private textAt(index: number): string {
+    return stripTags(this.practice.lines()[index] ?? '');
+  }
+
   private async runLoop(gen: number): Promise<void> {
     while (this.practice.playing() && gen === this.generation) {
       const index = this.practice.index();
-      const text = stripTags(this.practice.lines()[index] ?? '');
+      const text = this.textAt(index);
 
       const startedAt = this.clock.ticks();
-      await this.speaker.speak(text, {
-        rate: this.settings.rate(),
-        voice: this.voices.selected(),
-      });
+      await this.speak(index);
       if (!this.owns(gen)) { return; }
 
-      const speechMs = this.clock.ticks() - startedAt;
-      if (this.looksSilent(speechMs, text)) {
-        if (++this.silentStreak >= DEAD_VOICE_STREAK) {
-          this.stop();
-          this.banner.show(MESSAGES.deadVoice, 'dead-voice');
-          return;
-        }
-      } else {
-        this.silentStreak = 0;
-        this.timer.countSpoken();
-      }
-
+      if (this.blameVoiceIfSilent(this.clock.ticks() - startedAt, text)) { return; }
       if (this.finishIfExpired()) { return; }
 
       const gapMs = Math.max(
         MIN_GAP_MS,
         pauseMs(this.clock.ticks() - startedAt, this.settings.slack()),
       );
-      await this.runGap(gapMs, index, text);
+      await this.gap.run(gapMs, this.validate?.(index, text) ?? undefined);
       if (!this.owns(gen)) { return; }
-
       if (this.finishIfExpired()) { return; }
 
       this.practice.markSpoken(index);
@@ -188,36 +166,22 @@ export class PlaybackService {
     }
   }
 
-  private async runGap(gapMs: number, index: number, text: string): Promise<void> {
-    const startedAt = this.clock.ticks();
-    this.progress.set(0);
-    this.inGap.set(true);
-
-    const validation = this.validate?.(index, text) ?? undefined;
-    this.gap = this.clock.wait(gapMs, validation ?? undefined);
-
-    // Sample progress alongside the wait; the ring reads this signal.
-    const sampler = setInterval(() => {
-      const p = (this.clock.ticks() - startedAt) / gapMs;
-      this.progress.set(Math.min(1, Math.max(0, p)));
-    }, PROGRESS_SAMPLE_MS);
-
-    try {
-      await this.gap.done;
-    } finally {
-      clearInterval(sampler);
-      this.gap = null;
-      this.inGap.set(false);
-      this.progress.set(0);
-    }
-  }
-
   /**
    * A long sentence that returned almost instantly means the voice produced no
-   * audio — typically an Edge Natural voice with no network.
+   * audio — typically an Edge Natural voice with no network. Three in a row and
+   * we stop and say so. Returns true when playback has been halted.
    */
-  private looksSilent(speechMs: number, text: string): boolean {
-    return speechMs < DEAD_VOICE_MS && text.length > DEAD_VOICE_MIN_CHARS;
+  private blameVoiceIfSilent(speechMs: number, text: string): boolean {
+    const silent = speechMs < DEAD_VOICE_MS && text.length > DEAD_VOICE_MIN_CHARS;
+    if (!silent) {
+      this.silentStreak = 0;
+      this.timer.countSpoken();
+      return false;
+    }
+    if (++this.silentStreak < DEAD_VOICE_STREAK) { return false; }
+    this.stop();
+    this.banner.show(MESSAGES.deadVoice, 'dead-voice');
+    return true;
   }
 
   private finishIfExpired(): boolean {
