@@ -1,10 +1,36 @@
+import { spellNumbers } from './numbers';
+
 export function normalizeSpeech(text: unknown): string[] {
-  return String(text ?? '')
-    .toLowerCase()
+  return spellNumbers(String(text ?? '').toLowerCase())
     .replace(/'/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
+}
+
+function joinSplitWords(
+  tokens: readonly string[],
+  vocabulary: ReadonlySet<string>,
+): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const joined = i + 1 < tokens.length ? tokens[i] + tokens[i + 1] : '';
+    if (joined && vocabulary.has(joined) && !vocabulary.has(tokens[i])) {
+      out.push(joined);
+      i++;
+    } else {
+      out.push(tokens[i]);
+    }
+  }
+  return out;
+}
+
+function align(base: string, transcript: string): [string[], string[]] {
+  const spoken = normalizeSpeech(transcript);
+  const target = normalizeSpeech(base);
+  const spokenJoined = joinSplitWords(spoken, new Set(target));
+  const targetJoined = joinSplitWords(target, new Set(spokenJoined));
+  return [targetJoined, spokenJoined];
 }
 
 function lcsLength(a: readonly string[], b: readonly string[]): number {
@@ -22,16 +48,14 @@ function lcsLength(a: readonly string[], b: readonly string[]): number {
 }
 
 export function wordSimilarity(base: string, transcript: string): number {
-  const a = normalizeSpeech(base);
-  const b = normalizeSpeech(transcript);
+  const [a, b] = align(base, transcript);
   if (!a.length && !b.length) { return 1; }
   if (!a.length || !b.length) { return 0; }
   return (2 * lcsLength(a, b)) / (a.length + b.length);
 }
 
 export function coverage(base: string, transcript: string): number {
-  const a = normalizeSpeech(base);
-  const b = normalizeSpeech(transcript);
+  const [a, b] = align(base, transcript);
   if (!a.length || !b.length) { return 0; }
   return lcsLength(a, b) / a.length;
 }

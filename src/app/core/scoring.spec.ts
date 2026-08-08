@@ -9,11 +9,16 @@ describe('normalizeSpeech', () => {
       .toEqual(['i', 'mustve', 'hit', 'it', 'right']);
   });
 
-  it('handles null, numbers and collapsed whitespace', () => {
+  it('handles null and collapsed whitespace', () => {
     expect(normalizeSpeech(null)).toEqual([]);
     expect(normalizeSpeech(undefined)).toEqual([]);
-    expect(normalizeSpeech(42)).toEqual(['42']);
     expect(normalizeSpeech('  a   b  ')).toEqual(['a', 'b']);
+  });
+
+  it('spells numbers out so digits and words compare equal', () => {
+    expect(normalizeSpeech(42)).toEqual(['forty', 'two']);
+    expect(normalizeSpeech('1st')).toEqual(['first']);
+    expect(normalizeSpeech('Q3')).toEqual(['q', 'three']);
   });
 });
 
@@ -37,6 +42,46 @@ describe('wordSimilarity', () => {
     expect(wordSimilarity('', '')).toBe(1);
     expect(wordSimilarity('hello', '')).toBe(0);
     expect(wordSimilarity('', 'hello')).toBe(0);
+  });
+});
+
+describe('scoring around recognizer formatting', () => {
+  const agenda = 'First on the agenda is the Q3 roadmap.';
+
+  it('gives full marks when the recognizer only formats differently', () => {
+    expect(starsFor(agenda, '1st on the agenda is the Q3 road map.')).toBe(5);
+  });
+
+  it('treats such a repeat as complete, so listening stops right away', () => {
+    expect(soundsComplete(agenda, '1st on the agenda is the Q3 road map.')).toBe(true);
+  });
+
+  it('scores an ordinal written either way the same', () => {
+    expect(starsFor('The 2nd item is ready', 'The second item is ready')).toBe(5);
+    expect(starsFor('The second item is ready', 'The 2nd item is ready')).toBe(5);
+  });
+
+  it('scores a cardinal written either way the same', () => {
+    expect(starsFor('I need 25 copies', 'I need twenty-five copies')).toBe(5);
+    expect(starsFor('It cost 342 pounds', 'It cost 342 pounds')).toBe(5);
+  });
+
+  it('rejoins a compound the recognizer split', () => {
+    expect(starsFor('Check the roadmap today', 'Check the road map today')).toBe(5);
+    expect(starsFor('Send me the whiteboard photo', 'Send me the white board photo')).toBe(5);
+  });
+
+  it('splits a compound the recognizer joined', () => {
+    expect(starsFor('Send me the white board photo', 'Send me the whiteboard photo')).toBe(5);
+  });
+
+  it('still penalizes actually saying the wrong words', () => {
+    expect(starsFor(agenda, 'Second on the agenda is the Q4 roadmap.')).toBeLessThan(5);
+    expect(starsFor(agenda, 'the agenda roadmap')).toBeLessThan(4);
+  });
+
+  it('still penalizes leaving the sentence unfinished', () => {
+    expect(soundsComplete(agenda, '1st on the agenda')).toBe(false);
   });
 });
 
