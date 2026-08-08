@@ -1,13 +1,15 @@
 import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { SessionTimerStore } from '../state/session-timer-store';
+import { DurationPicker } from './duration-picker';
 
 /** The top bar: title, session buttons, clock, help. Declared on <header>. */
 @Component({
   selector: 'header[appHeaderBar]',
+  imports: [DurationPicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>Shadowing</h1>
-    <div class="durations" id="durations"></div>
+    <div appDurationPicker></div>
     <div class="clock" id="clock">{{ timer.clockText() }}</div>
     <button
       type="button"

@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { BannerView } from './banner-view';
 import { LineList } from './line-list';
+import { SettingsSliders } from './settings-sliders';
+import { TransportControls } from './transport-controls';
 
 /**
  * The practice column. Declared on <main> so its own grid rows (controls,
@@ -8,10 +11,14 @@ import { LineList } from './line-list';
  */
 @Component({
   selector: 'main[appPractice]',
-  imports: [LineList],
+  imports: [TransportControls, SettingsSliders, BannerView, LineList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="controls"></div>
+    <div class="controls">
+      <div appTransportControls></div>
+      <div appSettingsSliders></div>
+    </div>
+    <div appBanner></div>
     <div appLineList></div>
   `,
 })

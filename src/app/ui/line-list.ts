@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { PlaybackService } from '../playback/playback-service';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
+import { ProgressRing } from './progress-ring';
 
 /**
  * The scrolling sentence list. Declared on <div> with the `lines` class and id
@@ -14,6 +15,7 @@ import { SettingsStore } from '../state/settings-store';
  */
 @Component({
   selector: 'div[appLineList]',
+  imports: [ProgressRing],
   host: {
     class: 'lines',
     id: 'lines',
@@ -29,7 +31,10 @@ import { SettingsStore } from '../state/settings-store';
       ><span class="num">{{ $index + 1 }}</span><span
           class="text"
           [innerHTML]="line"
-        ></span></p>
+        ></span>@if ($index === practice.index() && playback.inGap()) {<svg
+          appProgressRing
+          [progress]="playback.progress()"
+        ></svg>}</p>
     }
   `,
 })

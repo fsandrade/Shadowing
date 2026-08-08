@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { AppStartup } from './app-startup';
 import { HeaderBar } from './ui/header-bar';
 import { Practice } from './ui/practice';
 import { TopicList } from './ui/topic-list';
@@ -20,4 +21,8 @@ import { TopicList } from './ui/topic-list';
     </div>
   `,
 })
-export class App {}
+export class App {
+  constructor() {
+    inject(AppStartup).run();
+  }
+}
