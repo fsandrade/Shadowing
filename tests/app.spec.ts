@@ -27,7 +27,7 @@ test('warns and disables the controls when no English voice is available', async
   await page.goto(APP_URL);
 
   await expect(page.locator('#banner')).toBeVisible();
-  await expect(page.locator('#banner')).toContainText(/voz/i);
+  await expect(page.locator('#banner')).toContainText(/no english voice/i);
   await expect(page.locator('#play')).toBeDisabled();
   await expect(page.locator('#next')).toBeDisabled();
   await expect(page.locator('#shuffle')).toBeDisabled();

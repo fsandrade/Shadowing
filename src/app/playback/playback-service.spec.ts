@@ -313,7 +313,8 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(practice.playing()).toBe(false);
-    expect(banner.html()).toContain('Sess');
+    // How many lines got through varies with the loop; the format does not.
+    expect(banner.html()).toMatch(/^Session complete: 1 min · \d+ sentences? repeated\.$/);
     expect(timer.spokenCount()).toBe(0);
   });
 
@@ -339,7 +340,8 @@ describe('PlaybackService session expiry', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(1000); // speech only
 
-    expect(banner.html()).toContain('Sess');
+    // Exactly one healthy utterance completed before the deadline.
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
     expect(playback.inGap()).toBe(false);
     expect(practice.playing()).toBe(false);
     expect(practice.index()).toBe(0);
@@ -357,7 +359,7 @@ describe('PlaybackService session expiry', () => {
     expect(playback.inGap()).toBe(true);
 
     await vi.advanceTimersByTimeAsync(1000); // gap elapses, now over budget
-    expect(banner.html()).toContain('Sess');
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
     expect(practice.playing()).toBe(false);
     expect(practice.index()).toBe(0);
   });
