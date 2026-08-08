@@ -17,6 +17,7 @@
 - **No component declares styles.** All styling stays in the global `src/styles.css`. No `styleUrl`, no `styles`, no `ViewEncapsulation` change.
 - **Attribute selectors for anything that stands in for an existing element.** Never introduce a wrapper element inside `body`, `.app`, `main`, or `.lines` — the grid and descendant selectors in `src/styles.css` depend on that tree.
 - **`window.__shadowing.state.index`** must exist and track `PracticeStore.index()`. The specs read it.
+- **Test attribute-selector components through a host component**, never with `TestBed.createComponent(TheComponent)` directly. TestBed ignores the element name in a selector like `aside[appTopicList]` and synthesises a `<div>` host, which hides the exact thing the stylesheet depends on. Declare a tiny `@Component({ imports: [X], template: '<aside appX></aside>' })` host and assert against `querySelector('.the-class')`.
 - **Banner copy comes from `MESSAGES`** (`src/app/state/messages.ts`), never inlined.
 - **`localStorage` keys:** `shadowing.settings`, `shadowing.edgeTip`.
 - **Every task ends on a commit** with `npm test` and `npm run test:e2e` green.

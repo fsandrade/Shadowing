@@ -1,9 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { installFakeAudio } from './helpers/fake-audio';
 
-const APP_URL = pathToFileURL(path.join(__dirname, '..', 'index.html')).href;
+const APP_URL = '/';
 const TOTAL_LINES = 2242;
 
 async function currentIndex(page: Page): Promise<number> {

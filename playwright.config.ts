@@ -1,13 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const PORT = 4200;
+
 /**
- * The app opens straight from disk (file://), so no webServer is needed.
- * Tests cover the browser UI; the node unit tests live next to these specs
- * but play under `node --test` only (see `testMatch` below).
+ * The app is now an Angular bundle, so it needs a real server: ES modules
+ * cannot load over file://. Tests cover the browser UI; unit tests run under
+ * `ng test` (Vitest) and stay outside Playwright via `testMatch` below.
  */
 export default defineConfig({
   testDir: './tests',
-  /* Only our spec files - the node `*.test.js` unit tests stay outside Playwright. */
   testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -15,12 +16,16 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
+    baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
   },
+  webServer: {
+    command: `npx ng serve --port ${PORT}`,
+    url: `http://localhost:${PORT}`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+  },
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
 });
