@@ -5,6 +5,7 @@ import { Speaker } from '../platform/speaker';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
+import { ValidationService } from '../validation/validation-service';
 
 const PLAY_TITLE = 'Play/Pause (space) · Repeat current sentence (←)';
 const BLUR_TITLE = 'Blur the text to practice from memory (hover or playback reveals)';
@@ -27,7 +28,7 @@ const VALIDATE_TITLE = 'Speech validator: transcribe your repeat and rate it 0�
       (click)="settings.setBlur(!settings.blur())">&#9682; blur</button>
     <button type="button" id="validate" [disabled]="!sttSupported"
       [attr.aria-pressed]="settings.sttEnabled()" [title]="VALIDATE_TITLE"
-      (click)="settings.setSttEnabled(!settings.sttEnabled())">&#10003; validate</button>
+      (click)="toggleValidate()">&#10003; validate</button>
   `,
 })
 export class TransportControls {
@@ -54,4 +55,18 @@ export class TransportControls {
   protected readonly playLabel = computed(
     () => (this.practice.playing() ? '⏸ Pause' : '▶ Play'),
   );
+
+  private readonly validation = inject(ValidationService);
+
+  /**
+   * Turning the validator on asks for the microphone first, so the first line
+   * does not lose its gap to a permission prompt. A refusal leaves it off.
+   */
+  protected toggleValidate(): void {
+    if (this.settings.sttEnabled()) {
+      this.validation.disable();
+    } else {
+      void this.validation.enable();
+    }
+  }
 }
