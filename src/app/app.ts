@@ -3,7 +3,9 @@ import { AppStartup } from './app-startup';
 import { Speaker } from './platform/speaker';
 import { PracticeStore } from './state/practice-store';
 import { VoiceStore } from './state/voice-store';
+import { EdgeTip } from './ui/edge-tip';
 import { HeaderBar } from './ui/header-bar';
+import { HelpModal } from './ui/help-modal';
 import { Practice } from './ui/practice';
 import { Shortcuts } from './ui/shortcuts';
 import { TopicList } from './ui/topic-list';
@@ -15,7 +17,7 @@ import { TopicList } from './ui/topic-list';
  */
 @Component({
   selector: 'app-root',
-  imports: [HeaderBar, TopicList, Practice, Shortcuts],
+  imports: [HeaderBar, TopicList, Practice, Shortcuts, EdgeTip, HelpModal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header appHeaderBar (help)="helpOpen.set(true)"></header>
@@ -26,6 +28,8 @@ import { TopicList } from './ui/topic-list';
       <aside appTopicList></aside>
       <main appPractice></main>
     </div>
+    <div appEdgeTip></div>
+    <div appHelpModal [open]="helpOpen()" (close)="helpOpen.set(false)"></div>
   `,
 })
 export class App {
