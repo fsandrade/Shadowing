@@ -10,15 +10,19 @@ const DATA: Corpus = {
 };
 
 describe('deckOptions', () => {
-  it('puts All first with the grand total', () => {
-    expect(deckOptions(DATA)[0]).toEqual({ id: 'all', name: 'All', count: 3 });
+  it('puts All first', () => {
+    expect(deckOptions(DATA)[0]).toEqual({ id: 'all', name: 'All' });
   });
 
-  it('lists the decks in data order with their counts', () => {
+  it('lists the decks in data order', () => {
     expect(deckOptions(DATA).slice(1)).toEqual([
-      { id: 'daily-life', name: 'Daily Life', count: 2 },
-      { id: 'meetings', name: 'Meetings', count: 1 },
+      { id: 'daily-life', name: 'Daily Life' },
+      { id: 'meetings', name: 'Meetings' },
     ]);
+  });
+
+  it('handles a corpus with no decks', () => {
+    expect(deckOptions({ generatedAt: '', decks: [] })).toEqual([{ id: 'all', name: 'All' }]);
   });
 });
 

@@ -12,17 +12,15 @@ export interface Corpus {
 export interface DeckOption {
   readonly id: string;
   readonly name: string;
-  readonly count: number;
 }
 
 export const ALL_DECK_ID = 'all';
 
 export function deckOptions(corpus: Corpus): DeckOption[] {
   const decks = corpus?.decks ?? [];
-  const total = decks.reduce((n, d) => n + d.lines.length, 0);
   return [
-    { id: ALL_DECK_ID, name: 'All', count: total },
-    ...decks.map((d) => ({ id: d.id, name: d.name, count: d.lines.length })),
+    { id: ALL_DECK_ID, name: 'All' },
+    ...decks.map((d) => ({ id: d.id, name: d.name })),
   ];
 }
 

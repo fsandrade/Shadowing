@@ -7,7 +7,7 @@
         [attr.data-deck-id]="opt.id"
         [attr.aria-current]="opt.id === settings.deckId()"
         (click)="practice.selectDeck(opt.id)"
-      ><span>{{ opt.name }}</span><span class="count">{{ opt.count }}</span></button>
+      >{{ opt.name }}</button>
     }
   </div>
 </nav>

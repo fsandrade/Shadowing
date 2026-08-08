@@ -55,14 +55,18 @@ describe('TopicList', () => {
     expect(nav?.querySelector('.decks-list')).not.toBeNull();
   });
 
-  it('renders All first, then every deck with its count', () => {
+  it('renders All first, then every deck by name alone', () => {
     const { sidebar } = render();
     const buttons = [...sidebar.querySelectorAll<HTMLButtonElement>('#decks button')];
     expect(buttons.length).toBe(3);
-    expect(buttons.map((b) => b.querySelector('span')?.textContent))
+    expect(buttons.map((b) => b.textContent?.trim()))
       .toEqual(['All', 'Alpha', 'Beta']);
-    expect(buttons.map((b) => b.querySelector('.count')?.textContent))
-      .toEqual(['3', '2', '1']);
+  });
+
+  it('shows no line counts', () => {
+    const { sidebar } = render();
+    expect(sidebar.querySelectorAll('.count').length).toBe(0);
+    expect(sidebar.querySelector('#decks')?.textContent).not.toMatch(/\d/);
   });
 
   it('marks the selected deck with aria-current', () => {

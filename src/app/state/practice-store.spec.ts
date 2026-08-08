@@ -44,7 +44,7 @@ describe('PracticeStore lines', () => {
   });
 
   it('exposes deckOptions with All first', () => {
-    expect(setup().store.deckOptions()[0]).toEqual({ id: 'all', name: 'All', count: 4 });
+    expect(setup().store.deckOptions()[0]).toEqual({ id: 'all', name: 'All' });
   });
 
   it('reports whether there is anything to practise', () => {
