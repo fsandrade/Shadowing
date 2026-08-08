@@ -17,6 +17,8 @@ export type ValidationHook = (
   plainText: string,
 ) => Promise<void> | null;
 
+export type RepeatPolicy = (lineIndex: number, repeatsDone: number) => boolean;
+
 const MIN_GAP_MS = 400;
 const DEAD_VOICE_MS = 150;
 const DEAD_VOICE_MIN_CHARS = 15;
@@ -36,12 +38,17 @@ export class PlaybackService {
   private generation = 0;
   private silentStreak = 0;
   private validate: ValidationHook | null = null;
+  private shouldRepeat: RepeatPolicy | null = null;
 
   readonly progress = this.gap.progress.asReadonly();
   readonly inGap = this.gap.active.asReadonly();
 
   setValidationHook(fn: ValidationHook | null): void {
     this.validate = fn;
+  }
+
+  setRepeatPolicy(fn: RepeatPolicy | null): void {
+    this.shouldRepeat = fn;
   }
 
   play(): void {
@@ -142,6 +149,8 @@ export class PlaybackService {
   }
 
   private async runLoop(gen: number): Promise<void> {
+    let repeatsDone = 0;
+
     while (this.practice.playing() && gen === this.generation) {
       const index = this.practice.index();
       const text = this.textAt(index);
@@ -157,6 +166,12 @@ export class PlaybackService {
       if (!this.owns(gen)) { return; }
       if (this.finishIfExpired()) { return; }
 
+      if (this.shouldRepeat?.(index, repeatsDone)) {
+        repeatsDone++;
+        continue;
+      }
+
+      repeatsDone = 0;
       this.practice.markSpoken(index);
       this.practice.advance();
     }

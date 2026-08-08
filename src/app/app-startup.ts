@@ -16,6 +16,8 @@ import { ValidationService } from './validation/validation-service';
 const CLOCK_TICK_MS = 250;
 
 const KEEPALIVE_MS = 10_000;
+const MAX_REPEATS = 5;
+const MAX_STARS = 5;
 
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
@@ -68,6 +70,14 @@ export class AppStartup {
       if (!this.settings.sttEnabled()) { return null; }
       const done = this.validation.begin(lineIndex, plainText);
       return done?.finally(() => this.validation.dispose()) ?? null;
+    });
+
+    this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {
+      if (!this.settings.sttEnabled() || !this.settings.repeatUntilFive()) { return false; }
+      if (this.mic.denied() || repeatsDone >= MAX_REPEATS) { return false; }
+      const result = this.validation.results().get(lineIndex);
+      if (!result) { return false; }
+      return result.stars === null || result.stars < MAX_STARS;
     });
   }
 

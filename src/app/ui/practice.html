@@ -1,6 +1,8 @@
 <div class="controls">
-  <div appTransportControls></div>
-  <div appSettingsSliders></div>
+  <div appTransportControls
+    [optionsOpen]="optionsOpen()"
+    (toggleOptions)="optionsOpen.set(!optionsOpen())"></div>
+  <div appOptionsPanel [open]="optionsOpen()"></div>
 </div>
 <div appBanner></div>
 <div appLineList></div>

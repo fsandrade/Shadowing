@@ -8,6 +8,14 @@ async function currentIndex(page: Page): Promise<number> {
   return page.evaluate(() => (window as any).__shadowing.state.index);
 }
 
+async function openOptions(page: Page): Promise<void> {
+  const toggle = page.locator('#options');
+  if (await toggle.getAttribute('aria-expanded') === 'false') {
+    await toggle.click();
+  }
+  await expect(page.locator('#optionsPanel')).toHaveClass(/show/);
+}
+
 async function loadedLines(page: Page): Promise<number> {
   return page.evaluate(() => (window as any).__shadowing.state.lines.length);
 }
@@ -73,6 +81,7 @@ test('shuffle keeps the corpus and renumbers from one', async ({ page }) => {
   await page.goto(APP_URL);
 
   const before = await page.locator('.lines p').first().innerText();
+  await openOptions(page);
   await page.locator('#shuffle').click();
 
   expect(await loadedLines(page)).toBe(TOTAL_LINES);
@@ -140,6 +149,7 @@ test('blur mode blurs sentence text, keeps numbers, reveals on hover', async ({ 
   installFakeAudio(page);
   await page.goto(APP_URL);
 
+  await openOptions(page);
   await page.locator('#blur').click();
   await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#lines')).toHaveClass(/blurred/);
@@ -159,6 +169,7 @@ test('next (ArrowRight) reveals the line just passed in blur mode', async ({ pag
   installFakeAudio(page);
   await page.goto(APP_URL);
 
+  await openOptions(page);
   await page.locator('#blur').click();
   await expect.poll(() => currentIndex(page)).toBe(0);
   await page.keyboard.press('ArrowRight');
@@ -220,6 +231,7 @@ test('in blur mode only already-spoken lines are revealed during playback', asyn
   installFakeAudio(page, { speakMs: 600 });
   await page.goto(APP_URL);
 
+  await openOptions(page);
   await page.locator('#blur').click();
   await page.locator('#play').click();
   await expect(page.locator('#play')).toHaveText(/Pause/);

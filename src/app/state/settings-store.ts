@@ -12,6 +12,7 @@ interface StoredSettings {
   durationMin?: unknown;
   blur?: unknown;
   stt?: unknown;
+  repeat?: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,6 +35,7 @@ export class SettingsStore {
   readonly durationMin = signal(Number(this.saved.durationMin) || 0);
   readonly blur = signal(this.saved.blur === true);
   readonly sttEnabled = signal(this.saved.stt === true);
+  readonly repeatUntilFive = signal(this.saved.repeat === true);
 
   constructor() {
     effect(() => {
@@ -45,6 +47,7 @@ export class SettingsStore {
         durationMin: this.durationMin(),
         blur: this.blur(),
         stt: this.sttEnabled(),
+        repeat: this.repeatUntilFive(),
       });
     });
   }
@@ -56,4 +59,5 @@ export class SettingsStore {
   setDurationMin(min: number): void { this.durationMin.set(min); }
   setBlur(on: boolean): void { this.blur.set(on); }
   setSttEnabled(on: boolean): void { this.sttEnabled.set(on); }
+  setRepeatUntilFive(on: boolean): void { this.repeatUntilFive.set(on); }
 }

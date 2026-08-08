@@ -1,0 +1,13 @@
+<div class="options-actions">
+  <button type="button" id="shuffle" [disabled]="!enabled()"
+    title="Shuffle the sentences randomly"
+    (click)="playback.shuffle()">&#8644; shuffle</button>
+  <button type="button" id="blur" [attr.aria-pressed]="settings.blur()"
+    [title]="BLUR_TITLE"
+    (click)="settings.setBlur(!settings.blur())">&#9682; blur</button>
+  <button type="button" id="repeat" [disabled]="!settings.sttEnabled()"
+    [attr.aria-pressed]="settings.repeatUntilFive()"
+    [title]="REPEAT_TITLE"
+    (click)="settings.setRepeatUntilFive(!settings.repeatUntilFive())">&#8635; repeat until 5</button>
+</div>
+<div appSettingsSliders></div>

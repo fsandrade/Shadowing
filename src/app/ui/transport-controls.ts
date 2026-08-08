@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, computed, inject, input, output,
+} from '@angular/core';
 import { PlaybackService } from '../playback/playback-service';
 import { SpeechRecognizer } from '../platform/speech-recognition';
 import { Speaker } from '../platform/speaker';
@@ -8,7 +10,6 @@ import { VoiceStore } from '../state/voice-store';
 import { ValidationService } from '../validation/validation-service';
 
 const PLAY_TITLE = 'Play/Pause (space) · Repeat current sentence (←)';
-const BLUR_TITLE = 'Blur the text to practice from memory (hover or playback reveals)';
 const VALIDATE_TITLE = 'Speech validator: transcribe your repeat and rate it 0–5 stars';
 
 @Component({
@@ -18,6 +19,9 @@ const VALIDATE_TITLE = 'Speech validator: transcribe your repeat and rate it 0�
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransportControls {
+  readonly optionsOpen = input(false);
+  readonly toggleOptions = output<void>();
+
   protected readonly playback = inject(PlaybackService);
   protected readonly practice = inject(PracticeStore);
   protected readonly settings = inject(SettingsStore);
@@ -26,7 +30,6 @@ export class TransportControls {
   private readonly validation = inject(ValidationService);
 
   protected readonly PLAY_TITLE = PLAY_TITLE;
-  protected readonly BLUR_TITLE = BLUR_TITLE;
   protected readonly VALIDATE_TITLE = VALIDATE_TITLE;
 
   protected readonly sttSupported = inject(SpeechRecognizer).supported();

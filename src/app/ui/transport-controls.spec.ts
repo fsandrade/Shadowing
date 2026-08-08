@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { type Corpus } from '../core/deck';
@@ -19,9 +19,14 @@ const DATA: Corpus = {
 
 @Component({
   imports: [TransportControls],
-  template: `<div appTransportControls></div>`,
+  template: `<div appTransportControls
+    [optionsOpen]="optionsOpen()"
+    (toggleOptions)="toggled = toggled + 1"></div>`,
 })
-class Host {}
+class Host {
+  readonly optionsOpen = signal(false);
+  toggled = 0;
+}
 
 function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
   const voices = opts.voices
@@ -57,6 +62,7 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
   const root = fixture.nativeElement as HTMLElement;
   return {
     fixture,
+    host: fixture.componentInstance,
     transport: root.querySelector('.transport')!,
     practice: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
@@ -66,19 +72,17 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
 }
 
 describe('TransportControls structure', () => {
-  it('renders as <div class="transport"> with the five buttons', () => {
+  it('renders as <div class="transport"> with just the core controls', () => {
     const { transport } = render();
     expect(transport.classList.contains('transport')).toBe(true);
     expect([...transport.querySelectorAll('button')].map((b) => b.id))
-      .toEqual(['play', 'next', 'shuffle', 'blur', 'validate']);
+      .toEqual(['play', 'next', 'validate', 'options']);
   });
 
   it('keeps the vanilla titles the specs and tooltips rely on', () => {
     const { btn } = render();
     expect(btn('play').title).toMatch(/Play\/Pause \(space\)/);
     expect(btn('next').title).toBe('Next (→)');
-    expect(btn('shuffle').title).toBe('Shuffle the sentences randomly');
-    expect(btn('blur').title).toMatch(/practice from memory/);
     expect(btn('validate').title).toMatch(/Speech validator/);
   });
 });
@@ -95,16 +99,15 @@ describe('TransportControls play label', () => {
 });
 
 describe('TransportControls disabled state', () => {
-  it('disables play, next and shuffle when no English voice exists', () => {
+  it('disables play and next when no English voice exists', () => {
     const { btn } = render({
       voices: [{ name: 'Maria', lang: 'pt-BR' }] as SpeechSynthesisVoice[],
     });
     expect(btn('play').disabled).toBe(true);
     expect(btn('next').disabled).toBe(true);
-    expect(btn('shuffle').disabled).toBe(true);
   });
 
-  it('disables play, next and shuffle when the deck is empty', () => {
+  it('disables play and next when the deck is empty', () => {
     const { fixture, btn, practice } = render();
     practice.selectDeck('missing');
     fixture.detectChanges();
@@ -115,7 +118,6 @@ describe('TransportControls disabled state', () => {
     const { btn } = render();
     expect(btn('play').disabled).toBe(false);
     expect(btn('next').disabled).toBe(false);
-    expect(btn('shuffle').disabled).toBe(false);
   });
 
   it('disables validate when speech recognition is unavailable', () => {
@@ -124,20 +126,6 @@ describe('TransportControls disabled state', () => {
 });
 
 describe('TransportControls toggles', () => {
-  it('blur reflects and updates the setting via aria-pressed', () => {
-    const { fixture, btn, settings } = render();
-    expect(btn('blur').getAttribute('aria-pressed')).toBe('false');
-
-    btn('blur').click();
-    fixture.detectChanges();
-    expect(settings.blur()).toBe(true);
-    expect(btn('blur').getAttribute('aria-pressed')).toBe('true');
-
-    btn('blur').click();
-    fixture.detectChanges();
-    expect(settings.blur()).toBe(false);
-  });
-
   it('play delegates to PlaybackService.toggle', () => {
     const { btn, playback } = render();
     const toggle = vi.spyOn(playback, 'toggle');
@@ -145,13 +133,20 @@ describe('TransportControls toggles', () => {
     expect(toggle).toHaveBeenCalledOnce();
   });
 
-  it('next and shuffle delegate to PlaybackService', () => {
+  it('next delegates to PlaybackService', () => {
     const { btn, playback } = render();
     const next = vi.spyOn(playback, 'next');
-    const shuffle = vi.spyOn(playback, 'shuffle');
     btn('next').click();
-    btn('shuffle').click();
     expect(next).toHaveBeenCalledOnce();
-    expect(shuffle).toHaveBeenCalledOnce();
+  });
+
+  it('the options button reports and toggles the panel', () => {
+    const { fixture, host, btn } = render();
+    expect(btn('options').getAttribute('aria-expanded')).toBe('false');
+    expect(btn('options').getAttribute('aria-controls')).toBe('optionsPanel');
+
+    btn('options').click();
+    fixture.detectChanges();
+    expect(host.toggled).toBe(1);
   });
 });

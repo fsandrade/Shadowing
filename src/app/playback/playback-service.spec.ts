@@ -433,6 +433,90 @@ describe('PlaybackService validation hook', () => {
   });
 });
 
+describe('PlaybackService repeat until five', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('replays the same line instead of advancing', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy(() => true);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(4000);
+
+    expect(practice.index()).toBe(0);
+    expect(speaker.spoken.length).toBeGreaterThan(1);
+    expect(new Set(speaker.spoken).size).toBe(1);
+  });
+
+  it('advances as soon as the policy is satisfied', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy((_, repeatsDone) => repeatsDone < 2);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(practice.index()).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(practice.index()).toBeGreaterThan(0);
+  });
+
+  it('counts repeats from zero again on the next line', async () => {
+    const { playback, practice } = setup(1000);
+    const seen: number[] = [];
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy((_, repeatsDone) => {
+      seen.push(repeatsDone);
+      return repeatsDone < 1;
+    });
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(seen.slice(0, 4)).toEqual([0, 1, 0, 1]);
+    expect(practice.index()).toBeGreaterThan(0);
+  });
+
+  it('does not mark a line spoken while it is still being repeated', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy(() => true);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(practice.spoken().has(0)).toBe(false);
+  });
+
+  it('lets a transport command break out of the repeats', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy(() => true);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(practice.index()).toBe(0);
+
+    playback.next();
+    expect(practice.index()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(practice.index()).toBe(1);
+  });
+
+  it('advances normally when no policy is set', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+    playback.setRepeatPolicy(null);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(practice.index()).toBe(1);
+  });
+});
+
 describe('PlaybackService on-demand line', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
