@@ -35,7 +35,7 @@ jobs:
       run: npx playwright install --with-deps chromium
 
     - name: Run unit tests
-      run: npm test
+      run: npm test -- --watch=false
 
     - name: Run Playwright tests
       run: npx playwright test
@@ -56,18 +56,25 @@ jobs:
     steps:
     - uses: actions/checkout@v5
 
-    - name: Assemble static site
-      run: |
-        mkdir -p _site
-        cp index.html _site/
-        cp -r css js data _site/
+    - uses: actions/setup-node@v5
+      with:
+        node-version: lts/*
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
+    # A relative base href serves correctly from both / locally and /Shadowing/
+    # on GitHub Pages. The app has no routing, so there is no deep-link concern.
+    - name: Build
+      run: npx ng build --base-href ./
 
     - uses: actions/configure-pages@v6
 
     - name: Upload site artifact
       uses: actions/upload-pages-artifact@v5
       with:
-        path: _site
+        path: dist/shadowing/browser
 
     - name: Deploy to GitHub Pages
       uses: actions/deploy-pages@v5

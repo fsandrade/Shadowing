@@ -7,16 +7,16 @@ import { PracticeStore } from '../state/practice-store';
 const DOUBLE_PRESS_MS = 500;
 
 /**
- * The keyboard map. Guard order is preserved from the vanilla handler
- * (js/app.js:756) and is load-bearing — see the comments inline.
+ * The keyboard map. Guard order is preserved from the pre-migration vanilla
+ * handler and is load-bearing — see the comments inline.
  */
 @Directive({
   selector: '[appShortcuts]',
   host: {
     '(document:keydown)': 'onKeydown($event)',
-    // The vanilla app drops focus from any clicked button so the focus ring does
-    // not stick. It also stops a focused Play button from swallowing the next
-    // space press, which would toggle playback twice.
+    // Drops focus from any clicked button so the focus ring does not stick. It
+    // also stops a focused Play button from swallowing the next space press,
+    // which would toggle playback twice.
     '(document:click)': 'blurClickedButton($event)',
   },
 })

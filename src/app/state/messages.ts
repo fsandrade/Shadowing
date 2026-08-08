@@ -1,5 +1,5 @@
 /**
- * Every banner string, copied verbatim from the vanilla app (js/app.js).
+ * Every banner string, copied verbatim from the pre-migration vanilla app.
  * The mix of English and Portuguese is intentional for now: this migration is
  * parity-only. Normalizing the copy is a separate, single-file change.
  */
