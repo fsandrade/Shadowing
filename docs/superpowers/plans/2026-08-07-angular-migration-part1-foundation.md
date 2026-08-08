@@ -281,7 +281,7 @@ describe('stripTags', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/text.spec.ts
+npm run test:unit -- --include src/app/core/text.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./text`.
@@ -314,7 +314,7 @@ export function stripTags(html: string): string {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/text.spec.ts
+npm run test:unit -- --include src/app/core/text.spec.ts --watch=false
 ```
 
 Expected: PASS, 3 tests.
@@ -371,7 +371,7 @@ describe('linesFor', () => {
 - [ ] **Step 6: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/deck.spec.ts
+npm run test:unit -- --include src/app/core/deck.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./deck`.
@@ -424,7 +424,7 @@ export function linesFor(corpus: Corpus, deckId: string): string[] {
 - [ ] **Step 8: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/deck.spec.ts
+npm run test:unit -- --include src/app/core/deck.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -480,7 +480,7 @@ describe('shuffle', () => {
 - [ ] **Step 10: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/shuffle.spec.ts
+npm run test:unit -- --include src/app/core/shuffle.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./shuffle`.
@@ -508,7 +508,7 @@ export function shuffle<T>(list: readonly T[], rng: Rng = Math.random): T[] {
 - [ ] **Step 12: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/shuffle.spec.ts
+npm run test:unit -- --include src/app/core/shuffle.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -581,7 +581,7 @@ describe('formatClock', () => {
 - [ ] **Step 14: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/timing.spec.ts
+npm run test:unit -- --include src/app/core/timing.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./timing`.
@@ -621,7 +621,7 @@ export function formatClock(seconds: number): string {
 - [ ] **Step 16: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/timing.spec.ts
+npm run test:unit -- --include src/app/core/timing.spec.ts --watch=false
 ```
 
 Expected: PASS, 11 tests.
@@ -685,7 +685,7 @@ describe('hasEnglishVoice', () => {
 - [ ] **Step 18: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/voice.spec.ts
+npm run test:unit -- --include src/app/core/voice.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./voice`.
@@ -738,7 +738,7 @@ export function hasEnglishVoice(voices: readonly VoiceLike[]): boolean {
 - [ ] **Step 20: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/voice.spec.ts
+npm run test:unit -- --include src/app/core/voice.spec.ts --watch=false
 ```
 
 Expected: PASS, 8 tests.
@@ -807,7 +807,7 @@ describe('starsFor', () => {
 - [ ] **Step 22: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/core/scoring.spec.ts
+npm run test:unit -- --include src/app/core/scoring.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./scoring`.
@@ -867,7 +867,7 @@ export function starsFor(base: string, transcript: string): number | null {
 - [ ] **Step 24: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/core/scoring.spec.ts
+npm run test:unit -- --include src/app/core/scoring.spec.ts --watch=false
 ```
 
 Expected: PASS, 8 tests.
@@ -897,7 +897,7 @@ In `package.json`, change the `test` script to:
 - [ ] **Step 27: Run the whole suite**
 
 ```bash
-npm run test:unit -- --run && npm test && npm run test:e2e
+npm run test:unit -- --watch=false && npm test && npm run test:e2e
 ```
 
 Expected: 42 Vitest tests pass; the remaining node tests pass; 15 Playwright specs pass.
@@ -1071,7 +1071,7 @@ it('keeps the highlighted chunk: most lines carry a <b> pair', () => {
 - [ ] **Step 4: Run the corpus tests**
 
 ```bash
-npm run test:unit -- --run src/app/data/corpus.spec.ts
+npm run test:unit -- --include src/app/data/corpus.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -1112,7 +1112,7 @@ property on the committed data.
 - [ ] **Step 7: Run the whole suite**
 
 ```bash
-npm run test:unit -- --run && npm test && npm run test:e2e
+npm run test:unit -- --watch=false && npm test && npm run test:e2e
 ```
 
 Expected: 48 Vitest tests pass; `stt.test.js` passes; 15 Playwright specs pass.
@@ -1220,7 +1220,7 @@ describe('SafeStorage', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/platform/storage.spec.ts
+npm run test:unit -- --include src/app/platform/storage.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./storage`.
@@ -1274,7 +1274,7 @@ export class SafeStorage {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/platform/storage.spec.ts
+npm run test:unit -- --include src/app/platform/storage.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -1363,7 +1363,7 @@ describe('Clock', () => {
 - [ ] **Step 6: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/platform/clock.spec.ts
+npm run test:unit -- --include src/app/platform/clock.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./clock`.
@@ -1427,7 +1427,7 @@ export class Clock {
 - [ ] **Step 8: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/platform/clock.spec.ts
+npm run test:unit -- --include src/app/platform/clock.spec.ts --watch=false
 ```
 
 Expected: PASS, 5 tests.
@@ -1566,7 +1566,7 @@ describe('Speaker', () => {
 - [ ] **Step 10: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/platform/speaker.spec.ts
+npm run test:unit -- --include src/app/platform/speaker.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./speaker`.
@@ -1699,7 +1699,7 @@ export class Speaker {
 - [ ] **Step 13: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/platform/speaker.spec.ts
+npm run test:unit -- --include src/app/platform/speaker.spec.ts --watch=false
 ```
 
 Expected: PASS, 8 tests.
@@ -1860,7 +1860,7 @@ describe('SpeechRecognizer', () => {
 - [ ] **Step 15: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/platform/speech-recognition.spec.ts
+npm run test:unit -- --include src/app/platform/speech-recognition.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./speech-recognition`.
@@ -1980,7 +1980,7 @@ export class SpeechRecognizer {
 - [ ] **Step 17: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/platform/speech-recognition.spec.ts
+npm run test:unit -- --include src/app/platform/speech-recognition.spec.ts --watch=false
 ```
 
 Expected: PASS, 11 tests.
@@ -2082,7 +2082,7 @@ describe('MicrophoneService', () => {
 - [ ] **Step 19: Run it to confirm it fails**
 
 ```bash
-npm run test:unit -- --run src/app/platform/microphone.spec.ts
+npm run test:unit -- --include src/app/platform/microphone.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./microphone`.
@@ -2153,7 +2153,7 @@ export class MicrophoneService {
 - [ ] **Step 21: Run it to confirm it passes**
 
 ```bash
-npm run test:unit -- --run src/app/platform/microphone.spec.ts
+npm run test:unit -- --include src/app/platform/microphone.spec.ts --watch=false
 ```
 
 Expected: PASS, 7 tests.
@@ -2182,7 +2182,7 @@ In `package.json`, remove `"type": "commonjs"`, drop the now-empty `test:unit`, 
 - [ ] **Step 23: Verify everything**
 
 ```bash
-node tools/convert-corpus.js && npm test -- --run && npm run test:e2e
+node tools/convert-corpus.js && npm test -- --watch=false && npm run test:e2e
 ```
 
 Expected: the converter still prints `24 decks, 2242 lines`; 85 Vitest tests pass; 15 Playwright specs pass against the still-untouched vanilla app.
@@ -2354,7 +2354,7 @@ describe('SettingsStore persistence', () => {
 - [ ] **Step 3: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/state/settings-store.spec.ts
+npm test -- --include src/app/state/settings-store.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./settings-store`.
@@ -2434,7 +2434,7 @@ export class SettingsStore {
 - [ ] **Step 5: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/state/settings-store.spec.ts
+npm test -- --include src/app/state/settings-store.spec.ts --watch=false
 ```
 
 Expected: PASS, 7 tests.
@@ -2562,7 +2562,7 @@ describe('PracticeStore reset semantics', () => {
 - [ ] **Step 7: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/state/practice-store.spec.ts
+npm test -- --include src/app/state/practice-store.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./corpus-token` or `./practice-store` (both arrive in the next two steps).
@@ -2665,7 +2665,7 @@ export class PracticeStore {
 - [ ] **Step 10: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/state/practice-store.spec.ts
+npm test -- --include src/app/state/practice-store.spec.ts --watch=false
 ```
 
 Expected: PASS, 10 tests.
@@ -2783,7 +2783,7 @@ describe('SessionTimerStore in countdown mode', () => {
 - [ ] **Step 12: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/state/session-timer-store.spec.ts
+npm test -- --include src/app/state/session-timer-store.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./session-timer-store`.
@@ -2883,7 +2883,7 @@ export class SessionTimerStore {
 - [ ] **Step 14: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/state/session-timer-store.spec.ts
+npm test -- --include src/app/state/session-timer-store.spec.ts --watch=false
 ```
 
 Expected: PASS, 7 tests.
@@ -2953,7 +2953,7 @@ describe('BannerStore', () => {
 - [ ] **Step 16: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/state/banner-store.spec.ts
+npm test -- --include src/app/state/banner-store.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./banner-store`.
@@ -3005,7 +3005,7 @@ export class BannerStore {
 - [ ] **Step 18: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/state/banner-store.spec.ts
+npm test -- --include src/app/state/banner-store.spec.ts --watch=false
 ```
 
 Expected: PASS, 7 tests.
@@ -3108,7 +3108,7 @@ describe('VoiceStore', () => {
 - [ ] **Step 20: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/state/voice-store.spec.ts
+npm test -- --include src/app/state/voice-store.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./voice-store`.
@@ -3159,7 +3159,7 @@ export class VoiceStore {
 - [ ] **Step 22: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/state/voice-store.spec.ts
+npm test -- --include src/app/state/voice-store.spec.ts --watch=false
 ```
 
 Expected: PASS, 8 tests.
@@ -3167,7 +3167,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 23: Run the whole suite**
 
 ```bash
-npm test -- --run && npm run test:e2e
+npm test -- --watch=false && npm run test:e2e
 ```
 
 Expected: 124 Vitest tests pass; 15 Playwright specs pass against the vanilla app.
@@ -3596,7 +3596,7 @@ describe('PlaybackService validation hook', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/playback/playback-service.spec.ts
+npm test -- --include src/app/playback/playback-service.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./playback-service`.
@@ -3841,7 +3841,7 @@ export class PlaybackService {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/playback/playback-service.spec.ts
+npm test -- --include src/app/playback/playback-service.spec.ts --watch=false
 ```
 
 Expected: PASS, 26 tests. If the dead-voice or expiry tests are off by one iteration, check that `finishIfExpired` runs at **both** checkpoints — after the speak and after the gap — as `js/app.js:526` and `js/app.js:573` do.
@@ -3862,7 +3862,7 @@ Read `docs/superpowers/specs/2026-08-07-angular-migration-design.md` §3 and tic
 - [ ] **Step 6: Run the whole suite**
 
 ```bash
-npm test -- --run && npm run test:e2e && npx ng build
+npm test -- --watch=false && npm run test:e2e && npx ng build
 ```
 
 Expected: 150 Vitest tests pass; 15 Playwright specs pass; the build succeeds.

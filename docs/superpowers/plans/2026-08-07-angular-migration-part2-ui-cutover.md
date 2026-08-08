@@ -142,7 +142,7 @@ describe('TopicList', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/topic-list.spec.ts
+npm test -- --include src/app/ui/topic-list.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./topic-list`.
@@ -189,7 +189,7 @@ export class TopicList {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/topic-list.spec.ts
+npm test -- --include src/app/ui/topic-list.spec.ts --watch=false
 ```
 
 Expected: PASS, 4 tests.
@@ -319,7 +319,7 @@ describe('LineList interaction', () => {
 - [ ] **Step 6: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/line-list.spec.ts
+npm test -- --include src/app/ui/line-list.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./line-list`.
@@ -372,7 +372,7 @@ export class LineList {
 - [ ] **Step 8: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/line-list.spec.ts
+npm test -- --include src/app/ui/line-list.spec.ts --watch=false
 ```
 
 Expected: PASS, 8 tests.
@@ -526,7 +526,7 @@ Spec 1 also asserts `.durations button` first has a `/minute/i` title and `.slid
 - [ ] **Step 13: Run the unit suite and the build**
 
 ```bash
-npm test -- --run && npx ng build
+npm test -- --watch=false && npx ng build
 ```
 
 Expected: 162 Vitest tests pass; the build succeeds.
@@ -632,7 +632,7 @@ describe('ProgressRing', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/progress-ring.spec.ts
+npm test -- --include src/app/ui/progress-ring.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./progress-ring`.
@@ -692,7 +692,7 @@ export class ProgressRing {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/progress-ring.spec.ts
+npm test -- --include src/app/ui/progress-ring.spec.ts --watch=false
 ```
 
 Expected: PASS, 5 tests.
@@ -893,7 +893,7 @@ describe('TransportControls toggles', () => {
 - [ ] **Step 7: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/transport-controls.spec.ts
+npm test -- --include src/app/ui/transport-controls.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./transport-controls`.
@@ -965,7 +965,7 @@ export class TransportControls {
 - [ ] **Step 9: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/transport-controls.spec.ts
+npm test -- --include src/app/ui/transport-controls.spec.ts --watch=false
 ```
 
 Expected: PASS, 10 tests.
@@ -1056,7 +1056,7 @@ describe('DurationPicker', () => {
 - [ ] **Step 11: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/duration-picker.spec.ts
+npm test -- --include src/app/ui/duration-picker.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./duration-picker`.
@@ -1119,7 +1119,7 @@ export class DurationPicker {
 - [ ] **Step 13: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/duration-picker.spec.ts
+npm test -- --include src/app/ui/duration-picker.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -1418,7 +1418,7 @@ Expected: all four PASS. Spec 1 now fully passes, including the durations and sl
 - [ ] **Step 20: Run everything**
 
 ```bash
-npm test -- --run && npm run test:e2e
+npm test -- --watch=false && npm run test:e2e
 ```
 
 Expected: 183 Vitest tests pass. Playwright: specs 1–6 and 11 pass; 7–10 and 12–15 still fail (keyboard, blur, modal and snackbar are Tasks 9 and 10).
@@ -1644,7 +1644,7 @@ describe('Shortcuts', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/shortcuts.spec.ts
+npm test -- --include src/app/ui/shortcuts.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./shortcuts`.
@@ -1735,7 +1735,7 @@ export class Shortcuts {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/shortcuts.spec.ts
+npm test -- --include src/app/ui/shortcuts.spec.ts --watch=false
 ```
 
 Expected: PASS, 12 tests.
@@ -1814,7 +1814,7 @@ Expected: specs 7, 8, 9, 13, 14 and 15 PASS.
 - [ ] **Step 7: Run everything**
 
 ```bash
-npm test -- --run && npm run test:e2e
+npm test -- --watch=false && npm run test:e2e
 ```
 
 Expected: 195 Vitest tests pass. Playwright: 13 of 15 pass; only 10 (help modal) and 12 (Edge tip) fail.
@@ -1933,7 +1933,7 @@ describe('HelpModal dismissal', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/help-modal.spec.ts
+npm test -- --include src/app/ui/help-modal.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./help-modal`.
@@ -2021,7 +2021,7 @@ export class HelpModal {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/help-modal.spec.ts
+npm test -- --include src/app/ui/help-modal.spec.ts --watch=false
 ```
 
 Expected: PASS, 7 tests.
@@ -2113,7 +2113,7 @@ describe('EdgeTip dismissal', () => {
 - [ ] **Step 6: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/edge-tip.spec.ts
+npm test -- --include src/app/ui/edge-tip.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./edge-tip`.
@@ -2198,7 +2198,7 @@ export class EdgeTip {
 - [ ] **Step 8: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/edge-tip.spec.ts
+npm test -- --include src/app/ui/edge-tip.spec.ts --watch=false
 ```
 
 Expected: PASS, 9 tests.
@@ -2239,7 +2239,7 @@ Then widen the guard in `edge-tip.ts` to accept both encodings:
 - [ ] **Step 10: Run the edge-tip tests again**
 
 ```bash
-npm test -- --run src/app/ui/edge-tip.spec.ts
+npm test -- --include src/app/ui/edge-tip.spec.ts --watch=false
 ```
 
 Expected: PASS, 10 tests.
@@ -2304,7 +2304,7 @@ Expected: **all 15 specs PASS.** This is the parity gate.
 - [ ] **Step 13: Run everything**
 
 ```bash
-npm test -- --run && npx ng build
+npm test -- --watch=false && npx ng build
 ```
 
 Expected: 212 Vitest tests pass; the build succeeds.
@@ -2556,7 +2556,7 @@ describe('ValidationService enable flow', () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/validation/validation-service.spec.ts
+npm test -- --include src/app/validation/validation-service.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./validation-service`.
@@ -2706,7 +2706,7 @@ export class ValidationService {
 - [ ] **Step 4: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/validation/validation-service.spec.ts
+npm test -- --include src/app/validation/validation-service.spec.ts --watch=false
 ```
 
 Expected: PASS, 16 tests.
@@ -2789,7 +2789,7 @@ describe('ValidateBox', () => {
 - [ ] **Step 6: Run it to confirm it fails**
 
 ```bash
-npm test -- --run src/app/ui/validate-box.spec.ts
+npm test -- --include src/app/ui/validate-box.spec.ts --watch=false
 ```
 
 Expected: FAIL — cannot resolve `./validate-box`.
@@ -2830,7 +2830,7 @@ export class ValidateBox {
 - [ ] **Step 8: Run it to confirm it passes**
 
 ```bash
-npm test -- --run src/app/ui/validate-box.spec.ts
+npm test -- --include src/app/ui/validate-box.spec.ts --watch=false
 ```
 
 Expected: PASS, 6 tests.
@@ -2954,7 +2954,7 @@ with `import { MicrophoneService } from './platform/microphone';` and
 - [ ] **Step 12: Run the unit suite**
 
 ```bash
-npm test -- --run
+npm test -- --watch=false
 ```
 
 Expected: 234 Vitest tests pass.
@@ -3022,7 +3022,7 @@ git rm -r index.html css js data tools
 - [ ] **Step 3: Verify the Angular app still builds and passes**
 
 ```bash
-npm test -- --run && npx ng build && npm run test:e2e
+npm test -- --watch=false && npx ng build && npm run test:e2e
 ```
 
 Expected: 234 Vitest tests pass; the build succeeds; all 15 Playwright specs pass. Nothing here depended on the deleted files.
@@ -3069,7 +3069,7 @@ jobs:
       run: npx playwright install --with-deps chromium
 
     - name: Run unit tests
-      run: npm test -- --run
+      run: npm test -- --watch=false
 
     - name: Run Playwright tests
       run: npx playwright test
@@ -3200,7 +3200,7 @@ dist/
 - [ ] **Step 8: Final full verification**
 
 ```bash
-npm ci && npm test -- --run && npx ng build --base-href ./ && npm run test:e2e
+npm ci && npm test -- --watch=false && npx ng build --base-href ./ && npm run test:e2e
 ```
 
 Expected: clean install; 234 Vitest tests pass; build succeeds; all 15 Playwright specs pass.
