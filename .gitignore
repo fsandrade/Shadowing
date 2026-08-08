@@ -9,3 +9,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Angular
+dist/
+.angular/
