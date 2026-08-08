@@ -117,6 +117,24 @@ describe('scoring around recognizer formatting', () => {
     expect(starsFor("I'm on my way", 'I am on my way')).toBeLessThan(5);
   });
 
+  it('counts a word the sentence never had against the top mark', () => {
+    const salary = 'He asked for a bigger base and managed to negotiate the salary up ten thousand.';
+    const added = 'He asked for a bigger base and managed to negotiate the salary up to 10,000.';
+    expect(wordSimilarity(salary, added)).toBeGreaterThan(0.95);
+    expect(reachedLastWord(salary, added)).toBe(true);
+    expect(starsFor(salary, added)).toBe(4);
+  });
+
+  it('gives the top mark once the extra word is gone', () => {
+    const salary = 'He asked for a bigger base and managed to negotiate the salary up ten thousand.';
+    const exact = 'He asked for a bigger base and managed to negotiate the salary up 10,000.';
+    expect(starsFor(salary, exact)).toBe(5);
+  });
+
+  it('counts a repeated word against the top mark', () => {
+    expect(starsFor('I need the report today', 'I need the the report today')).toBe(4);
+  });
+
   it('still penalizes actually saying the wrong words', () => {
     expect(starsFor(agenda, 'Second on the agenda is the Q4 roadmap.')).toBeLessThan(5);
     expect(starsFor(agenda, 'the agenda roadmap')).toBeLessThan(4);
@@ -146,11 +164,11 @@ describe('finishing the sentence', () => {
     expect(starsFor(clarify, clarify)).toBe(5);
   });
 
-  it('still forgives a word dropped in the middle', () => {
+  it('counts a word dropped in the middle against the top mark', () => {
     const dropped = 'Before we move on, let me jump in with quick clarification.';
     expect(reachedLastWord(clarify, dropped)).toBe(true);
     expect(soundsComplete(clarify, dropped)).toBe(true);
-    expect(starsFor(clarify, dropped)).toBe(5);
+    expect(starsFor(clarify, dropped)).toBe(4);
   });
 
   it('reports the end unreached for a transcript that is still building', () => {

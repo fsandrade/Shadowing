@@ -95,15 +95,16 @@ export function soundsComplete(base: string, transcript: string): boolean {
 }
 
 export function starsFor(base: string, transcript: string): number | null {
-  const { targetLength, spokenLength, matched, reachedEnd } = align(base, transcript);
+  const { targetLength, spokenLength, matched } = align(base, transcript);
   if (!spokenLength) { return null; }
   if (!targetLength) { return 0; }
+
+  if (matched === targetLength && matched === spokenLength) { return 5; }
 
   const sim = (2 * matched) / (targetLength + spokenLength);
   if (sim < 0.45) { return 0; }
   if (sim < 0.60) { return 1; }
   if (sim < 0.70) { return 2; }
   if (sim < 0.80) { return 3; }
-  if (sim < 0.95 || !reachedEnd) { return 4; }
-  return 5;
+  return 4;
 }
