@@ -80,6 +80,11 @@ describe('SpeechRecognizer', () => {
     expect(FakeRecognition.last!.lang).toBe('en-US');
   });
 
+  it('can run continuously so the browser stops ending on the first pause', () => {
+    recognizer(Ctor).recognize({ continuous: true }).start();
+    expect(FakeRecognition.last!.continuous).toBe(true);
+  });
+
   it('calls onResult once with the accumulated final text when recognition ends', () => {
     const results: string[] = [];
     recognizer(Ctor).recognize({ onResult: (t) => results.push(t) }).start();

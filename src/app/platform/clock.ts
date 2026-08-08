@@ -36,6 +36,11 @@ export class Clock {
     return { done, resolveNow: settle };
   }
 
+  every(ms: number, fn: () => void): () => void {
+    const id = setInterval(fn, ms);
+    return () => clearInterval(id);
+  }
+
   waitFor(until: Promise<void>): PendingWait {
     let settle!: () => void;
     let settled = false;

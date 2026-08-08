@@ -7,12 +7,7 @@ export function normalizeSpeech(text: unknown): string[] {
     .filter(Boolean);
 }
 
-export function wordSimilarity(base: string, transcript: string): number {
-  const a = normalizeSpeech(base);
-  const b = normalizeSpeech(transcript);
-  if (!a.length && !b.length) { return 1; }
-  if (!a.length || !b.length) { return 0; }
-
+function lcsLength(a: readonly string[], b: readonly string[]): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0),
   );
@@ -23,7 +18,28 @@ export function wordSimilarity(base: string, transcript: string): number {
         : Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
   }
-  return (2 * dp[a.length][b.length]) / (a.length + b.length);
+  return dp[a.length][b.length];
+}
+
+export function wordSimilarity(base: string, transcript: string): number {
+  const a = normalizeSpeech(base);
+  const b = normalizeSpeech(transcript);
+  if (!a.length && !b.length) { return 1; }
+  if (!a.length || !b.length) { return 0; }
+  return (2 * lcsLength(a, b)) / (a.length + b.length);
+}
+
+export function coverage(base: string, transcript: string): number {
+  const a = normalizeSpeech(base);
+  const b = normalizeSpeech(transcript);
+  if (!a.length || !b.length) { return 0; }
+  return lcsLength(a, b) / a.length;
+}
+
+export const COMPLETE_COVERAGE = 0.9;
+
+export function soundsComplete(base: string, transcript: string): boolean {
+  return coverage(base, transcript) >= COMPLETE_COVERAGE;
 }
 
 export function starsFor(base: string, transcript: string): number | null {

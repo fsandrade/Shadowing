@@ -2,6 +2,7 @@ import { inject, Injectable, InjectionToken } from '@angular/core';
 
 export interface RecognitionOptions {
   readonly lang?: string;
+  readonly continuous?: boolean;
   onInterim?(text: string): void;
   onResult?(finalText: string): void;
   onError?(code: string | null): void;
@@ -72,7 +73,7 @@ export class SpeechRecognizer {
 
     const rec = new this.ctor();
     rec.lang = opts.lang ?? 'en-US';
-    rec.continuous = false;
+    rec.continuous = opts.continuous ?? false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 

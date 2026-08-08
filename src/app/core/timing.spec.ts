@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, nextIndex, pauseMs, safetyTimeoutMs } from './timing';
+import {
+  formatClock, listenCeilingMs, nextIndex, pauseMs, safetyTimeoutMs,
+} from './timing';
 
 describe('pauseMs', () => {
   it('is the speech duration times the slack', () => {
@@ -28,6 +30,30 @@ describe('safetyTimeoutMs', () => {
 
   it('still gives an empty string the margin', () => {
     expect(safetyTimeoutMs('', 1)).toBe(5000);
+  });
+});
+
+describe('listenCeilingMs', () => {
+  it('gives a short sentence the floor rather than a tiny window', () => {
+    expect(listenCeilingMs('hi')).toBe(10_000);
+  });
+
+  it('grows with the sentence so a long line gets more room', () => {
+    const short = listenCeilingMs('a'.repeat(60));
+    const long = listenCeilingMs('a'.repeat(200));
+    expect(long).toBeGreaterThan(short);
+  });
+
+  it('allows roughly three times a normal speaking pace', () => {
+    expect(listenCeilingMs('a'.repeat(120))).toBe(30_000);
+  });
+
+  it('caps very long sentences so nothing can hang', () => {
+    expect(listenCeilingMs('a'.repeat(5000))).toBe(45_000);
+  });
+
+  it('still gives an empty string the floor', () => {
+    expect(listenCeilingMs('')).toBe(10_000);
   });
 });
 

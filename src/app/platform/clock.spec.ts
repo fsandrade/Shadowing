@@ -72,6 +72,24 @@ describe('Clock', () => {
     expect(count).toBe(1);
   });
 
+  it('every repeats until it is stopped', async () => {
+    let ticks = 0;
+    const stop = clock.every(100, () => { ticks++; });
+
+    await vi.advanceTimersByTimeAsync(350);
+    expect(ticks).toBe(3);
+
+    stop();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(ticks).toBe(3);
+  });
+
+  it('every can be stopped twice without complaint', () => {
+    const stop = clock.every(100, () => {});
+    stop();
+    expect(() => stop()).not.toThrow();
+  });
+
   it('waitFor settles only when the promise resolves, with no timer', async () => {
     let release!: () => void;
     const until = new Promise<void>((r) => { release = r; });

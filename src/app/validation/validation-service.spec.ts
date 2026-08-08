@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MicrophoneService } from '../platform/microphone';
 import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
@@ -11,20 +11,24 @@ import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from './validation-service';
 
 function fakeRecognizer() {
-  const sessions: Array<{ started: boolean; aborted: boolean }> = [];
+  const sessions: Array<{ started: boolean; stopped: boolean; aborted: boolean }> = [];
   let opts: RecognitionOptions = {};
-  return {
+  const api = {
     sessions,
     opts: () => opts,
+    latest: () => sessions[sessions.length - 1],
+    speak: (text: string) => opts.onInterim?.(text),
+    endWithFinalText: (text: string) => opts.onResult?.(text),
     impl: {
       supported: () => true,
       recognize: (o: RecognitionOptions) => {
         opts = o;
         const s = {
           started: false,
+          stopped: false,
           aborted: false,
           start() { this.started = true; },
-          stop() {},
+          stop() { this.stopped = true; },
           abort() { this.aborted = true; },
         };
         sessions.push(s);
@@ -32,6 +36,7 @@ function fakeRecognizer() {
       },
     } as unknown as SpeechRecognizer,
   };
+  return api;
 }
 
 function setup(options: { denied?: boolean } = {}) {
@@ -220,6 +225,143 @@ describe('ValidationService disposal', () => {
     validation.dispose();
 
     expect(resultAt(0)).toEqual({ transcript: 'hit the road', stars: 5, status: 'scored' });
+  });
+});
+
+describe('ValidationService end of speech', () => {
+  const TARGET = 'I must have hit the snooze button like four times this morning';
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('runs the session continuously so the browser cannot cut in on a pause', () => {
+    const { validation, rec } = setup();
+    validation.begin(0, TARGET);
+    expect(rec.opts().continuous).toBe(true);
+  });
+
+  it('stops as soon as the whole sentence has been said', async () => {
+    const { validation, rec } = setup();
+    let settled = false;
+    void validation.begin(0, TARGET)!.then(() => { settled = true; });
+
+    rec.speak(TARGET);
+    expect(rec.latest().stopped).toBe(true);
+
+    rec.endWithFinalText(TARGET);
+    await Promise.resolve();
+    expect(settled).toBe(true);
+  });
+
+  it('tolerates pauses shorter than the grace window mid-sentence', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, TARGET);
+
+    rec.speak('I must have');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(rec.latest().stopped).toBe(false);
+
+    rec.speak('I must have hit the snooze');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(rec.latest().stopped).toBe(false);
+
+    rec.speak('I must have hit the snooze button like four');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(rec.latest().stopped).toBe(false);
+    expect(resultAt(0)?.status).toBe('listening');
+  });
+
+  it('stops once a pause outlasts the grace window', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, TARGET);
+
+    rec.speak('I must have hit');
+    await vi.advanceTimersByTimeAsync(2400);
+    expect(rec.latest().stopped).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(400);
+    expect(rec.latest().stopped).toBe(true);
+  });
+
+  it('scores a partial repeat when the speaker gives up mid-sentence', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, TARGET);
+
+    rec.speak('I must have hit the snooze');
+    await vi.advanceTimersByTimeAsync(3000);
+    rec.endWithFinalText('I must have hit the snooze');
+    await Promise.resolve();
+
+    expect(resultAt(0)?.status).toBe('scored');
+    expect(resultAt(0)?.stars).not.toBeNull();
+    expect(resultAt(0)?.stars).toBeLessThan(5);
+  });
+
+  it('waits longer than the pause window for a slow starter', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, TARGET);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(rec.latest().stopped).toBe(false);
+
+    rec.speak('I must have');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(rec.latest().stopped).toBe(false);
+  });
+
+  it('gives up when nothing is said at all', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, TARGET);
+
+    await vi.advanceTimersByTimeAsync(5800);
+    expect(rec.latest().stopped).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(400);
+    expect(rec.latest().stopped).toBe(true);
+
+    rec.endWithFinalText('');
+    await Promise.resolve();
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.noSpeechDetected);
+  });
+
+  it('stops at the ceiling when someone talks without ever completing', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, TARGET);
+
+    for (let i = 0; i < 40; i++) {
+      rec.speak(`rambling on and on segment ${i}`);
+      await vi.advanceTimersByTimeAsync(1000);
+      if (rec.latest().stopped) { break; }
+    }
+    expect(rec.latest().stopped).toBe(true);
+  });
+
+  it('settles from what it heard if stopping never reports a final result', async () => {
+    const { validation, rec, resultAt } = setup();
+    let settled = false;
+    void validation.begin(0, TARGET)!.then(() => { settled = true; });
+
+    rec.speak('I must have hit the snooze button');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(rec.latest().stopped).toBe(true);
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(settled).toBe(true);
+    expect(resultAt(0)?.transcript).toBe('I must have hit the snooze button');
+    expect(resultAt(0)?.status).toBe('scored');
+  });
+
+  it('stops watching once a line is settled', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, TARGET);
+    rec.speak(TARGET);
+    rec.endWithFinalText(TARGET);
+    await Promise.resolve();
+
+    const stoppedSessions = rec.sessions.length;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rec.sessions.length).toBe(stoppedSessions);
   });
 });
 
