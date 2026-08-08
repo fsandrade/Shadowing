@@ -15,14 +15,24 @@ describe('deckOptions', () => {
   });
 
   it('lists the decks in data order', () => {
-    expect(deckOptions(DATA).slice(1)).toEqual([
+    expect(deckOptions(DATA).slice(2)).toEqual([
       { id: 'daily-life', name: 'Daily Life' },
       { id: 'meetings', name: 'Meetings' },
     ]);
   });
 
+  it('offers the custom topic up front, where it can be found', () => {
+    expect(deckOptions(DATA).slice(0, 2)).toEqual([
+      { id: 'all', name: 'All' },
+      { id: 'custom', name: 'My text' },
+    ]);
+  });
+
   it('handles a corpus with no decks', () => {
-    expect(deckOptions({ generatedAt: '', decks: [] })).toEqual([{ id: 'all', name: 'All' }]);
+    expect(deckOptions({ generatedAt: '', decks: [] })).toEqual([
+      { id: 'all', name: 'All' },
+      { id: 'custom', name: 'My text' },
+    ]);
   });
 });
 

@@ -1,5 +1,5 @@
 import { effect, inject, Injectable, untracked } from '@angular/core';
-import { ALL_DECK_ID, linesFor } from './core/deck';
+import { ALL_DECK_ID, CUSTOM_DECK_ID, linesFor } from './core/deck';
 import { DebugBridge } from './debug-bridge';
 import { PlaybackService } from './playback/playback-service';
 import { MicrophoneService } from './platform/microphone';
@@ -34,7 +34,8 @@ export class AppStartup {
   private readonly debug = inject(DebugBridge);
 
   run(): void {
-    if (!linesFor(this.corpus, this.settings.deckId()).length) {
+    const deckId = this.settings.deckId();
+    if (deckId !== CUSTOM_DECK_ID && !linesFor(this.corpus, deckId).length) {
       this.settings.setDeckId(ALL_DECK_ID);
     }
 

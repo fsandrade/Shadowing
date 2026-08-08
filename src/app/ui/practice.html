@@ -5,4 +5,7 @@
   <div appOptionsPanel [open]="optionsOpen()"></div>
 </div>
 <div appBanner></div>
+@if (practice.customActive()) {
+  <div appCustomTopic></div>
+}
 <div appLineList></div>

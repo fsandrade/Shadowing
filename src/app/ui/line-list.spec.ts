@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus } from '../core/deck';
+import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { MicrophoneService } from '../platform/microphone';
 import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
@@ -9,6 +9,7 @@ import {
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { CORPUS_DATA } from '../state/corpus-token';
+import { CustomTopicStore } from '../state/custom-topic-store';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from '../validation/validation-service';
@@ -43,11 +44,12 @@ function fakeRecognizer() {
   };
 }
 
-function render() {
+function render(extra: readonly unknown[] = []) {
   const recognizer = fakeRecognizer();
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...extra,
       {
         provide: SafeStorage,
         useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
@@ -86,6 +88,21 @@ function render() {
     settings: TestBed.inject(SettingsStore),
     validation: TestBed.inject(ValidationService),
   };
+}
+
+function renderCustom(rawLines: readonly string[]) {
+  const fake = {
+    text: () => rawLines.join(' '),
+    lines: () => rawLines,
+    hasText: () => rawLines.length > 0,
+    setText: () => {},
+    clear: () => {},
+  } as unknown as CustomTopicStore;
+
+  const rendered = render([{ provide: CustomTopicStore, useValue: fake }]);
+  rendered.practice.selectDeck(CUSTOM_DECK_ID);
+  rendered.fixture.detectChanges();
+  return rendered;
 }
 
 describe('LineList structure', () => {
@@ -189,6 +206,50 @@ describe('LineList follows the current line', () => {
     await fixture.whenStable();
 
     expect(scrolled.at(-1)).toBe('2');
+  });
+});
+
+describe('LineList renders custom text as text, never as markup', () => {
+  it('shows tags literally instead of interpreting them', () => {
+    const { lines } = renderCustom(['<b>bold</b> attempt.']);
+    const text = lines.querySelector('p .text')!;
+    expect(text.querySelector('b')).toBeNull();
+    expect(text.textContent).toBe('<b>bold</b> attempt.');
+  });
+
+  it('does not build an element from an image payload', () => {
+    const { lines } = renderCustom(['<img src=x onerror=alert(1)>Hi.']);
+    expect(lines.querySelector('img')).toBeNull();
+    expect(lines.querySelector('p .text')?.textContent).toBe('<img src=x onerror=alert(1)>Hi.');
+  });
+
+  it('does not build an element from a script payload', () => {
+    const { lines } = renderCustom(['<script>alert(1)</script>Hi.']);
+    expect(lines.querySelector('script')).toBeNull();
+    expect(lines.querySelector('p .text')?.textContent).toBe('<script>alert(1)</script>Hi.');
+  });
+
+  it('keeps ampersands and angle brackets exactly as typed', () => {
+    const { lines } = renderCustom(['R&D: a < b & c > d.']);
+    expect(lines.querySelector('p .text')?.textContent).toBe('R&D: a < b & c > d.');
+  });
+
+  it('still numbers and selects custom lines like any other deck', () => {
+    const { fixture, lines, practice } = renderCustom(['One.', 'Two.', 'Three.']);
+    expect([...lines.querySelectorAll('p .num')].map((n) => n.textContent))
+      .toEqual(['1', '2', '3']);
+
+    lines.querySelectorAll<HTMLElement>('p')[2].click();
+    fixture.detectChanges();
+    expect(practice.index()).toBe(2);
+  });
+});
+
+describe('LineList still trusts the built-in corpus', () => {
+  it('renders chunk markup for corpus decks', () => {
+    const { lines } = render();
+    expect(lines.querySelectorAll('p .text')[1].querySelector('b')?.textContent)
+      .toBe('a chunk');
   });
 });
 

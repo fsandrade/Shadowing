@@ -124,7 +124,8 @@ export class PlaybackService {
   }
 
   private textAt(index: number): string {
-    return stripTags(this.practice.lines()[index] ?? '');
+    const line = this.practice.lines()[index] ?? '';
+    return this.practice.customActive() ? line : stripTags(line);
   }
 
   private gapMsFor(startedAt: number): number {

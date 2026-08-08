@@ -23,8 +23,10 @@ export function installFakeAudio(page: Page, opts: FakeAudioOptions = {}) {
         }
       }
       (window as any).SpeechSynthesisUtterance = FakeUtterance;
+      (window as any).__spokenText = [];
       const synth: any = window.speechSynthesis;
       synth.speak = (u: FakeUtterance) => {
+        (window as any).__spokenText.push(u.text);
         setTimeout(() => {
           if (u.onend) { u.onend(); }
         }, speakMs);

@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus } from '../core/deck';
+import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { SafeStorage } from '../platform/storage';
 import { CORPUS_DATA } from './corpus-token';
+import { CustomTopicStore } from './custom-topic-store';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
 
@@ -28,8 +29,55 @@ function setup() {
   return {
     store: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
+    custom: TestBed.inject(CustomTopicStore),
   };
 }
+
+describe('PracticeStore custom topic', () => {
+  it('is not active for a corpus deck', () => {
+    expect(setup().store.customActive()).toBe(false);
+  });
+
+  it('becomes active and empty when the custom topic is selected', () => {
+    const { store } = setup();
+    store.selectDeck(CUSTOM_DECK_ID);
+    expect(store.customActive()).toBe(true);
+    expect(store.lines()).toEqual([]);
+    expect(store.hasLines()).toBe(false);
+  });
+
+  it('serves the custom sentences once there is text', () => {
+    const { store, custom } = setup();
+    custom.setText('One here. Two here!');
+    store.selectDeck(CUSTOM_DECK_ID);
+    expect(store.lines()).toEqual(['One here.', 'Two here!']);
+    expect(store.hasLines()).toBe(true);
+  });
+
+  it('leaves the corpus decks untouched', () => {
+    const { store, custom } = setup();
+    custom.setText('Mine only.');
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+    store.selectDeck('a');
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('refreshLines drops a stale shuffle and resets progress', () => {
+    const { store, custom } = setup();
+    custom.setText('One. Two. Three.');
+    store.selectDeck(CUSTOM_DECK_ID);
+    store.shuffleLines(() => 0);
+    store.goTo(2);
+    store.markSpoken(2);
+
+    custom.setText('Only this one.');
+    store.refreshLines();
+
+    expect(store.lines()).toEqual(['Only this one.']);
+    expect(store.index()).toBe(0);
+    expect(store.spoken().size).toBe(0);
+  });
+});
 
 describe('PracticeStore lines', () => {
   it('defaults to every line in deck order', () => {

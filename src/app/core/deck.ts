@@ -15,11 +15,13 @@ export interface DeckOption {
 }
 
 export const ALL_DECK_ID = 'all';
+export const CUSTOM_DECK_ID = 'custom';
 
 export function deckOptions(corpus: Corpus): DeckOption[] {
   const decks = corpus?.decks ?? [];
   return [
     { id: ALL_DECK_ID, name: 'All' },
+    { id: CUSTOM_DECK_ID, name: 'My text' },
     ...decks.map((d) => ({ id: d.id, name: d.name })),
   ];
 }

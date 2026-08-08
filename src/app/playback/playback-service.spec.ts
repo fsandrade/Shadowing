@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Corpus } from '../core/deck';
+import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { BannerStore } from '../state/banner-store';
 import { CORPUS_DATA } from '../state/corpus-token';
+import { CustomTopicStore } from '../state/custom-topic-store';
 import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
@@ -61,8 +62,34 @@ function setup(speakMs = 1000, corpus: Corpus = DATA) {
     settings: TestBed.inject(SettingsStore),
     timer: TestBed.inject(SessionTimerStore),
     banner: TestBed.inject(BannerStore),
+    custom: TestBed.inject(CustomTopicStore),
   };
 }
+
+describe('PlaybackService speaking custom text', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('speaks a custom sentence verbatim', async () => {
+    const { playback, practice, custom, speaker } = setup();
+    custom.setText('This sentence is long enough to measure.');
+    practice.selectDeck(CUSTOM_DECK_ID);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(speaker.spoken[0]).toBe('This sentence is long enough to measure.');
+  });
+
+  it('keeps angle brackets, which tag stripping would swallow', async () => {
+    const { playback, practice, custom, speaker } = setup();
+    custom.setText('Five < ten is definitely a true statement.');
+    practice.selectDeck(CUSTOM_DECK_ID);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(speaker.spoken[0]).toBe('Five < ten is definitely a true statement.');
+  });
+});
 
 describe('PlaybackService transport', () => {
   beforeEach(() => vi.useFakeTimers());

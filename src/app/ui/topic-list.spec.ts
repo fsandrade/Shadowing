@@ -55,12 +55,12 @@ describe('TopicList', () => {
     expect(nav?.querySelector('.decks-list')).not.toBeNull();
   });
 
-  it('renders All first, then every deck by name alone', () => {
+  it('renders All and the custom topic first, then every deck by name alone', () => {
     const { sidebar } = render();
     const buttons = [...sidebar.querySelectorAll<HTMLButtonElement>('#decks button')];
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
     expect(buttons.map((b) => b.textContent?.trim()))
-      .toEqual(['All', 'Alpha', 'Beta']);
+      .toEqual(['All', 'My text', 'Alpha', 'Beta']);
   });
 
   it('shows no line counts', () => {

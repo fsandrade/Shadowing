@@ -26,7 +26,7 @@ test('loads the corpus with numbered lines', async ({ page }) => {
 
   await expect(page).toHaveTitle('Shadowing');
   await expect(page.locator('.topics-title')).toHaveText('Topics');
-  await expect(page.locator('#decks button')).toHaveCount(25);
+  await expect(page.locator('#decks button')).toHaveCount(26);
   await expect(page.locator('.durations button').first()).toHaveAttribute('title', /minute/i);
   await expect(page.locator('.sliders label').first()).toHaveAttribute('title', /speed/i);
   expect(await loadedLines(page)).toBe(TOTAL_LINES);

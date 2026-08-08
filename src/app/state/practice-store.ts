@@ -1,8 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { deckOptions, linesFor } from '../core/deck';
+import { CUSTOM_DECK_ID, deckOptions, linesFor } from '../core/deck';
 import { type Rng, shuffle } from '../core/shuffle';
 import { nextIndex } from '../core/timing';
 import { CORPUS_DATA } from './corpus-token';
+import { CustomTopicStore } from './custom-topic-store';
 import { SettingsStore } from './settings-store';
 
 const FIRST_PAGE = 60;
@@ -13,6 +14,7 @@ const LOOKAHEAD = 10;
 export class PracticeStore {
   private readonly corpus = inject(CORPUS_DATA);
   private readonly settings = inject(SettingsStore);
+  private readonly custom = inject(CustomTopicStore);
 
   private readonly order = signal<readonly string[] | null>(null);
   private readonly revealed = signal(FIRST_PAGE);
@@ -23,9 +25,14 @@ export class PracticeStore {
 
   readonly deckOptions = computed(() => deckOptions(this.corpus));
 
-  readonly lines = computed<readonly string[]>(
-    () => this.order() ?? linesFor(this.corpus, this.settings.deckId()),
-  );
+  readonly customActive = computed(() => this.settings.deckId() === CUSTOM_DECK_ID);
+
+  readonly lines = computed<readonly string[]>(() => {
+    const order = this.order();
+    if (order) { return order; }
+    if (this.customActive()) { return this.custom.lines(); }
+    return linesFor(this.corpus, this.settings.deckId());
+  });
 
   readonly visibleLines = computed<readonly string[]>(
     () => this.lines().slice(0, this.revealed()),
@@ -37,6 +44,11 @@ export class PracticeStore {
 
   selectDeck(id: string): void {
     this.settings.setDeckId(id);
+    this.order.set(null);
+    this.resetProgress();
+  }
+
+  refreshLines(): void {
     this.order.set(null);
     this.resetProgress();
   }
