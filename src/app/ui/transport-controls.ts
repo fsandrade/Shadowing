@@ -9,8 +9,8 @@ import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 import { ValidationService } from '../validation/validation-service';
 
-const PLAY_TITLE = 'Play/Pause (space) · Repeat current sentence (←)';
-const VALIDATE_TITLE = 'Speech validator: transcribe your repeat and rate it 0–5 stars';
+const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (←)';
+const RATE_TITLE = 'Rate me: transcribe your repeat and score it 0–5 stars';
 
 @Component({
   selector: 'div[appTransportControls]',
@@ -30,7 +30,7 @@ export class TransportControls {
   private readonly validation = inject(ValidationService);
 
   protected readonly PLAY_TITLE = PLAY_TITLE;
-  protected readonly VALIDATE_TITLE = VALIDATE_TITLE;
+  protected readonly RATE_TITLE = RATE_TITLE;
 
   protected readonly sttSupported = inject(SpeechRecognizer).supported();
 
@@ -39,7 +39,7 @@ export class TransportControls {
   );
 
   protected readonly playLabel = computed(
-    () => (this.practice.playing() ? '⏸ Pause' : '▶ Play'),
+    () => (this.practice.playing() ? '⏸ Pause' : '▶ Auto Play'),
   );
 
   protected toggleValidate(): void {

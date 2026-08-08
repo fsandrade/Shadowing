@@ -157,7 +157,7 @@ describe('OptionsPanel repeat until 5', () => {
     expect(settings.repeatUntilFive()).toBe(false);
   });
 
-  it('explains that it depends on the validator', () => {
-    expect(render().btn('repeat').title).toMatch(/validator/i);
+  it('explains that it depends on rate me', () => {
+    expect(render().btn('repeat').title).toMatch(/rate me/i);
   });
 });

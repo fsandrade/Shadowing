@@ -83,14 +83,14 @@ describe('TransportControls structure', () => {
     const { btn } = render();
     expect(btn('play').title).toMatch(/Play\/Pause \(space\)/);
     expect(btn('next').title).toBe('Next (→)');
-    expect(btn('validate').title).toMatch(/Speech validator/);
+    expect(btn('validate').title).toMatch(/Rate me/i);
   });
 });
 
 describe('TransportControls play label', () => {
   it('reads Play when idle and Pause while playing', () => {
     const { fixture, btn, practice } = render();
-    expect(btn('play').textContent).toContain('Play');
+    expect(btn('play').textContent).toContain('Auto Play');
 
     practice.setPlaying(true);
     fixture.detectChanges();

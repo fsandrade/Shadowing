@@ -8,8 +8,8 @@ import { SettingsSliders } from './settings-sliders';
 
 const BLUR_TITLE = 'Blur the text to practice from memory (hover or playback reveals)';
 const REPEAT_TITLE =
-  'Repeat a sentence until you score 5 stars, up to five times. '
-  + 'Needs the speech validator.';
+  'Retry a sentence until you score 5 stars, up to five times. '
+  + 'Needs rate me switched on.';
 
 @Component({
   selector: 'div[appOptionsPanel]',
