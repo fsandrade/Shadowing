@@ -67,6 +67,24 @@ describe('scoring around recognizer formatting', () => {
     expect(starsFor('It cost 342 pounds', 'It cost 342 pounds')).toBe(5);
   });
 
+  it('scores a grouped number the same as the words for it', () => {
+    const salary = 'He asked for a bigger base and managed to negotiate the salary up ten thousand.';
+    expect(starsFor(salary, 'He asked for a bigger base and managed to negotiate the salary up 10.000.'))
+      .toBe(5);
+    expect(soundsComplete(salary, 'He asked for a bigger base and managed to negotiate the salary up 10.000.'))
+      .toBe(true);
+  });
+
+  it('scores either grouping separator the same', () => {
+    expect(starsFor('They raised ten thousand', 'They raised 10,000')).toBe(5);
+    expect(starsFor('They raised ten thousand', 'They raised 10.000')).toBe(5);
+    expect(starsFor('They raised 10,000', 'They raised ten thousand')).toBe(5);
+  });
+
+  it('still hears a decimal as a decimal', () => {
+    expect(starsFor('It costs three fifty', 'It costs 3.50')).toBe(5);
+  });
+
   it('rejoins a compound the recognizer split', () => {
     expect(starsFor('Check the roadmap today', 'Check the road map today')).toBe(5);
     expect(starsFor('Send me the whiteboard photo', 'Send me the white board photo')).toBe(5);

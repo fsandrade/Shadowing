@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardinalWords, ordinalWords, spellNumbers } from './numbers';
+import { cardinalWords, joinDigitGroups, ordinalWords, spellNumbers } from './numbers';
 
 describe('cardinalWords', () => {
   it('spells the small numbers', () => {
@@ -21,8 +21,17 @@ describe('cardinalWords', () => {
     expect(cardinalWords(2026)).toEqual(['two', 'thousand', 'twenty', 'six']);
   });
 
+  it('spells millions', () => {
+    expect(cardinalWords(1_000_000)).toEqual(['one', 'million']);
+    expect(cardinalWords(2_500_000)).toEqual(['two', 'million', 'five', 'hundred', 'thousand']);
+    expect(cardinalWords(1_234_567)).toEqual([
+      'one', 'million', 'two', 'hundred', 'thirty', 'four', 'thousand',
+      'five', 'hundred', 'sixty', 'seven',
+    ]);
+  });
+
   it('leaves anything it cannot spell as digits', () => {
-    expect(cardinalWords(1_000_000)).toEqual(['1000000']);
+    expect(cardinalWords(1_000_000_000)).toEqual(['1000000000']);
     expect(cardinalWords(-3)).toEqual(['-3']);
   });
 });
@@ -72,5 +81,38 @@ describe('spellNumbers', () => {
 
   it('leaves text without numbers alone', () => {
     expect(spellNumbers('no numbers here')).toBe('no numbers here');
+  });
+});
+
+describe('joinDigitGroups', () => {
+  it('joins a thousands separator written as a dot', () => {
+    expect(joinDigitGroups('up 10.000')).toBe('up 10000');
+  });
+
+  it('joins a thousands separator written as a comma', () => {
+    expect(joinDigitGroups('about 1,500 people')).toBe('about 1500 people');
+  });
+
+  it('joins repeated groups', () => {
+    expect(joinDigitGroups('1,234,567 total')).toBe('1234567 total');
+    expect(joinDigitGroups('1.234.567 total')).toBe('1234567 total');
+  });
+
+  it('leaves decimals alone, because the group is not three digits', () => {
+    expect(joinDigitGroups('it costs $3.50')).toBe('it costs $3.50');
+    expect(joinDigitGroups('about 10.5 percent')).toBe('about 10.5 percent');
+    expect(joinDigitGroups('roughly 2.75 hours')).toBe('roughly 2.75 hours');
+  });
+
+  it('leaves a number with too many leading digits alone', () => {
+    expect(joinDigitGroups('code 1234.567')).toBe('code 1234.567');
+  });
+
+  it('does not join two separate numbers spaced apart', () => {
+    expect(joinDigitGroups('room 12 300 seats')).toBe('room 12 300 seats');
+  });
+
+  it('leaves ordinary sentence punctuation alone', () => {
+    expect(joinDigitGroups('He paid 10. Then he left.')).toBe('He paid 10. Then he left.');
   });
 });
