@@ -15,6 +15,7 @@ import { ValidateBox } from './validate-box';
     class: 'lines',
     id: 'lines',
     '[class.blurred]': 'settings.blur()',
+    '(scroll)': 'onScroll()',
   },
   templateUrl: './line-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +33,12 @@ export class LineList {
       this.practice.index();
       untracked(() => this.revealCurrentLine());
     });
+  }
+
+  protected onScroll(): void {
+    const el = this.host.nativeElement;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (remaining < el.clientHeight) { this.practice.revealMore(); }
   }
 
   private revealCurrentLine(): void {

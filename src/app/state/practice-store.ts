@@ -5,12 +5,17 @@ import { nextIndex } from '../core/timing';
 import { CORPUS_DATA } from './corpus-token';
 import { SettingsStore } from './settings-store';
 
+const FIRST_PAGE = 60;
+const PAGE = 60;
+const LOOKAHEAD = 10;
+
 @Injectable({ providedIn: 'root' })
 export class PracticeStore {
   private readonly corpus = inject(CORPUS_DATA);
   private readonly settings = inject(SettingsStore);
 
   private readonly order = signal<readonly string[] | null>(null);
+  private readonly revealed = signal(FIRST_PAGE);
 
   readonly index = signal(0);
   readonly playing = signal(false);
@@ -21,6 +26,12 @@ export class PracticeStore {
   readonly lines = computed<readonly string[]>(
     () => this.order() ?? linesFor(this.corpus, this.settings.deckId()),
   );
+
+  readonly visibleLines = computed<readonly string[]>(
+    () => this.lines().slice(0, this.revealed()),
+  );
+
+  readonly allRevealed = computed(() => this.revealed() >= this.lines().length);
 
   readonly hasLines = computed(() => this.lines().length > 0);
 
@@ -35,12 +46,20 @@ export class PracticeStore {
     this.resetProgress();
   }
 
+  revealMore(): void {
+    if (this.allRevealed()) { return; }
+    this.revealed.update((n) => Math.min(n + PAGE, this.lines().length));
+  }
+
   goTo(i: number): void {
     this.index.set(i);
+    this.revealThrough(i);
   }
 
   advance(): void {
-    this.index.set(nextIndex(this.index(), this.lines().length));
+    const next = nextIndex(this.index(), this.lines().length);
+    this.index.set(next);
+    this.revealThrough(next);
   }
 
   back(): void {
@@ -57,8 +76,14 @@ export class PracticeStore {
     this.playing.set(on);
   }
 
+  private revealThrough(i: number): void {
+    const needed = Math.min(i + 1 + LOOKAHEAD, this.lines().length);
+    if (needed > this.revealed()) { this.revealed.set(needed); }
+  }
+
   private resetProgress(): void {
     this.index.set(0);
     this.spoken.set(new Set<number>());
+    this.revealed.set(Math.min(FIRST_PAGE, this.lines().length));
   }
 }

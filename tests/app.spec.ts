@@ -8,6 +8,10 @@ async function currentIndex(page: Page): Promise<number> {
   return page.evaluate(() => (window as any).__shadowing.state.index);
 }
 
+async function loadedLines(page: Page): Promise<number> {
+  return page.evaluate(() => (window as any).__shadowing.state.lines.length);
+}
+
 test('loads the corpus with numbered lines', async ({ page }) => {
   installFakeAudio(page);
   await page.goto(APP_URL);
@@ -17,9 +21,22 @@ test('loads the corpus with numbered lines', async ({ page }) => {
   await expect(page.locator('#decks button')).toHaveCount(25);
   await expect(page.locator('.durations button').first()).toHaveAttribute('title', /minute/i);
   await expect(page.locator('.sliders label').first()).toHaveAttribute('title', /speed/i);
-  await expect(page.locator('.lines p')).toHaveCount(TOTAL_LINES);
+  expect(await loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
+});
+
+test('renders a first page of lines and appends more as you scroll', async ({ page }) => {
+  installFakeAudio(page);
+  await page.goto(APP_URL);
+
+  const rendered = () => page.locator('.lines p').count();
+  const first = await rendered();
+  expect(first).toBeGreaterThan(0);
+  expect(first).toBeLessThan(TOTAL_LINES);
+
+  await page.locator('.lines').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await expect.poll(rendered).toBeGreaterThan(first);
 });
 
 test('warns and disables the controls when no English voice is available', async ({ page }) => {
@@ -38,7 +55,7 @@ test('switching decks narrows the list and renumbers from one', async ({ page })
   await page.goto(APP_URL);
 
   await page.locator('#decks button', { hasText: 'Daily Life' }).click();
-  await expect(page.locator('.lines p')).toHaveCount(135);
+  await expect.poll(() => loadedLines(page)).toBe(135);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -58,7 +75,7 @@ test('shuffle keeps the corpus and renumbers from one', async ({ page }) => {
   const before = await page.locator('.lines p').first().innerText();
   await page.locator('#shuffle').click();
 
-  await expect(page.locator('.lines p')).toHaveCount(TOTAL_LINES);
+  expect(await loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   const after = await page.locator('.lines p').first().innerText();
   expect(after).not.toBe(before);
