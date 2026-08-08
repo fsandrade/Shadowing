@@ -4,13 +4,11 @@
   "description": "Practice shadowing and chunking to learn English.",
   "license": "ISC",
   "private": true,
-  "type": "commonjs",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "node --test tests/stt.test.js",
-    "test:unit": "ng test",
+    "test": "ng test",
     "test:e2e": "playwright test"
   },
   "dependencies": {
