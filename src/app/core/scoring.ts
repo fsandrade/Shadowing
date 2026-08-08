@@ -1,4 +1,3 @@
-/** Words only: lowercase, apostrophes dropped, everything else a separator. */
 export function normalizeSpeech(text: unknown): string[] {
   return String(text ?? '')
     .toLowerCase()
@@ -8,11 +7,6 @@ export function normalizeSpeech(text: unknown): string[] {
     .filter(Boolean);
 }
 
-/**
- * Dice coefficient over the longest common subsequence of words, so word order
- * counts but a dropped or added word degrades the score gracefully.
- * Returns 1 for two empty inputs and 0 when only one side is empty.
- */
 export function wordSimilarity(base: string, transcript: string): number {
   const a = normalizeSpeech(base);
   const b = normalizeSpeech(transcript);
@@ -32,7 +26,6 @@ export function wordSimilarity(base: string, transcript: string): number {
   return (2 * dp[a.length][b.length]) / (a.length + b.length);
 }
 
-/** 0-5 stars, or null when nothing was said. Thresholds are product-approved. */
 export function starsFor(base: string, transcript: string): number | null {
   if (!normalizeSpeech(transcript).length) { return null; }
   const sim = wordSimilarity(base, transcript);

@@ -98,11 +98,10 @@ describe('SessionTimerStore in countdown mode', () => {
     timer.resume();
     advance(30_000);
 
-    // Pause: accrue while still flagged playing, then clear the flag.
     timer.accrue();
     practice.setPlaying(false);
 
-    advance(120_000); // paused: this must not count
+    advance(120_000);
     timer.tick();
     expect(timer.clockText()).toBe('04:30');
   });
@@ -113,8 +112,6 @@ describe('SessionTimerStore in countdown mode', () => {
     timer.reset(5);
     timer.resume();
 
-    // Never marked playing, so the elapsed slice does not count and accrue
-    // is a no-op.
     advance(30_000);
     timer.accrue();
     timer.tick();

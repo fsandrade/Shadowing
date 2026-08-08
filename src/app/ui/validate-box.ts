@@ -1,25 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { ValidationService } from '../validation/validation-service';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { type LineResult } from '../validation/validation-service';
 
 const MAX_STARS = 5;
 
-/** The inline validator result, rendered as a sibling of the current line. */
 @Component({
   selector: 'div[appValidateBox]',
-  host: { class: 'validate-box' },
+  host: {
+    class: 'validate-box',
+    '[class.listening]': 'result().status === "listening"',
+    '[class.scored]': 'result().status === "scored"',
+    '[class.failed]': 'result().status === "failed"',
+  },
+  templateUrl: './validate-box.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <span class="mic-dot"></span>
-    <span class="transcript">{{ validation.transcript() }}</span>
-    <span class="stars">{{ starText() }}</span>
-  `,
 })
 export class ValidateBox {
-  protected readonly validation = inject(ValidationService);
+  readonly result = input.required<LineResult>();
 
-  /** Filled then empty stars, or nothing at all when unrated. */
   protected readonly starText = computed(() => {
-    const n = this.validation.stars();
+    const n = this.result().stars;
     if (n === null) { return ''; }
     return '★'.repeat(n) + '☆'.repeat(MAX_STARS - n);
   });

@@ -3,25 +3,16 @@ import { PlaybackService } from '../playback/playback-service';
 import { Clock } from '../platform/clock';
 import { PracticeStore } from '../state/practice-store';
 
-/** Two ArrowLefts inside this window step back a line; a single one replays. */
 const DOUBLE_PRESS_MS = 500;
 
-/**
- * The keyboard map. Guard order is preserved from the pre-migration vanilla
- * handler and is load-bearing — see the comments inline.
- */
 @Directive({
   selector: '[appShortcuts]',
   host: {
     '(document:keydown)': 'onKeydown($event)',
-    // Drops focus from any clicked button so the focus ring does not stick. It
-    // also stops a focused Play button from swallowing the next space press,
-    // which would toggle playback twice.
     '(document:click)': 'blurClickedButton($event)',
   },
 })
 export class Shortcuts {
-  /** False when the transport is dead (no audio, no lines). */
   readonly enabled = input(true);
   readonly helpOpen = input(false);
   readonly closeHelp = output<void>();
@@ -37,11 +28,8 @@ export class Shortcuts {
     if (target && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) { return; }
     if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) { return; }
 
-    // Any other key breaks a pending double-press.
     if (e.key !== 'ArrowLeft') { this.lastLeftAt = 0; }
 
-    // Bails before the Escape branch, exactly as the vanilla handler did: with
-    // the transport dead, Escape does not close the modal either.
     if (!this.enabled()) { return; }
 
     if (e.key === 'Escape' && this.helpOpen()) {
@@ -68,10 +56,6 @@ export class Shortcuts {
     }
   }
 
-  /**
-   * First press replays the current line from the start; a second press inside
-   * the window steps back one line first.
-   */
   private onArrowLeft(): void {
     const now = this.clock.now();
     if (this.practice.index() > 0 && now - this.lastLeftAt <= DOUBLE_PRESS_MS) {

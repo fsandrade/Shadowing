@@ -17,7 +17,6 @@ export interface DeckOption {
 
 export const ALL_DECK_ID = 'all';
 
-/** The sidebar's list: a synthetic "All" entry, then every deck in data order. */
 export function deckOptions(corpus: Corpus): DeckOption[] {
   const decks = corpus?.decks ?? [];
   const total = decks.reduce((n, d) => n + d.lines.length, 0);
@@ -27,7 +26,6 @@ export function deckOptions(corpus: Corpus): DeckOption[] {
   ];
 }
 
-/** Always returns a fresh array, so callers may shuffle it in place. */
 export function linesFor(corpus: Corpus, deckId: string): string[] {
   const decks = corpus?.decks ?? [];
   if (deckId === ALL_DECK_ID) {

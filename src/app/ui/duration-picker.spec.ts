@@ -13,7 +13,6 @@ const DATA: Corpus = {
   decks: [{ id: 'a', name: 'A', lines: ['one'] }],
 };
 
-/** Rendered through real markup so the host stays a <div class="durations">. */
 @Component({
   imports: [DurationPicker],
   template: `<div appDurationPicker></div>`,

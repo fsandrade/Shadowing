@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { ProgressRing, RING_LENGTH } from './progress-ring';
 
-/** Rendered through real markup so the host stays an <svg class="ring">. */
 @Component({
   imports: [ProgressRing],
   template: `<svg appProgressRing [progress]="p()"></svg>`,

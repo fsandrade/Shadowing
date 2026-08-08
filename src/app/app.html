@@ -1,0 +1,10 @@
+<header appHeaderBar (help)="helpOpen.set(true)"></header>
+<div class="app" appShortcuts
+  [enabled]="enabled()"
+  [helpOpen]="helpOpen()"
+  (closeHelp)="helpOpen.set(false)">
+  <aside appTopicList></aside>
+  <main appPractice></main>
+</div>
+<div appEdgeTip></div>
+<div appHelpModal [open]="helpOpen()" (close)="helpOpen.set(false)"></div>

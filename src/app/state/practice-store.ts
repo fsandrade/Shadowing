@@ -5,16 +5,11 @@ import { nextIndex } from '../core/timing';
 import { CORPUS_DATA } from './corpus-token';
 import { SettingsStore } from './settings-store';
 
-/**
- * Transient practice state. The selected deck itself lives in SettingsStore
- * because it persists; `lines` is derived from it plus any active shuffle.
- */
 @Injectable({ providedIn: 'root' })
 export class PracticeStore {
   private readonly corpus = inject(CORPUS_DATA);
   private readonly settings = inject(SettingsStore);
 
-  /** A shuffled snapshot, or null for the corpus's natural order. */
   private readonly order = signal<readonly string[] | null>(null);
 
   readonly index = signal(0);
@@ -29,7 +24,6 @@ export class PracticeStore {
 
   readonly hasLines = computed(() => this.lines().length > 0);
 
-  /** Resets position and progress, mirroring the old full renderLines(). */
   selectDeck(id: string): void {
     this.settings.setDeckId(id);
     this.order.set(null);

@@ -31,14 +31,12 @@ class Host {
   closed = 0;
 }
 
-/** Dispatches on document, so the directive's (document:keydown) binding sees it. */
 function press(key: string, init: KeyboardEventInit = {}) {
   document.dispatchEvent(new KeyboardEvent('keydown', {
     key, bubbles: true, cancelable: true, ...init,
   }));
 }
 
-/** Dispatches from a specific element, to exercise the form-control guard. */
 function pressOn(el: Element, key: string) {
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 }
@@ -134,7 +132,7 @@ describe('Shortcuts', () => {
     press('ArrowLeft');
     press('Shift');
     press('ArrowLeft');
-    // The intervening key cleared the window, so this is a fresh first press.
+
     expect(practice.index()).toBe(2);
   });
 

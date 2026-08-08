@@ -46,9 +46,8 @@ describe('starsFor', () => {
   });
 
   it('maps similarity to the approved thresholds', () => {
-    // 0 words of 4 shared -> sim 0 -> 0 stars
     expect(starsFor('one two three four', 'alpha beta gamma delta')).toBe(0);
-    // 3 of 4 shared -> sim 2*3/8 = 0.75 -> 3 stars
+
     expect(starsFor('one two three four', 'one two three delta')).toBe(3);
   });
 });

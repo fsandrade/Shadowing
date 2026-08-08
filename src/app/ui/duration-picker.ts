@@ -16,22 +16,11 @@ const OPTIONS: readonly DurationOption[] = [
   { min: 0, label: '∞', title: 'Practice with no time limit' },
 ];
 
-/** Session-length buttons. Choosing one stops playback and resets the tally. */
 @Component({
   selector: 'div[appDurationPicker]',
   host: { class: 'durations', id: 'durations' },
+  templateUrl: './duration-picker.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    @for (opt of OPTIONS; track opt.min) {
-      <button
-        type="button"
-        [attr.data-min]="opt.min"
-        [title]="opt.title"
-        [attr.aria-pressed]="settings.durationMin() === opt.min"
-        (click)="pick(opt.min)"
-      >{{ opt.label }}</button>
-    }
-  `,
 })
 export class DurationPicker {
   protected readonly settings = inject(SettingsStore);

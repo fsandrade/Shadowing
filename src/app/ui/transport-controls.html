@@ -1,0 +1,13 @@
+<button type="button" id="play" [disabled]="!enabled()"
+  [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
+<button type="button" id="next" [disabled]="!enabled()"
+  title="Next (&rarr;)" (click)="playback.next()">&#9197;</button>
+<button type="button" id="shuffle" [disabled]="!enabled()"
+  title="Shuffle the sentences randomly"
+  (click)="playback.shuffle()">&#8644; shuffle</button>
+<button type="button" id="blur" [attr.aria-pressed]="settings.blur()"
+  [title]="BLUR_TITLE"
+  (click)="settings.setBlur(!settings.blur())">&#9682; blur</button>
+<button type="button" id="validate" [disabled]="!sttSupported"
+  [attr.aria-pressed]="settings.sttEnabled()" [title]="VALIDATE_TITLE"
+  (click)="toggleValidate()">&#10003; validate</button>

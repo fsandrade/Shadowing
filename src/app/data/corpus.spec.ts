@@ -49,9 +49,6 @@ it('has 2242 lines in total', () => {
 });
 
 describe('markup safety', () => {
-  // This whitelist is the invariant that makes rendering the corpus as markup
-  // safe. Angular's [innerHTML] additionally routes through DomSanitizer, but
-  // the corpus itself must stay clean.
   it('contains no tag other than <b> and </b>', () => {
     for (const deck of CORPUS.decks) {
       for (const line of deck.lines) {

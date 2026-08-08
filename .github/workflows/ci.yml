@@ -64,8 +64,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    # A relative base href serves correctly from both / locally and /Shadowing/
-    # on GitHub Pages. The app has no routing, so there is no deep-link concern.
     - name: Build
       run: npx ng build --base-href ./
 

@@ -3,11 +3,6 @@ import { PlaybackService } from './playback/playback-service';
 import { PracticeStore } from './state/practice-store';
 import { SettingsStore } from './state/settings-store';
 
-/**
- * Publishes `window.__shadowing.state` in the shape the Playwright suite reads,
- * so the specs need no rewrite. Getters, not a snapshot, so reads are always
- * current. This is a test seam, kept deliberately minimal.
- */
 @Injectable({ providedIn: 'root' })
 export class DebugBridge {
   private readonly practice = inject(PracticeStore);

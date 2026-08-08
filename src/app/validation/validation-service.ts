@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { starsFor } from '../core/scoring';
 import { MicrophoneService } from '../platform/microphone';
 import {
@@ -8,14 +8,16 @@ import { BannerStore } from '../state/banner-store';
 import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 
-/** Recognition error codes that mean the user refused the microphone. */
+export type LineStatus = 'listening' | 'scored' | 'failed';
+
+export interface LineResult {
+  readonly transcript: string;
+  readonly stars: number | null;
+  readonly status: LineStatus;
+}
+
 const DENIAL_CODES = new Set(['not-allowed', 'service-not-allowed']);
 
-/**
- * Drives one recognition session per gap and exposes its result for the inline
- * box. `begin` returns a promise that PlaybackService races against the gap
- * timer, so a quick repeat moves on without waiting out the full pause.
- */
 @Injectable({ providedIn: 'root' })
 export class ValidationService {
   private readonly recognizer = inject(SpeechRecognizer);
@@ -28,19 +30,20 @@ export class ValidationService {
   private deniedWarned = false;
   private enabling: Promise<boolean> | null = null;
 
-  readonly lineIndex = signal<number | null>(null);
-  readonly transcript = signal('');
-  readonly stars = signal<number | null>(null);
-  readonly active = computed(() => this.lineIndex() !== null);
+  readonly results = signal<ReadonlyMap<number, LineResult>>(new Map());
+  readonly activeLine = signal<number | null>(null);
 
-  /** Returns null when there is nothing to listen with. */
   begin(lineIndex: number, baseText: string): Promise<void> | null {
     if (this.mic.denied() || !this.recognizer.supported()) { return null; }
 
-    this.clear();
-    this.lineIndex.set(lineIndex);
-    this.transcript.set(MESSAGES.listening);
-    this.stars.set(null);
+    this.dispose();
+
+    this.activeLine.set(lineIndex);
+    this.put(lineIndex, {
+      transcript: MESSAGES.listening,
+      stars: null,
+      status: 'listening',
+    });
 
     const done = new Promise<void>((resolve) => { this.settle = resolve; });
 
@@ -48,27 +51,27 @@ export class ValidationService {
       lang: 'en-US',
       onInterim: (t) => {
         if (!this.settle || !t) { return; }
-        this.transcript.set(t);
+        this.put(lineIndex, { transcript: t, stars: null, status: 'listening' });
       },
       onResult: (finalText) => {
         if (!this.settle) { return; }
-        const rating = starsFor(baseText, finalText || '');
-        if (rating === null) {
-          this.transcript.set(MESSAGES.noSpeechDetected);
-        } else {
-          this.transcript.set(finalText || '');
-          this.stars.set(rating);
-        }
+        const stars = starsFor(baseText, finalText || '');
+        this.put(lineIndex, stars === null
+          ? { transcript: MESSAGES.noSpeechDetected, stars: null, status: 'failed' }
+          : { transcript: finalText || '', stars, status: 'scored' });
         this.finish();
       },
       onError: (code) => {
-        // `aborted` is our own cancellation; never surface it.
         if (!this.settle || code === 'aborted') { return; }
         if (code && DENIAL_CODES.has(code)) {
-          this.onDenied();
+          this.onDenied(lineIndex);
           return;
         }
-        this.transcript.set(MESSAGES.couldNotListen);
+        this.put(lineIndex, {
+          transcript: MESSAGES.couldNotListen,
+          stars: null,
+          status: 'failed',
+        });
         this.finish();
       },
     });
@@ -76,27 +79,27 @@ export class ValidationService {
     return done;
   }
 
-  /** Ends the gap's session; a box still saying "Listening…" means silence. */
   dispose(): void {
     this.session?.abort();
     this.session = null;
-    if (this.transcript() === MESSAGES.listening) {
-      this.transcript.set(MESSAGES.noSpeechDetected);
+
+    const active = this.activeLine();
+    if (active !== null && this.results().get(active)?.status === 'listening') {
+      this.put(active, {
+        transcript: MESSAGES.noSpeechDetected,
+        stars: null,
+        status: 'failed',
+      });
     }
+    this.activeLine.set(null);
     this.finish();
   }
 
-  clear(): void {
+  reset(): void {
     this.dispose();
-    this.lineIndex.set(null);
-    this.transcript.set('');
-    this.stars.set(null);
+    this.results.set(new Map());
   }
 
-  /**
-   * Asks for the microphone up front, so the first line does not lose its gap
-   * to a permission prompt. Concurrent calls share one prompt.
-   */
   enable(): Promise<boolean> {
     if (this.enabling) { return this.enabling; }
     this.enabling = this.mic.ensure().then(
@@ -115,12 +118,22 @@ export class ValidationService {
 
   disable(): void {
     this.settings.setSttEnabled(false);
-    this.clear();
+    this.reset();
   }
 
-  private onDenied(): void {
+  private put(lineIndex: number, result: LineResult): void {
+    const next = new Map(this.results());
+    next.set(lineIndex, result);
+    this.results.set(next);
+  }
+
+  private onDenied(lineIndex: number): void {
     this.mic.markDenied();
-    this.transcript.set(MESSAGES.micDeniedInline);
+    this.put(lineIndex, {
+      transcript: MESSAGES.micDeniedInline,
+      stars: null,
+      status: 'failed',
+    });
     if (!this.deniedWarned) {
       this.deniedWarned = true;
       this.banner.show(MESSAGES.micDenied, 'stt-denied');

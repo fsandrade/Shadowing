@@ -10,11 +10,10 @@ export interface RecognitionOptions {
 export interface RecognitionSession {
   start(): void;
   stop(): void;
-  /** Ends the session and suppresses every remaining callback. */
+
   abort(): void;
 }
 
-/** Minimal shape of the Web Speech recognition object we drive. */
 interface RecognitionLike {
   lang: string;
   continuous: boolean;
@@ -66,7 +65,6 @@ export class SpeechRecognizer {
     return this.ctor !== null;
   }
 
-  /** One-shot recognition with interim results. Throws if unsupported. */
   recognize(opts: RecognitionOptions): RecognitionSession {
     if (!this.ctor) {
       throw new Error('SpeechRecognition is not available in this browser.');
@@ -111,12 +109,12 @@ export class SpeechRecognizer {
         }
       },
       stop: () => {
-        try { rec.stop(); } catch { /* already stopped */ }
+        try { rec.stop(); } catch {  }
       },
       abort: () => {
         if (ended) { return; }
         ended = true;
-        try { rec.abort(); } catch { /* never started */ }
+        try { rec.abort(); } catch {  }
       },
     };
   }

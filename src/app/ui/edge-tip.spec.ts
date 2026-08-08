@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { SafeStorage } from '../platform/storage';
 import { EDGE_TIP_KEY, EdgeTip, IS_EDGE, POINTER_IS_FINE } from './edge-tip';
 
-/** Rendered through real markup so the host stays a <div class="snackbar">. */
 @Component({
   imports: [EdgeTip],
   template: `<div appEdgeTip></div>`,
@@ -56,7 +55,6 @@ describe('EdgeTip visibility', () => {
   });
 
   it('honours a bare 1 written by the vanilla app', () => {
-    // SafeStorage JSON-parses, so the vanilla app's bare `1` comes back as 1.
     expect(render({ stored: 1 }).snackbar.classList.contains('show')).toBe(false);
   });
 });

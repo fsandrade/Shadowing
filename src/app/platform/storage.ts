@@ -1,9 +1,5 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 
-/**
- * `localStorage` is absent in some embeddings and throws on access in others
- * (Safari private mode), so it is resolved lazily and may be null.
- */
 export const STORAGE = new InjectionToken<Storage | null>('STORAGE', {
   providedIn: 'root',
   factory: () => {
@@ -15,7 +11,6 @@ export const STORAGE = new InjectionToken<Storage | null>('STORAGE', {
   },
 });
 
-/** JSON-in, JSON-out storage that never throws. */
 @Injectable({ providedIn: 'root' })
 export class SafeStorage {
   private readonly store = inject(STORAGE);
@@ -33,7 +28,6 @@ export class SafeStorage {
     try {
       this.store?.setItem(key, JSON.stringify(value));
     } catch {
-      /* private mode, quota, or no storage: settings are a nice-to-have */
     }
   }
 }

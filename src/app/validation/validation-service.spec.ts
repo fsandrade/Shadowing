@@ -10,24 +10,25 @@ import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from './validation-service';
 
-/** Captures the callbacks so a test can drive recognition by hand. */
 function fakeRecognizer() {
+  const sessions: Array<{ started: boolean; aborted: boolean }> = [];
   let opts: RecognitionOptions = {};
-  const session = {
-    started: false,
-    aborted: false,
-    start() { this.started = true; },
-    stop() {},
-    abort() { this.aborted = true; },
-  };
   return {
-    session,
+    sessions,
     opts: () => opts,
     impl: {
       supported: () => true,
       recognize: (o: RecognitionOptions) => {
         opts = o;
-        return session as unknown as RecognitionSession;
+        const s = {
+          started: false,
+          aborted: false,
+          start() { this.started = true; },
+          stop() {},
+          abort() { this.aborted = true; },
+        };
+        sessions.push(s);
+        return s as unknown as RecognitionSession;
       },
     } as unknown as SpeechRecognizer,
   };
@@ -52,80 +53,131 @@ function setup(options: { denied?: boolean } = {}) {
       { provide: MicrophoneService, useValue: mic as unknown as MicrophoneService },
     ],
   });
+  const validation = TestBed.inject(ValidationService);
   return {
     rec,
     mic,
-    validation: TestBed.inject(ValidationService),
+    validation,
     banner: TestBed.inject(BannerStore),
     settings: TestBed.inject(SettingsStore),
+    resultAt: (i: number) => validation.results().get(i),
   };
 }
 
 describe('ValidationService session', () => {
-  it('opens a listening box for the given line', () => {
-    const { validation, rec } = setup();
+  it('opens a listening result for the given line', () => {
+    const { validation, rec, resultAt } = setup();
     validation.begin(2, 'hit the road');
 
-    expect(validation.active()).toBe(true);
-    expect(validation.lineIndex()).toBe(2);
-    expect(validation.transcript()).toBe(MESSAGES.listening);
-    expect(validation.stars()).toBeNull();
-    expect(rec.session.started).toBe(true);
+    expect(validation.activeLine()).toBe(2);
+    expect(resultAt(2)).toEqual({
+      transcript: MESSAGES.listening, stars: null, status: 'listening',
+    });
+    expect(rec.sessions[0].started).toBe(true);
     expect(rec.opts().lang).toBe('en-US');
   });
 
   it('shows interim text as it arrives', () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     validation.begin(0, 'hit the road');
     rec.opts().onInterim?.('hit the');
-    expect(validation.transcript()).toBe('hit the');
+    expect(resultAt(0)?.transcript).toBe('hit the');
   });
 
   it('rates a good repeat and resolves the wait', async () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     let settled = false;
     void validation.begin(0, 'hit the road')!.then(() => { settled = true; });
 
     rec.opts().onResult?.('hit the road');
     await Promise.resolve();
 
-    expect(validation.transcript()).toBe('hit the road');
-    expect(validation.stars()).toBe(5);
+    expect(resultAt(0)).toEqual({ transcript: 'hit the road', stars: 5, status: 'scored' });
     expect(settled).toBe(true);
   });
 
   it('reports silence without stars', async () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     void validation.begin(0, 'hit the road');
     rec.opts().onResult?.('');
     await Promise.resolve();
 
-    expect(validation.transcript()).toBe(MESSAGES.noSpeechDetected);
-    expect(validation.stars()).toBeNull();
+    expect(resultAt(0)).toEqual({
+      transcript: MESSAGES.noSpeechDetected, stars: null, status: 'failed',
+    });
   });
 
   it('returns null instead of a session once the mic is denied', () => {
     const { validation } = setup({ denied: true });
     expect(validation.begin(0, 'hit the road')).toBeNull();
-    expect(validation.active()).toBe(false);
+    expect(validation.results().size).toBe(0);
+  });
+});
+
+describe('ValidationService history', () => {
+  it('keeps a result for every line practised', async () => {
+    const { validation, rec, resultAt } = setup();
+
+    void validation.begin(0, 'one two three');
+    rec.opts().onResult?.('one two three');
+    await Promise.resolve();
+
+    void validation.begin(1, 'four five six');
+    rec.opts().onResult?.('four five');
+    await Promise.resolve();
+
+    expect(validation.results().size).toBe(2);
+    expect(resultAt(0)).toEqual({ transcript: 'one two three', stars: 5, status: 'scored' });
+    expect(resultAt(1)?.transcript).toBe('four five');
+    expect(resultAt(1)?.stars).toBeLessThan(5);
+  });
+
+  it('only the newest line is active', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, 'one two three');
+    rec.opts().onResult?.('one two three');
+    await Promise.resolve();
+
+    validation.begin(1, 'four five six');
+    expect(validation.activeLine()).toBe(1);
+  });
+
+  it('finalizes a silent previous line when the next one starts', () => {
+    const { validation, resultAt } = setup();
+    validation.begin(0, 'one two three');
+    validation.begin(1, 'four five six');
+
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.noSpeechDetected);
+    expect(resultAt(1)?.transcript).toBe(MESSAGES.listening);
+  });
+
+  it('reset drops the whole history', async () => {
+    const { validation, rec } = setup();
+    void validation.begin(0, 'one two three');
+    rec.opts().onResult?.('one two three');
+    await Promise.resolve();
+
+    validation.reset();
+    expect(validation.results().size).toBe(0);
+    expect(validation.activeLine()).toBeNull();
   });
 });
 
 describe('ValidationService error handling', () => {
   it('ignores an aborted error, since that is our own cancellation', () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     void validation.begin(0, 'hit the road');
     rec.opts().onError?.('aborted');
-    expect(validation.transcript()).toBe(MESSAGES.listening);
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.listening);
   });
 
   it('latches denial and warns once on not-allowed', () => {
-    const { validation, rec, mic, banner } = setup();
+    const { validation, rec, mic, banner, resultAt } = setup();
     validation.begin(0, 'hit the road');
     rec.opts().onError?.('not-allowed');
 
     expect(mic.markDenied).toHaveBeenCalledOnce();
-    expect(validation.transcript()).toBe(MESSAGES.micDeniedInline);
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.micDeniedInline);
     expect(banner.html()).toBe(MESSAGES.micDenied);
   });
 
@@ -137,45 +189,37 @@ describe('ValidationService error handling', () => {
   });
 
   it('skips validation on any other error and resolves the wait', async () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     let settled = false;
     void validation.begin(0, 'hit the road')!.then(() => { settled = true; });
 
     rec.opts().onError?.('network');
     await Promise.resolve();
 
-    expect(validation.transcript()).toBe(MESSAGES.couldNotListen);
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.couldNotListen);
     expect(settled).toBe(true);
   });
 });
 
 describe('ValidationService disposal', () => {
-  it('dispose aborts a live session and reports silence', () => {
-    const { validation, rec } = setup();
+  it('dispose aborts a live session and reports silence, keeping the box', () => {
+    const { validation, rec, resultAt } = setup();
     validation.begin(0, 'hit the road');
     validation.dispose();
 
-    expect(rec.session.aborted).toBe(true);
-    expect(validation.transcript()).toBe(MESSAGES.noSpeechDetected);
+    expect(rec.sessions[0].aborted).toBe(true);
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.noSpeechDetected);
+    expect(validation.activeLine()).toBeNull();
   });
 
   it('dispose leaves a completed result alone', async () => {
-    const { validation, rec } = setup();
+    const { validation, rec, resultAt } = setup();
     void validation.begin(0, 'hit the road');
     rec.opts().onResult?.('hit the road');
     await Promise.resolve();
     validation.dispose();
 
-    expect(validation.transcript()).toBe('hit the road');
-    expect(validation.stars()).toBe(5);
-  });
-
-  it('clear removes the box entirely', () => {
-    const { validation } = setup();
-    validation.begin(0, 'hit the road');
-    validation.clear();
-    expect(validation.active()).toBe(false);
-    expect(validation.lineIndex()).toBeNull();
+    expect(resultAt(0)).toEqual({ transcript: 'hit the road', stars: 5, status: 'scored' });
   });
 });
 
@@ -207,12 +251,13 @@ describe('ValidationService enable flow', () => {
     expect(mic.ensure).toHaveBeenCalledOnce();
   });
 
-  it('disable clears any open box and turns the setting off', () => {
+  it('disable clears the history and turns the setting off', () => {
     const { validation, settings } = setup();
     settings.setSttEnabled(true);
     validation.begin(0, 'hit the road');
     validation.disable();
-    expect(validation.active()).toBe(false);
+
+    expect(validation.results().size).toBe(0);
     expect(settings.sttEnabled()).toBe(false);
   });
 });

@@ -4,7 +4,6 @@ import { SafeStorage } from '../platform/storage';
 
 export const SETTINGS_KEY = 'shadowing.settings';
 
-/** The on-disk shape. `stt` (not `sttEnabled`) is what existing users have. */
 interface StoredSettings {
   deckId?: unknown;
   rate?: unknown;
@@ -15,10 +14,6 @@ interface StoredSettings {
   stt?: unknown;
 }
 
-/**
- * Owns every value that survives a reload. Other stores read from here rather
- * than keeping their own copy, so no setting is writable from two places.
- */
 @Injectable({ providedIn: 'root' })
 export class SettingsStore {
   private readonly storage = inject(SafeStorage);
@@ -30,7 +25,7 @@ export class SettingsStore {
       ? this.saved.deckId
       : ALL_DECK_ID,
   );
-  // `Number(x) || fallback` is the vanilla coercion: it also turns 0 into 1.
+
   readonly rate = signal(Number(this.saved.rate) || 1);
   readonly slack = signal(Number(this.saved.slack) || 1);
   readonly voiceName = signal(
@@ -41,7 +36,6 @@ export class SettingsStore {
   readonly sttEnabled = signal(this.saved.stt === true);
 
   constructor() {
-    // One effect replaces the eight scattered saveSettings() calls.
     effect(() => {
       this.storage.write(SETTINGS_KEY, {
         deckId: this.deckId(),

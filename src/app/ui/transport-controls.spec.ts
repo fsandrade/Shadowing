@@ -17,7 +17,6 @@ const DATA: Corpus = {
   decks: [{ id: 'a', name: 'A', lines: ['one', 'two'] }],
 };
 
-/** Rendered through real markup so the host stays a <div class="transport">. */
 @Component({
   imports: [TransportControls],
   template: `<div appTransportControls></div>`,

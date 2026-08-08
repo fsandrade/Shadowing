@@ -87,7 +87,7 @@ describe('Speaker', () => {
   it('resolves via the safety timeout when the voice never reports end', async () => {
     const { speaker } = setup();
     let settled = false;
-    // 12 chars at rate 1 -> safetyTimeoutMs === 6000
+
     void speaker.speak('123456789012', { rate: 1, voice: null })
       .then(() => { settled = true; });
 

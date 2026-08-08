@@ -3,11 +3,6 @@ import { hasEnglishVoice, isEnglish, pickVoice } from '../core/voice';
 import { Speaker } from '../platform/speaker';
 import { SettingsStore } from './settings-store';
 
-/**
- * The platform's voice list. Chrome reports an empty array until the list is
- * ready and then fires `voiceschanged`, so an empty refresh is ignored rather
- * than treated as "no voices installed".
- */
 @Injectable({ providedIn: 'root' })
 export class VoiceStore {
   private readonly speaker = inject(Speaker);
@@ -15,7 +10,6 @@ export class VoiceStore {
 
   readonly voices = signal<readonly SpeechSynthesisVoice[]>([]);
 
-  /** What the picker shows: English voices only. */
   readonly englishVoices = computed(() => this.voices().filter(isEnglish));
 
   readonly selected = computed(() =>

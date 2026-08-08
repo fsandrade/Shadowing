@@ -1,0 +1,10 @@
+<svg:circle
+  class="ring-track"
+  cx="10" cy="10" [attr.r]="RADIUS" fill="none" stroke-width="3"
+/>
+<svg:circle
+  class="ring-fill"
+  cx="10" cy="10" [attr.r]="RADIUS" fill="none" stroke-width="3"
+  [attr.stroke-dasharray]="dashArray"
+  [attr.stroke-dashoffset]="dashOffset()"
+/>

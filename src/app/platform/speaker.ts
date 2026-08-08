@@ -11,7 +11,6 @@ export interface SpeakOptions {
   readonly voice: SpeechSynthesisVoice | null;
 }
 
-/** Speaks one sentence at a time and always settles, even for a mute voice. */
 @Injectable({ providedIn: 'root' })
 export class Speaker {
   private readonly synth = inject(SPEECH_SYNTHESIS);
@@ -26,11 +25,6 @@ export class Speaker {
     this.synth.addEventListener('voiceschanged', fn);
   }
 
-  /**
-   * Resolves on `end`, on `error`, or after `safetyTimeoutMs` — whichever comes
-   * first, exactly once. Some voices never fire `end`; without the timeout the
-   * playback loop would stall forever.
-   */
   speak(text: string, opts: SpeakOptions): Promise<void> {
     const make = this.makeUtterance;
     if (!make) { return Promise.resolve(); }
@@ -62,7 +56,6 @@ export class Speaker {
     this.synth.cancel();
   }
 
-  /** Chrome silently pauses long-lived synthesis; this pokes it awake. */
   keepAlive(): void {
     if (this.synth.speaking && !this.synth.paused) {
       this.synth.resume();

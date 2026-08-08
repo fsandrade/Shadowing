@@ -7,11 +7,6 @@ export type BannerSource =
   | 'stt-denied'
   | 'summary';
 
-/**
- * One banner slot, shared by several concerns. Each raises it with its own
- * source tag and may only dismiss its own message, so (for example) voices
- * arriving cannot silently clear a session-summary banner.
- */
 @Injectable({ providedIn: 'root' })
 export class BannerStore {
   private readonly source = signal<BannerSource | null>(null);
@@ -24,7 +19,6 @@ export class BannerStore {
     this.html.set(html);
   }
 
-  /** No-op unless `source` currently owns the banner. */
   clear(source: BannerSource): void {
     if (this.source() !== source) { return; }
     this.clearAll();

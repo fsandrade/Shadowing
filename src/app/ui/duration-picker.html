@@ -1,0 +1,9 @@
+@for (opt of OPTIONS; track opt.min) {
+  <button
+    type="button"
+    [attr.data-min]="opt.min"
+    [title]="opt.title"
+    [attr.aria-pressed]="settings.durationMin() === opt.min"
+    (click)="pick(opt.min)"
+  >{{ opt.label }}</button>
+}

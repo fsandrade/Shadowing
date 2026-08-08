@@ -14,22 +14,8 @@ const VALIDATE_TITLE = 'Speech validator: transcribe your repeat and rate it 0�
 @Component({
   selector: 'div[appTransportControls]',
   host: { class: 'transport' },
+  templateUrl: './transport-controls.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <button type="button" id="play" [disabled]="!enabled()"
-      [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
-    <button type="button" id="next" [disabled]="!enabled()"
-      title="Next (&rarr;)" (click)="playback.next()">&#9197;</button>
-    <button type="button" id="shuffle" [disabled]="!enabled()"
-      title="Shuffle the sentences randomly"
-      (click)="playback.shuffle()">&#8644; shuffle</button>
-    <button type="button" id="blur" [attr.aria-pressed]="settings.blur()"
-      [title]="BLUR_TITLE"
-      (click)="settings.setBlur(!settings.blur())">&#9682; blur</button>
-    <button type="button" id="validate" [disabled]="!sttSupported"
-      [attr.aria-pressed]="settings.sttEnabled()" [title]="VALIDATE_TITLE"
-      (click)="toggleValidate()">&#10003; validate</button>
-  `,
 })
 export class TransportControls {
   protected readonly playback = inject(PlaybackService);
@@ -37,6 +23,7 @@ export class TransportControls {
   protected readonly settings = inject(SettingsStore);
   private readonly voices = inject(VoiceStore);
   private readonly speaker = inject(Speaker);
+  private readonly validation = inject(ValidationService);
 
   protected readonly PLAY_TITLE = PLAY_TITLE;
   protected readonly BLUR_TITLE = BLUR_TITLE;
@@ -44,10 +31,6 @@ export class TransportControls {
 
   protected readonly sttSupported = inject(SpeechRecognizer).supported();
 
-  /**
-   * Transport is dead without audio: no synthesis support, no English voice, or
-   * nothing to practise. Blur and validate stay live, since they are text-only.
-   */
   protected readonly enabled = computed(
     () => this.practice.hasLines() && this.speaker.supported && this.voices.hasEnglish(),
   );
@@ -56,12 +39,6 @@ export class TransportControls {
     () => (this.practice.playing() ? '⏸ Pause' : '▶ Play'),
   );
 
-  private readonly validation = inject(ValidationService);
-
-  /**
-   * Turning the validator on asks for the microphone first, so the first line
-   * does not lose its gap to a permission prompt. A refusal leaves it off.
-   */
   protected toggleValidate(): void {
     if (this.settings.sttEnabled()) {
       this.validation.disable();

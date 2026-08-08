@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { HelpModal } from './help-modal';
 
-/** Rendered through real markup so the host stays a <div class="modal">. */
 @Component({
   imports: [HelpModal],
   template: `
@@ -82,7 +81,7 @@ describe('HelpModal focus', () => {
   it('focuses the close button on open and restores focus on dismiss', () => {
     const { fixture, host } = render(false);
     const root = fixture.nativeElement as HTMLElement;
-    // jsdom only tracks focus for elements attached to the document.
+
     document.body.appendChild(root);
     const opener = root.querySelector<HTMLButtonElement>('#opener')!;
     opener.focus();

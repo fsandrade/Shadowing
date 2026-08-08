@@ -14,11 +14,6 @@ const DATA: Corpus = {
   ],
 };
 
-/**
- * TopicList uses an attribute selector, so it must be rendered through real
- * markup: TestBed.createComponent would synthesise a <div> host and hide the
- * very thing the stylesheet depends on.
- */
 @Component({
   imports: [TopicList],
   template: `<aside appTopicList></aside>`,

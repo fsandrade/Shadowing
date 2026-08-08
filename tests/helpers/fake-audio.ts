@@ -10,14 +10,6 @@ export interface FakeAudioOptions {
   speakMs?: number;
 }
 
-/**
- * Installs a deterministic speech-synthesis pretend for the app.
- *
- * Headless Chromium exposes `window.speechSynthesis` but reports no voices,
- * so the app shows its "no English voice" banner and disables the controls.
- * Running before navigation, this gives the app an en-US voice and makes every
- * utterance resolve after `speakMs`, so playback loops run head-over-typing.
- */
 export function installFakeAudio(page: Page, opts: FakeAudioOptions = {}) {
   const voices = opts.voices ?? [{ name: 'Fake Test Voice', lang: 'en-US' }];
   const speakMs = opts.speakMs ?? 500;

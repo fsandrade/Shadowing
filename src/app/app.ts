@@ -10,27 +10,11 @@ import { Practice } from './ui/practice';
 import { Shortcuts } from './ui/shortcuts';
 import { TopicList } from './ui/topic-list';
 
-/**
- * The shell. Every child uses an attribute selector so the emitted tree matches
- * the vanilla app's: body's two grid rows are <header> and .app, and .app's two
- * columns are aside.sidebar and main.
- */
 @Component({
   selector: 'app-root',
   imports: [HeaderBar, TopicList, Practice, Shortcuts, EdgeTip, HelpModal],
+  templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <header appHeaderBar (help)="helpOpen.set(true)"></header>
-    <div class="app" appShortcuts
-      [enabled]="enabled()"
-      [helpOpen]="helpOpen()"
-      (closeHelp)="helpOpen.set(false)">
-      <aside appTopicList></aside>
-      <main appPractice></main>
-    </div>
-    <div appEdgeTip></div>
-    <div appHelpModal [open]="helpOpen()" (close)="helpOpen.set(false)"></div>
-  `,
 })
 export class App {
   private readonly practice = inject(PracticeStore);
@@ -39,7 +23,6 @@ export class App {
 
   protected readonly helpOpen = signal(false);
 
-  /** Mirrors TransportControls.enabled — the shortcuts follow the buttons. */
   protected readonly enabled = computed(
     () => this.practice.hasLines() && this.speaker.supported && this.voices.hasEnglish(),
   );

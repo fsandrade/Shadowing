@@ -24,7 +24,6 @@ const DATA: Corpus = {
   }],
 };
 
-/** Speaker fake whose utterances take a controllable amount of fake time. */
 function fakeSpeaker(speakMs: number) {
   let ms = speakMs;
   const spoken: string[] = [];
@@ -79,9 +78,9 @@ describe('PlaybackService transport', () => {
   it('advances after speaking plus the gap', async () => {
     const { playback, practice } = setup(1000);
     playback.play();
-    await vi.advanceTimersByTimeAsync(1000); // speech
+    await vi.advanceTimersByTimeAsync(1000);
     expect(practice.index()).toBe(0);
-    await vi.advanceTimersByTimeAsync(1000); // gap at slack 1
+    await vi.advanceTimersByTimeAsync(1000);
     expect(practice.index()).toBe(1);
   });
 
@@ -179,7 +178,7 @@ describe('PlaybackService cancellation', () => {
   it('a deck switch mid-gap does not advance the new deck', async () => {
     const { playback, practice } = setup(1000);
     playback.play();
-    await vi.advanceTimersByTimeAsync(1200); // into the gap
+    await vi.advanceTimersByTimeAsync(1200);
     playback.stop();
     practice.selectDeck('a');
 
@@ -194,7 +193,6 @@ describe('PlaybackService cancellation', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(4000);
 
-    // Two concurrent loops would roughly double this count.
     expect(speaker.spoken.length).toBeLessThanOrEqual(4);
   });
 });
@@ -240,12 +238,12 @@ describe('PlaybackService gap timing', () => {
     expect(playback.inGap()).toBe(false);
 
     playback.play();
-    await vi.advanceTimersByTimeAsync(1000); // speech done, gap starts
+    await vi.advanceTimersByTimeAsync(1000);
     expect(playback.inGap()).toBe(true);
-    // Present from the first frame, before any progress has accrued.
+
     expect(playback.progress()).toBe(0);
 
-    await vi.advanceTimersByTimeAsync(1000); // gap done
+    await vi.advanceTimersByTimeAsync(1000);
     expect(playback.inGap()).toBe(false);
   });
 
@@ -313,7 +311,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(practice.playing()).toBe(false);
-    // How many lines got through varies with the loop; the format does not.
+
     expect(banner.html()).toMatch(/^Session complete: 1 min · \d+ sentences? repeated\.$/);
     expect(timer.spokenCount()).toBe(0);
   });
@@ -326,21 +324,15 @@ describe('PlaybackService session expiry', () => {
     expect(banner.visible()).toBe(false);
   });
 
-  // The vanilla loop checks expiry twice per iteration — once after the speak
-  // and again after the gap. These two cases are what distinguish them: with
-  // only the post-gap check the first would run a needless gap, and with only
-  // the post-speak check the second would advance a line past the deadline.
-
   it('catches expiry at the post-speak checkpoint, before running a gap', async () => {
     const { playback, practice, settings, timer, banner } = setup(1000);
     settings.setDurationMin(1);
     timer.reset(1);
-    timer.remainingMs.set(500); // runs out partway through the first utterance
+    timer.remainingMs.set(500);
 
     playback.play();
-    await vi.advanceTimersByTimeAsync(1000); // speech only
+    await vi.advanceTimersByTimeAsync(1000);
 
-    // Exactly one healthy utterance completed before the deadline.
     expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
     expect(playback.inGap()).toBe(false);
     expect(practice.playing()).toBe(false);
@@ -351,14 +343,14 @@ describe('PlaybackService session expiry', () => {
     const { playback, practice, settings, timer, banner } = setup(1000);
     settings.setDurationMin(1);
     timer.reset(1);
-    timer.remainingMs.set(1500); // survives the speak, runs out during the gap
+    timer.remainingMs.set(1500);
 
     playback.play();
-    await vi.advanceTimersByTimeAsync(1000); // speech done, still inside budget
+    await vi.advanceTimersByTimeAsync(1000);
     expect(banner.visible()).toBe(false);
     expect(playback.inGap()).toBe(true);
 
-    await vi.advanceTimersByTimeAsync(1000); // gap elapses, now over budget
+    await vi.advanceTimersByTimeAsync(1000);
     expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
     expect(practice.playing()).toBe(false);
     expect(practice.index()).toBe(0);
@@ -381,9 +373,49 @@ describe('PlaybackService validation hook', () => {
     expect(practice.index()).toBe(1);
   });
 
-  it('still ends the gap on time when validation never resolves', async () => {
+  it('keeps listening past the gap duration until speech ends', async () => {
+    const { playback, practice } = setup(1000);
+    let release!: () => void;
+    playback.setValidationHook(() => new Promise<void>((r) => { release = r; }));
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(practice.index()).toBe(0);
+    expect(playback.inGap()).toBe(true);
+
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(practice.index()).toBe(1);
+  });
+
+  it('holds the ring full while it waits past the gap duration', async () => {
+    const { playback } = setup(1000);
+    playback.setValidationHook(() => new Promise<void>(() => {}));
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(playback.progress()).toBe(1);
+  });
+
+  it('a transport control still interrupts an open listening session', async () => {
     const { playback, practice } = setup(1000);
     playback.setValidationHook(() => new Promise<void>(() => {}));
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(playback.inGap()).toBe(true);
+
+    playback.pause();
+    expect(playback.inGap()).toBe(false);
+    expect(practice.playing()).toBe(false);
+  });
+
+  it('falls back to the timed gap when the validator declines the line', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => null);
 
     playback.play();
     await vi.advanceTimersByTimeAsync(2000);
@@ -398,5 +430,85 @@ describe('PlaybackService validation hook', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(1000);
     expect(calls[0]).toEqual([0, 'first line is long enough to measure']);
+  });
+});
+
+describe('PlaybackService on-demand line', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('speaks a clicked line and listens for it when the validator is on', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    const calls: Array<[number, string]> = [];
+    let release!: () => void;
+    playback.setValidationHook((i, text) => {
+      calls.push([i, text]);
+      return new Promise<void>((r) => { release = r; });
+    });
+
+    playback.playLine(2);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(speaker.spoken).toEqual(['third line is long enough to measure']);
+    expect(calls).toEqual([[2, 'third line is long enough to measure']]);
+    expect(playback.inGap()).toBe(true);
+    expect(practice.playing()).toBe(false);
+
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(playback.inGap()).toBe(false);
+  });
+
+  it('does not advance to the next line afterwards', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+
+    playback.playLine(1);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(practice.index()).toBe(1);
+    expect(practice.playing()).toBe(false);
+  });
+
+  it('marks the clicked line spoken once it has been listened to', async () => {
+    const { playback, practice } = setup(1000);
+    playback.setValidationHook(() => Promise.resolve());
+
+    playback.playLine(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(practice.spoken().has(1)).toBe(true);
+  });
+
+  it('just speaks the line when the validator is off', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    playback.setValidationHook(() => null);
+
+    playback.playLine(2);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(speaker.spoken).toEqual(['third line is long enough to measure']);
+    expect(playback.inGap()).toBe(false);
+    expect(practice.spoken().has(2)).toBe(false);
+  });
+
+  it('clicking another line abandons the open session', async () => {
+    const { playback } = setup(1000);
+    playback.setValidationHook(() => new Promise<void>(() => {}));
+
+    playback.playLine(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(playback.inGap()).toBe(true);
+
+    playback.playLine(1);
+    expect(playback.inGap()).toBe(false);
+  });
+
+  it('resumes the loop instead when playback is running', async () => {
+    const { playback, practice } = setup(1000);
+    playback.play();
+    await vi.advanceTimersByTimeAsync(100);
+
+    playback.playLine(2);
+    expect(practice.index()).toBe(2);
+    expect(practice.playing()).toBe(true);
   });
 });

@@ -1,11 +1,3 @@
-/**
- * Every user-facing banner and validator string.
- *
- * Rendered through `[innerHTML]`, so simple inline markup is allowed and is
- * sanitized by Angular. Literal characters (— · …) rather than HTML entities:
- * the file is UTF-8 and the entities the pre-migration app used were only
- * needed because its corpus generator enforced pure ASCII.
- */
 export const MESSAGES = {
   noEnglishVoice:
     'No English voice is installed in this browser. ' +

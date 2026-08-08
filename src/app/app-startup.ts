@@ -7,21 +7,21 @@ import { Speaker } from './platform/speaker';
 import { BannerStore } from './state/banner-store';
 import { CORPUS_DATA } from './state/corpus-token';
 import { MESSAGES } from './state/messages';
+import { PracticeStore } from './state/practice-store';
 import { SessionTimerStore } from './state/session-timer-store';
 import { SettingsStore } from './state/settings-store';
 import { VoiceStore } from './state/voice-store';
 import { ValidationService } from './validation/validation-service';
 
-/** How often the clock text refreshes, matching the vanilla setInterval. */
 const CLOCK_TICK_MS = 250;
-/** Chrome silently pauses long-lived synthesis; poke it on this interval. */
+
 const KEEPALIVE_MS = 10_000;
 
-/** Reproduces the vanilla init() sequence, in order. */
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
   private readonly corpus = inject(CORPUS_DATA);
   private readonly settings = inject(SettingsStore);
+  private readonly practice = inject(PracticeStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
@@ -32,7 +32,6 @@ export class AppStartup {
   private readonly debug = inject(DebugBridge);
 
   run(): void {
-    // A remembered deck that no longer has lines falls back to All.
     if (!linesFor(this.corpus, this.settings.deckId()).length) {
       this.settings.setDeckId(ALL_DECK_ID);
     }
@@ -45,15 +44,23 @@ export class AppStartup {
     setInterval(() => this.speaker.keepAlive(), KEEPALIVE_MS);
 
     this.attachValidator();
+    this.dropResultsWhenOrderChanges();
     this.releaseMicOnUnload();
     this.debug.install();
   }
 
-  /**
-   * The gap races the promise this returns, so a quick repeat advances early.
-   * Disposal is the hook owner's job, not PlaybackService's — that keeps the
-   * playback loop unaware that validation exists.
-   */
+  private dropResultsWhenOrderChanges(): void {
+    let firstRun = true;
+    effect(() => {
+      this.practice.lines();
+      if (firstRun) {
+        firstRun = false;
+        return;
+      }
+      this.validation.reset();
+    });
+  }
+
   private attachValidator(): void {
     this.playback.setValidationHook((lineIndex, plainText) => {
       if (!this.settings.sttEnabled()) { return null; }
@@ -62,18 +69,12 @@ export class AppStartup {
     });
   }
 
-  /** Never hold the microphone open past the page's life. */
   private releaseMicOnUnload(): void {
     const release = () => this.mic.release();
     addEventListener('pagehide', release);
     addEventListener('beforeunload', release);
   }
 
-  /**
-   * Two distinct failures share the banner: the platform has no synthesis at
-   * all, or it has synthesis but no English voice. The second can resolve
-   * itself once `voiceschanged` fires, so it is cleared as well as raised.
-   */
   private watchAudioAvailability(): void {
     if (!this.speaker.supported) {
       this.banner.show(MESSAGES.speechUnsupported, 'unsupported');

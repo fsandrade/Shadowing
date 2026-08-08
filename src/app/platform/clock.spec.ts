@@ -72,6 +72,45 @@ describe('Clock', () => {
     expect(count).toBe(1);
   });
 
+  it('waitFor settles only when the promise resolves, with no timer', async () => {
+    let release!: () => void;
+    const until = new Promise<void>((r) => { release = r; });
+    const pending = clock.waitFor(until);
+    let settled = false;
+    void pending.done.then(() => { settled = true; });
+
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(settled).toBe(false);
+
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+  });
+
+  it('waitFor can be ended early by resolveNow', async () => {
+    const pending = clock.waitFor(new Promise<void>(() => {}));
+    let settled = false;
+    void pending.done.then(() => { settled = true; });
+
+    pending.resolveNow();
+    await Promise.resolve();
+    expect(settled).toBe(true);
+  });
+
+  it('waitFor settles exactly once', async () => {
+    let release!: () => void;
+    const until = new Promise<void>((r) => { release = r; });
+    const pending = clock.waitFor(until);
+    let count = 0;
+    void pending.done.then(() => { count++; });
+
+    pending.resolveNow();
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(count).toBe(1);
+  });
+
   it('now() and ticks() report advancing time', async () => {
     const t0 = clock.now();
     const p0 = clock.ticks();

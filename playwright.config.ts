@@ -2,11 +2,6 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4200;
 
-/**
- * The app is now an Angular bundle, so it needs a real server: ES modules
- * cannot load over file://. Tests cover the browser UI; unit tests run under
- * `ng test` (Vitest) and stay outside Playwright via `testMatch` below.
- */
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',

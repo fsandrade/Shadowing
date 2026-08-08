@@ -1,0 +1,13 @@
+<h2 class="topics-title">Topics</h2>
+<nav class="decks" id="decks" aria-label="Topics">
+  <div class="decks-list">
+    @for (opt of practice.deckOptions(); track opt.id) {
+      <button
+        type="button"
+        [attr.data-deck-id]="opt.id"
+        [attr.aria-current]="opt.id === settings.deckId()"
+        (click)="practice.selectDeck(opt.id)"
+      ><span>{{ opt.name }}</span><span class="count">{{ opt.count }}</span></button>
+    }
+  </div>
+</nav>
