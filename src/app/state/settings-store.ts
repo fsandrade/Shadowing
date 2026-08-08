@@ -13,6 +13,7 @@ interface StoredSettings {
   blur?: unknown;
   stt?: unknown;
   repeat?: unknown;
+  typing?: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,6 +37,7 @@ export class SettingsStore {
   readonly blur = signal(this.saved.blur === true);
   readonly sttEnabled = signal(this.saved.stt === true);
   readonly repeatUntilFive = signal(this.saved.repeat === true);
+  readonly typingMode = signal(this.saved.typing === true);
 
   constructor() {
     effect(() => {
@@ -48,6 +50,7 @@ export class SettingsStore {
         blur: this.blur(),
         stt: this.sttEnabled(),
         repeat: this.repeatUntilFive(),
+        typing: this.typingMode(),
       });
     });
   }
@@ -60,4 +63,5 @@ export class SettingsStore {
   setBlur(on: boolean): void { this.blur.set(on); }
   setSttEnabled(on: boolean): void { this.sttEnabled.set(on); }
   setRepeatUntilFive(on: boolean): void { this.repeatUntilFive.set(on); }
+  setTypingMode(on: boolean): void { this.typingMode.set(on); }
 }

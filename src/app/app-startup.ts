@@ -78,7 +78,8 @@ export class AppStartup {
 
     this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {
       if (!this.settings.sttEnabled() || !this.settings.repeatUntilFive()) { return false; }
-      if (this.mic.denied() || repeatsDone >= MAX_REPEATS) { return false; }
+      if (repeatsDone >= MAX_REPEATS) { return false; }
+      if (this.mic.denied() && !this.settings.typingMode()) { return false; }
       const result = this.validation.results().get(lineIndex);
       if (!result) { return false; }
       return result.stars === null || result.stars < MAX_STARS;

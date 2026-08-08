@@ -20,6 +20,9 @@ export const MESSAGES = {
     return `Session complete: ${minutes} min · ${sentences}${won}.`;
   },
   listening: 'Listening…',
+  typePrompt: 'Type the sentence, then press Enter',
+  nothingTyped: 'Nothing typed',
+  missedWords: (words: readonly string[]): string => `missed: ${words.join(', ')}`,
   noSpeechDetected: 'No speech detected',
   micDeniedInline: 'Microphone denied',
   couldNotListen: 'Could not listen — validation skipped',

@@ -8,6 +8,7 @@ import { SafeStorage } from '../platform/storage';
 import { CORPUS_DATA } from '../state/corpus-token';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
+import { ValidationService } from '../validation/validation-service';
 import { OptionsPanel } from './options-panel';
 
 const DATA: Corpus = {
@@ -56,6 +57,7 @@ function render(opts: { voices?: SpeechSynthesisVoice[] } = {}) {
     host: fixture.componentInstance,
     panel: root.querySelector('.options')!,
     settings: TestBed.inject(SettingsStore),
+    validation: TestBed.inject(ValidationService),
     playback: TestBed.inject(PlaybackService),
     btn: (id: string) => root.querySelector(`#${id}`) as HTMLButtonElement,
   };
@@ -84,7 +86,7 @@ describe('OptionsPanel contents', () => {
   it('holds the advanced controls that used to sit in the transport bar', () => {
     const { panel } = render();
     expect([...panel.querySelectorAll('.options-actions button')].map((b) => b.id))
-      .toEqual(['shuffle', 'blur', 'repeat']);
+      .toEqual(['shuffle', 'blur', 'repeat', 'typing']);
   });
 
   it('keeps the speed, gap and voice controls', () => {
@@ -159,5 +161,63 @@ describe('OptionsPanel repeat until 5', () => {
 
   it('explains that it depends on rate me', () => {
     expect(render().btn('repeat').title).toMatch(/rate me/i);
+  });
+});
+
+describe('OptionsPanel type it', () => {
+  it('is off by default', () => {
+    const { btn, settings } = render();
+    expect(settings.typingMode()).toBe(false);
+    expect(btn('typing').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('can be chosen before the validator is on, since it needs no microphone', () => {
+    const { fixture, btn, settings } = render();
+    expect(btn('typing').disabled).toBe(false);
+
+    btn('typing').click();
+    fixture.detectChanges();
+    expect(settings.typingMode()).toBe(true);
+  });
+
+  it('lets the validator start without a microphone once it is chosen', async () => {
+    const { fixture, btn, settings, validation } = render();
+    btn('typing').click();
+    fixture.detectChanges();
+
+    expect(await validation.enable()).toBe(true);
+    expect(settings.sttEnabled()).toBe(true);
+  });
+
+  it('toggles the setting', () => {
+    const { fixture, btn, settings } = render();
+    settings.setSttEnabled(true);
+    fixture.detectChanges();
+
+    btn('typing').click();
+    fixture.detectChanges();
+    expect(settings.typingMode()).toBe(true);
+    expect(btn('typing').getAttribute('aria-pressed')).toBe('true');
+
+    btn('typing').click();
+    fixture.detectChanges();
+    expect(settings.typingMode()).toBe(false);
+  });
+
+  it('drops any turn in progress when the mode changes', () => {
+    const { fixture, btn, settings, validation } = render();
+    settings.setSttEnabled(true);
+    fixture.detectChanges();
+    const dispose = vi.spyOn(validation, 'dispose');
+
+    btn('typing').click();
+    expect(dispose).toHaveBeenCalled();
+  });
+
+  it('explains where the score comes from and mentions blur', () => {
+    const title = render().btn('typing').title;
+    expect(title).toMatch(/rate me/i);
+    expect(title).toMatch(/no microphone/i);
+    expect(title).toMatch(/blur/i);
   });
 });

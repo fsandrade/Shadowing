@@ -4,12 +4,17 @@ import { Speaker } from '../platform/speaker';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
+import { ValidationService } from '../validation/validation-service';
 import { SettingsSliders } from './settings-sliders';
 
 const BLUR_TITLE = 'Blur the text to practice from memory (hover or playback reveals)';
 const REPEAT_TITLE =
   'Retry a sentence until you score 5 stars, up to five times. '
   + 'Needs rate me switched on.';
+const TYPING_TITLE =
+  'Type the sentence instead of saying it, and have your spelling scored. '
+  + 'Scoring still comes from rate me, but typing needs no microphone. '
+  + 'Turn on blur to practice it as dictation.';
 
 @Component({
   selector: 'div[appOptionsPanel]',
@@ -30,11 +35,18 @@ export class OptionsPanel {
   private readonly practice = inject(PracticeStore);
   private readonly voices = inject(VoiceStore);
   private readonly speaker = inject(Speaker);
+  private readonly validation = inject(ValidationService);
 
   protected readonly BLUR_TITLE = BLUR_TITLE;
   protected readonly REPEAT_TITLE = REPEAT_TITLE;
+  protected readonly TYPING_TITLE = TYPING_TITLE;
 
   protected readonly enabled = computed(
     () => this.practice.hasLines() && this.speaker.supported && this.voices.hasEnglish(),
   );
+
+  protected toggleTyping(): void {
+    this.settings.setTypingMode(!this.settings.typingMode());
+    this.validation.dispose();
+  }
 }

@@ -255,6 +255,18 @@ main { display: grid; grid-template-rows: auto auto auto 1fr; min-height: 0; }
 .validate-box .transcript { flex: 0 1 auto; min-width: 0; color: var(--text); font-style: italic; }
 .validate-box .stars { flex: 0 0 auto; color: var(--accent); font-size: 20px; letter-spacing: 2px; }
 
+.validate-box.typing .mic-dot { background: var(--accent); }
+.validate-box .typed-input {
+  flex: 1 1 auto; min-width: 0;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: #12161a; color: var(--text); font: inherit;
+}
+.validate-box .typed-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.validate-box .transcript .wrong {
+  color: var(--danger); text-decoration: underline wavy currentColor; text-underline-offset: 3px;
+}
+.validate-box .missed { color: var(--warn); font-style: normal; font-size: 13px; }
+
 /* banner ----------------------------------------------------------------- */
 .banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
 .banner.show { display: flex; align-items: flex-start; gap: 12px; }

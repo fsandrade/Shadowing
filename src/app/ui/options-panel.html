@@ -9,5 +9,9 @@
     [attr.aria-pressed]="settings.repeatUntilFive()"
     [title]="REPEAT_TITLE"
     (click)="settings.setRepeatUntilFive(!settings.repeatUntilFive())">&#8635; retry until 5&#9733;</button>
+  <button type="button" id="typing"
+    [attr.aria-pressed]="settings.typingMode()"
+    [title]="TYPING_TITLE"
+    (click)="toggleTyping()">&#9000; type it</button>
 </div>
 <div appSettingsSliders></div>

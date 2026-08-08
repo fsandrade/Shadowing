@@ -70,7 +70,7 @@ describe('SettingsStore persistence', () => {
     expect(key).toBe(SETTINGS_KEY);
     expect(payload).toEqual({
       deckId: 'travel', rate: 1.6, slack: 1, voiceName: '',
-      durationMin: 0, blur: false, stt: true, repeat: false,
+      durationMin: 0, blur: false, stt: true, repeat: false, typing: false,
     });
   });
 

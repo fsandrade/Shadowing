@@ -94,17 +94,25 @@ export function soundsComplete(base: string, transcript: string): boolean {
   return reachedEnd && matched / targetLength >= COMPLETE_COVERAGE;
 }
 
-export function starsFor(base: string, transcript: string): number | null {
-  const { targetLength, spokenLength, matched } = align(base, transcript);
-  if (!spokenLength) { return null; }
+export function starsFromCounts(
+  targetLength: number,
+  attemptLength: number,
+  matched: number,
+): number | null {
+  if (!attemptLength) { return null; }
   if (!targetLength) { return 0; }
 
-  if (matched === targetLength && matched === spokenLength) { return 5; }
+  if (matched === targetLength && matched === attemptLength) { return 5; }
 
-  const sim = (2 * matched) / (targetLength + spokenLength);
+  const sim = (2 * matched) / (targetLength + attemptLength);
   if (sim < 0.45) { return 0; }
   if (sim < 0.60) { return 1; }
   if (sim < 0.70) { return 2; }
   if (sim < 0.80) { return 3; }
   return 4;
+}
+
+export function starsFor(base: string, transcript: string): number | null {
+  const { targetLength, spokenLength, matched } = align(base, transcript);
+  return starsFromCounts(targetLength, spokenLength, matched);
 }
