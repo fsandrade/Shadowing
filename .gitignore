@@ -1,5 +1,6 @@
 scripts/
-docs/
+docs/*
+!docs/superpowers/
 
 # Playwright
 node_modules/
