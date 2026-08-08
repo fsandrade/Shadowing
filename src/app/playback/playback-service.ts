@@ -159,7 +159,7 @@ export class PlaybackService {
       await this.speak(index);
       if (!this.owns(gen)) { return; }
 
-      if (this.blameVoiceIfSilent(this.clock.ticks() - startedAt, text)) { return; }
+      if (this.blameVoiceIfSilent(this.clock.ticks() - startedAt, text, index)) { return; }
       if (this.finishIfExpired()) { return; }
 
       await this.gap.run(this.gapMsFor(startedAt), this.validate?.(index, text) ?? undefined);
@@ -177,11 +177,11 @@ export class PlaybackService {
     }
   }
 
-  private blameVoiceIfSilent(speechMs: number, text: string): boolean {
+  private blameVoiceIfSilent(speechMs: number, text: string, index: number): boolean {
     const silent = speechMs < DEAD_VOICE_MS && text.length > DEAD_VOICE_MIN_CHARS;
     if (!silent) {
       this.silentStreak = 0;
-      this.timer.countSpoken();
+      this.timer.countSpoken(index);
       return false;
     }
     if (++this.silentStreak < DEAD_VOICE_STREAK) { return false; }
@@ -194,8 +194,8 @@ export class PlaybackService {
     if (!this.timer.expired()) { return false; }
     const minutes = this.settings.durationMin();
     this.stop();
-    const spoken = this.timer.finish();
-    this.banner.show(MESSAGES.sessionSummary(minutes, spoken), 'summary');
+    const tally = this.timer.finish();
+    this.banner.show(MESSAGES.sessionSummary(minutes, tally.spoken, tally.stars), 'summary');
     return true;
   }
 

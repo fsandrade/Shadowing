@@ -12,9 +12,13 @@ export const MESSAGES = {
   micDenied:
     'Microphone access was denied — the validator is off for this session. ' +
     'Allow the microphone and reload to use it.',
-  sessionSummary: (minutes: number, spoken: number): string =>
-    `Session complete: ${minutes} min · ` +
-    `${spoken}${spoken === 1 ? ' sentence repeated.' : ' sentences repeated.'}`,
+  sessionSummary: (minutes: number, spoken: number, stars: number | null): string => {
+    const sentences = `${spoken}${spoken === 1 ? ' sentence' : ' sentences'} repeated`;
+    const won = stars === null
+      ? ''
+      : ` · ${stars}${stars === 1 ? ' star' : ' stars'} won`;
+    return `Session complete: ${minutes} min · ${sentences}${won}.`;
+  },
   listening: 'Listening…',
   noSpeechDetected: 'No speech detected',
   micDeniedInline: 'Microphone denied',

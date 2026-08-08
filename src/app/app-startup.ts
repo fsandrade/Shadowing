@@ -69,7 +69,10 @@ export class AppStartup {
     this.playback.setValidationHook((lineIndex, plainText) => {
       if (!this.settings.sttEnabled()) { return null; }
       const done = this.validation.begin(lineIndex, plainText);
-      return done?.finally(() => this.validation.dispose()) ?? null;
+      return done?.finally(() => {
+        this.validation.dispose();
+        this.timer.recordStars(lineIndex, this.validation.results().get(lineIndex)?.stars ?? 0);
+      }) ?? null;
     });
 
     this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {

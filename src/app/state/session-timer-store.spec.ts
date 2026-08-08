@@ -123,11 +123,75 @@ describe('SessionTimerStore in countdown mode', () => {
     const { timer, settings } = setup();
     settings.setDurationMin(5);
     timer.reset(5);
-    timer.countSpoken();
-    timer.countSpoken();
+    timer.countSpoken(0);
+    timer.countSpoken(1);
 
-    expect(timer.finish()).toBe(2);
+    expect(timer.finish().spoken).toBe(2);
     expect(timer.spokenCount()).toBe(0);
     expect(timer.clockText()).toBe('05:00');
+  });
+});
+
+describe('SessionTimerStore tally', () => {
+  it('counts a sentence once however many times it is practised', () => {
+    const { timer } = setup();
+    timer.countSpoken(4);
+    timer.countSpoken(4);
+    timer.countSpoken(4);
+    expect(timer.spokenCount()).toBe(1);
+  });
+
+  it('reports no stars until the validator scores something', () => {
+    const { timer } = setup();
+    timer.countSpoken(0);
+    expect(timer.starsWon()).toBe(0);
+    expect(timer.finish().stars).toBeNull();
+  });
+
+  it('adds up the stars across sentences', () => {
+    const { timer } = setup();
+    timer.countSpoken(0);
+    timer.recordStars(0, 5);
+    timer.countSpoken(1);
+    timer.recordStars(1, 3);
+
+    expect(timer.starsWon()).toBe(8);
+    expect(timer.finish()).toEqual({ spoken: 2, stars: 8 });
+  });
+
+  it('keeps only the latest score for a repeated sentence', () => {
+    const { timer } = setup();
+    timer.countSpoken(0);
+    timer.recordStars(0, 2);
+    timer.recordStars(0, 3);
+    timer.recordStars(0, 5);
+
+    expect(timer.spokenCount()).toBe(1);
+    expect(timer.starsWon()).toBe(5);
+  });
+
+  it('reports zero stars when a scored attempt found nothing', () => {
+    const { timer } = setup();
+    timer.countSpoken(0);
+    timer.recordStars(0, 0);
+    expect(timer.finish().stars).toBe(0);
+  });
+
+  it('ignores stars for a sentence the session never counted', () => {
+    const { timer } = setup();
+    timer.recordStars(7, 5);
+    expect(timer.starsWon()).toBe(0);
+    expect(timer.finish().stars).toBeNull();
+  });
+
+  it('clears both tallies on reset', () => {
+    const { timer, settings } = setup();
+    settings.setDurationMin(5);
+    timer.countSpoken(0);
+    timer.recordStars(0, 4);
+
+    timer.reset(5);
+    expect(timer.spokenCount()).toBe(0);
+    expect(timer.starsWon()).toBe(0);
   });
 });

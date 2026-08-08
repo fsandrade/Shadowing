@@ -4,6 +4,11 @@ import { Clock } from '../platform/clock';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
 
+export interface SessionTally {
+  readonly spoken: number;
+  readonly stars: number | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SessionTimerStore {
   private readonly clock = inject(Clock);
@@ -11,11 +16,19 @@ export class SessionTimerStore {
   private readonly practice = inject(PracticeStore);
 
   private resumedAt = 0;
-
   private readonly ticker = signal(0);
+  private readonly practised = signal<ReadonlySet<number>>(new Set<number>());
+  private readonly starsByLine = signal<ReadonlyMap<number, number>>(new Map());
 
   readonly remainingMs = signal(0);
-  readonly spokenCount = signal(0);
+
+  readonly spokenCount = computed(() => this.practised().size);
+
+  readonly starsWon = computed(() => {
+    let total = 0;
+    for (const stars of this.starsByLine().values()) { total += stars; }
+    return total;
+  });
 
   readonly clockText = computed(() => {
     this.ticker();
@@ -51,18 +64,32 @@ export class SessionTimerStore {
   reset(minutes: number): void {
     this.resumedAt = this.clock.now();
     this.remainingMs.set(minutes * 60_000);
-    this.spokenCount.set(0);
+    this.practised.set(new Set<number>());
+    this.starsByLine.set(new Map());
     this.tick();
   }
 
-  countSpoken(): void {
-    this.spokenCount.update((n) => n + 1);
+  countSpoken(lineIndex: number): void {
+    if (this.practised().has(lineIndex)) { return; }
+    const next = new Set(this.practised());
+    next.add(lineIndex);
+    this.practised.set(next);
   }
 
-  finish(): number {
-    const spoken = this.spokenCount();
+  recordStars(lineIndex: number, stars: number): void {
+    if (!this.practised().has(lineIndex)) { return; }
+    const next = new Map(this.starsByLine());
+    next.set(lineIndex, stars);
+    this.starsByLine.set(next);
+  }
+
+  finish(): SessionTally {
+    const tally: SessionTally = {
+      spoken: this.spokenCount(),
+      stars: this.starsByLine().size ? this.starsWon() : null,
+    };
     this.reset(this.settings.durationMin());
-    return spoken;
+    return tally;
   }
 
   private elapsed(): number {

@@ -316,6 +316,40 @@ describe('PlaybackService session expiry', () => {
     expect(timer.spokenCount()).toBe(0);
   });
 
+  it('includes the stars won once the validator has scored', async () => {
+    const { playback, settings, timer, banner } = setup(1000);
+    settings.setDurationMin(1);
+    timer.reset(1);
+    playback.setValidationHook((lineIndex) => {
+      timer.recordStars(lineIndex, 4);
+      return Promise.resolve();
+    });
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(70_000);
+
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 3, 12));
+  });
+
+  it('counts a repeated sentence and its stars only once', async () => {
+    const { playback, settings, timer, banner } = setup(1000);
+    settings.setDurationMin(1);
+    timer.reset(1);
+    let scored = 0;
+    playback.setValidationHook((lineIndex) => {
+      scored++;
+      timer.recordStars(lineIndex, 5);
+      return Promise.resolve();
+    });
+    playback.setRepeatPolicy((_, repeatsDone) => repeatsDone < 2);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(70_000);
+
+    expect(scored).toBeGreaterThan(3);
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 3, 15));
+  });
+
   it('does not finish an unlimited session', async () => {
     const { playback, practice, banner } = setup(1000);
     playback.play();
@@ -333,7 +367,7 @@ describe('PlaybackService session expiry', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1, null));
     expect(playback.inGap()).toBe(false);
     expect(practice.playing()).toBe(false);
     expect(practice.index()).toBe(0);
@@ -351,7 +385,7 @@ describe('PlaybackService session expiry', () => {
     expect(playback.inGap()).toBe(true);
 
     await vi.advanceTimersByTimeAsync(1000);
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1));
+    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1, null));
     expect(practice.playing()).toBe(false);
     expect(practice.index()).toBe(0);
   });
