@@ -55,7 +55,6 @@ export class AppStartup {
     this.progress.flush();
 
     this.attachValidator();
-    this.trackSessions();
     this.dropResultsWhenOrderChanges();
     this.releaseMicOnUnload();
     this.debug.install();
@@ -124,22 +123,6 @@ export class AppStartup {
       transcript: result.transcript,
       stars: result.stars,
       status: result.status,
-    });
-  }
-
-  private trackSessions(): void {
-    let previousDuration = this.settings.durationMin();
-    let previousFinishes = this.timer.sessionsFinished();
-
-    effect(() => {
-      const minutes = this.settings.durationMin();
-      const finishes = this.timer.sessionsFinished();
-      untracked(() => {
-        if (minutes === previousDuration && finishes === previousFinishes) { return; }
-        previousDuration = minutes;
-        previousFinishes = finishes;
-        this.progress.endSession();
-      });
     });
   }
 

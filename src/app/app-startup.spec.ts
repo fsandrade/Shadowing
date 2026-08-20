@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStartup } from './app-startup';
-import { SENTENCE_IDS } from './data/progress-service';
+import { ProgressService, SENTENCE_IDS } from './data/progress-service';
 import { INITIAL_USER } from './platform/auth';
 import { SUPABASE } from './platform/supabase-client';
 import { MicrophoneService } from './platform/microphone';
@@ -77,6 +77,7 @@ function setup(storedLevelId: string | null, storedTopicId: string | null = null
     profile: TestBed.inject(ProfileStore),
     practice: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
+    progress: TestBed.inject(ProgressService),
   };
 }
 
@@ -123,5 +124,16 @@ describe('AppStartup level recovery', () => {
     expect(practice.level()).toBe('B1');
     expect(practice.topicId()).toBeNull();
     expect(practice.lines()).toEqual(['c1', 'c2']);
+  });
+
+  it('does not end a session behind the flow store\'s back when the duration changes', async () => {
+    const { settings, progress } = setup('A2');
+    const ended = vi.spyOn(progress, 'endSession');
+
+    settings.setDurationMin(15);
+    TestBed.tick();
+    await Promise.resolve();
+
+    expect(ended).not.toHaveBeenCalled();
   });
 });
