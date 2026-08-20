@@ -21,7 +21,12 @@ function render() {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        // No level yet, but a topic left over from a level this learner no
+        // longer has: picking a level has to drop it.
+        useValue: {
+          read: (key: string) => (key === 'shadowing.settings' ? { topicId: 'b' } : null),
+          write: () => {},
+        } as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -39,10 +44,13 @@ function render() {
 }
 
 describe('LevelPicker', () => {
-  it('asks the question and says the choice is not final', () => {
+  it('asks the question and says what the answer is for', () => {
     const { root } = render();
     expect(root.querySelector('.level-title')?.textContent).toBe('Choose your level');
-    expect(root.querySelector('.level-lede')?.textContent).toMatch(/change this at any time/i);
+    const lede = root.querySelector('.level-lede')?.textContent;
+    expect(lede).toMatch(/sets the sentences you practise/i);
+    // Nothing in this release changes the level again, so nothing may promise it.
+    expect(lede).not.toMatch(/change/i);
   });
 
   it('shows every level in the catalog, including the empty ones', () => {
@@ -93,11 +101,15 @@ describe('LevelPicker', () => {
     expect(cards()[0].getAttribute('aria-current')).toBe('false');
   });
 
-  it('choosing a level leaves the topic filter open, showing everything', () => {
+  it('choosing a level drops a leftover topic, opening the filter on everything', () => {
     const { fixture, cards, practice } = render();
+    expect(practice.topicId()).toBe('b');
+
     cards()[0].click();
     fixture.detectChanges();
+
     expect(practice.topicId()).toBeNull();
     expect(practice.topics().map((t) => t.id)).toEqual(['a', 'b']);
+    expect(practice.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
   });
 });

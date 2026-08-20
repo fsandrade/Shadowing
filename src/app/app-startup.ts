@@ -104,6 +104,7 @@ export class AppStartup {
     const levelId = this.profile.levelId();
     if (levelId !== null && !isKnownLevel(this.catalog, levelId)) {
       this.profile.clear();
+      this.settings.setTopicId(null);
     }
   }
 

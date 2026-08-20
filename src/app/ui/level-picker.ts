@@ -34,5 +34,9 @@ export class LevelPicker {
   protected pick(id: string, available: boolean): void {
     if (!available) { return; }
     this.profile.setLevel(id);
+    // A topic only exists inside a level, so it cannot outlive the one it was
+    // picked at: keep it and the learner lands on an empty deck with no button
+    // to un-press, because the topic bar only lists topics at the new level.
+    this.practice.selectTopic(null);
   }
 }
