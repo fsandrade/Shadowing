@@ -18,7 +18,7 @@ const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (←)';
 export class TransportControls {
   protected readonly playback = inject(PlaybackService);
   protected readonly practice = inject(PracticeStore);
-  protected readonly flow = inject(FlowStore);
+  private readonly flow = inject(FlowStore);
   private readonly voices = inject(VoiceStore);
   private readonly speaker = inject(Speaker);
 
@@ -35,4 +35,13 @@ export class TransportControls {
   // The check mode belongs to the activity everywhere except My text, where
   // the learner's own content means the choice is genuinely theirs.
   protected readonly customActivity = computed(() => this.flow.activity()?.id === 'custom');
+
+  // FlowStore.finish() does not know about playback, and the timer it resets
+  // puts a full duration back on the clock - so the expiry checkpoint would
+  // not catch a loop left running for another whole session. Stop first, the
+  // same order finishIfExpired() uses.
+  protected finish(): void {
+    this.playback.stop();
+    this.flow.finish();
+  }
 }

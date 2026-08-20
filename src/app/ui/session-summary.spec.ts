@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, type Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { activityById } from '../core/activity';
+import { HistoryService } from '../data/history-service';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
@@ -19,7 +20,7 @@ class Host {}
 // Signed out, so HistoryService returns null without touching the network and
 // ProgressService never writes a row - which is what lets the shared backend
 // fake get away with no insert/update.
-function configureTestBed(): void {
+function configureTestBed(extra: Provider[] = []): void {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -27,12 +28,13 @@ function configureTestBed(): void {
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: SafeStorage, useValue: storedProfile() as unknown as SafeStorage },
+      ...extra,
     ],
   });
 }
 
-async function renderAfterSession(activityId: string, minutes: number) {
-  configureTestBed();
+async function renderAfterSession(activityId: string, minutes: number, extra: Provider[] = []) {
+  configureTestBed(extra);
   const flow = TestBed.inject(FlowStore);
 
   await flow.start(activityById(activityId)!, 'a', minutes);
@@ -61,12 +63,18 @@ describe('SessionSummary', () => {
   });
 
   it('counts the sentences and the stars', async () => {
+    // The setup speaks exactly one line and scores it four stars.
     const { root } = await renderAfterSession('speaking', 5);
-    expect(root.querySelector('[data-stat="sentences"]')?.textContent).toMatch(/\d/);
-    expect(root.querySelector('[data-stat="stars"]')).not.toBeNull();
+
+    const sentences = root.querySelector('[data-stat="sentences"]')!;
+    expect(sentences.querySelector('.summary-value')?.textContent?.trim()).toBe('1');
+    expect(sentences.querySelector('.summary-label')?.textContent?.trim()).toBe('sentence');
+
+    const stars = root.querySelector('[data-stat="stars"]')!;
+    expect(stars.querySelector('.summary-value')?.textContent?.trim()).toBe('4★');
   });
 
-  it('omits the stars for an activity that scores nothing', async () => {
+  it('omits the stars when nothing was scored, rather than showing zero', async () => {
     const { root } = await renderAfterSession('listening', 5);
     expect(root.querySelector('[data-stat="stars"]')).toBeNull();
   });
@@ -74,6 +82,33 @@ describe('SessionSummary', () => {
   it('omits accumulated progress entirely when it cannot be read', async () => {
     const { root } = await renderAfterSession('listening', 5);
     expect(root.querySelector('.summary-progress')).toBeNull();
+  });
+
+  it('shows the accumulated progress once it has been read', async () => {
+    const { root } = await renderAfterSession('listening', 5, [
+      {
+        provide: HistoryService,
+        useValue: {
+          accumulated: () => Promise.resolve({
+            currentStreak: 4,
+            longestStreak: 11,
+            sentencesMastered: 30,
+            sentencesAttempted: 80,
+            sentencesTotal: 200,
+          }),
+        },
+      },
+    ]);
+
+    expect(root.querySelector('.summary-progress')).not.toBeNull();
+    // Asserted in position, so swapping the streaks or the mastered/total pair
+    // fails here - the compiler is happy with either arrangement.
+    const streak = root.querySelector('[data-stat="streak"]')!;
+    expect(streak.querySelector('.summary-value')?.textContent?.trim()).toBe('4');
+    expect(streak.querySelector('.summary-label')?.textContent).toMatch(/day streak · best 11/);
+
+    const mastered = root.querySelector('[data-stat="mastered"]')!;
+    expect(mastered.querySelector('.summary-value')?.textContent?.trim()).toBe('30 / 200');
   });
 
   it('goes back to the chooser', async () => {

@@ -184,4 +184,22 @@ describe('TransportControls and the activity', () => {
 
     expect(flow.screen()).toBe('summary');
   });
+
+  it('finishing stops the audio, rather than reading over the summary', async () => {
+    // FlowStore.finish() knows nothing about playback, and the timer it resets
+    // puts a full duration back on the clock - so without an explicit stop the
+    // loop keeps speaking for another whole session, over the summary and over
+    // the chooser after it.
+    const { fixture, root, flow, playback, practice } = render();
+    await flow.start(activityById('listening')!, 'a', 10);
+    fixture.detectChanges();
+
+    playback.play();
+    expect(practice.playing()).toBe(true);
+
+    root.querySelector<HTMLButtonElement>('#finish')!.click();
+    fixture.detectChanges();
+
+    expect(practice.playing()).toBe(false);
+  });
 });
