@@ -19,6 +19,8 @@ export type ValidationHook = (
 
 export type RepeatPolicy = (lineIndex: number, repeatsDone: number) => boolean;
 
+export type ValidationTiming = () => boolean;
+
 const MIN_GAP_MS = 400;
 const DEAD_VOICE_MS = 150;
 const DEAD_VOICE_MIN_CHARS = 15;
@@ -39,6 +41,8 @@ export class PlaybackService {
   private silentStreak = 0;
   private validate: ValidationHook | null = null;
   private shouldRepeat: RepeatPolicy | null = null;
+  private startsWithAudio: ValidationTiming | null = null;
+  private abortValidation: (() => void) | null = null;
 
   readonly progress = this.gap.progress.asReadonly();
   readonly inGap = this.gap.active.asReadonly();
@@ -49,6 +53,14 @@ export class PlaybackService {
 
   setRepeatPolicy(fn: RepeatPolicy | null): void {
     this.shouldRepeat = fn;
+  }
+
+  setValidationTiming(fn: ValidationTiming | null): void {
+    this.startsWithAudio = fn;
+  }
+
+  setValidationAbort(fn: (() => void) | null): void {
+    this.abortValidation = fn;
   }
 
   play(): void {
@@ -137,12 +149,17 @@ export class PlaybackService {
 
   private async runOnce(gen: number, index: number): Promise<void> {
     const text = this.textAt(index);
+    const early = this.startsWithAudio?.() ?? false;
+    const opened = early ? this.validate?.(index, text) ?? null : null;
     const startedAt = this.clock.ticks();
 
     await this.speak(index);
-    if (gen !== this.generation) { return; }
+    if (gen !== this.generation) {
+      this.abortValidation?.();
+      return;
+    }
 
-    const listening = this.validate?.(index, text);
+    const listening = early ? opened : this.validate?.(index, text) ?? null;
     if (!listening) { return; }
 
     this.practice.markSpoken(index);
@@ -156,14 +173,27 @@ export class PlaybackService {
       const index = this.practice.index();
       const text = this.textAt(index);
 
+      const early = this.startsWithAudio?.() ?? false;
+      const opened = early ? this.validate?.(index, text) ?? null : null;
+
       const startedAt = this.clock.ticks();
       await this.speak(index);
-      if (!this.owns(gen)) { return; }
+      if (!this.owns(gen)) {
+        this.abortValidation?.();
+        return;
+      }
 
-      if (this.blameVoiceIfSilent(this.clock.ticks() - startedAt, text, index)) { return; }
-      if (this.finishIfExpired()) { return; }
+      if (this.blameVoiceIfSilent(this.clock.ticks() - startedAt, text, index)) {
+        this.abortValidation?.();
+        return;
+      }
+      if (this.finishIfExpired()) {
+        this.abortValidation?.();
+        return;
+      }
 
-      await this.gap.run(this.gapMsFor(startedAt), this.validate?.(index, text) ?? undefined);
+      const pending = early ? opened : this.validate?.(index, text) ?? null;
+      await this.gap.run(this.gapMsFor(startedAt), pending ?? undefined);
       if (!this.owns(gen)) { return; }
       if (this.finishIfExpired()) { return; }
 

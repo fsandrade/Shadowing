@@ -1,28 +1,28 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { BannerStore } from '../state/banner-store';
-import { CORPUS_DATA } from '../state/corpus-token';
+import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { PlaybackService } from './playback-service';
+import { NO_SHUFFLE, storedSettings } from '../testing/catalog';
+import type { Catalog } from '../core/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{
-    id: 'a',
-    name: 'A',
-    lines: [
-      'first <b>line</b> is long enough to measure',
-      'second line is long enough to measure',
-      'third line is long enough to measure',
-    ],
-  }],
+const DATA: Catalog = {
+  loadedAt: '2026-08-06T00:00:00Z',
+  levels: [{ id: 'A2', description: 'Elementary' }],
+  topics: [{ id: 'a', name: 'A' }],
+  sentences: [
+    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'first <b>line</b> is long enough to measure' },
+    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'second line is long enough to measure' },
+    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third line is long enough to measure' },
+  ],
 };
 
 function fakeSpeaker(speakMs: number) {
@@ -42,16 +42,17 @@ function fakeSpeaker(speakMs: number) {
   return { spoken, impl, setSpeakMs: (next: number) => { ms = next; } };
 }
 
-function setup(speakMs = 1000, corpus: Corpus = DATA) {
+function setup(speakMs = 1000, corpus: Catalog = DATA) {
   const speaker = fakeSpeaker(speakMs);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: corpus },
+      { provide: CATALOG, useValue: corpus },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: Speaker, useValue: speaker.impl },
     ],
   });
@@ -73,7 +74,7 @@ describe('PlaybackService speaking custom text', () => {
   it('speaks a custom sentence verbatim', async () => {
     const { playback, practice, custom, speaker } = setup();
     custom.setText('This sentence is long enough to measure.');
-    practice.selectDeck(CUSTOM_DECK_ID);
+    practice.useCustomText();
 
     playback.play();
     await vi.advanceTimersByTimeAsync(0);
@@ -83,7 +84,7 @@ describe('PlaybackService speaking custom text', () => {
   it('keeps angle brackets, which tag stripping would swallow', async () => {
     const { playback, practice, custom, speaker } = setup();
     custom.setText('Five < ten is definitely a true statement.');
-    practice.selectDeck(CUSTOM_DECK_ID);
+    practice.useCustomText();
 
     playback.play();
     await vi.advanceTimersByTimeAsync(0);
@@ -151,7 +152,7 @@ describe('PlaybackService transport', () => {
 
   it('does nothing when there are no lines', () => {
     const { playback, practice } = setup();
-    practice.selectDeck('missing');
+    practice.toggleTopic('missing');
     playback.play();
     expect(practice.playing()).toBe(false);
   });
@@ -185,7 +186,8 @@ describe('PlaybackService transport', () => {
     playback.shuffle(() => 0);
     expect(practice.index()).toBe(0);
     expect(practice.playing()).toBe(true);
-    expect([...practice.lines()].sort()).toEqual([...DATA.decks[0].lines].sort());
+    expect([...practice.lines()].sort())
+      .toEqual(DATA.sentences.map((s) => s.text).sort());
   });
 
   it('playLine speaks one line without starting the loop', async () => {
@@ -207,7 +209,7 @@ describe('PlaybackService cancellation', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(1200);
     playback.stop();
-    practice.selectDeck('a');
+    practice.toggleTopic('a');
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(practice.index()).toBe(0);
@@ -298,9 +300,13 @@ describe('PlaybackService dead-voice detection', () => {
   });
 
   it('does not count a short utterance of short text as a failure', async () => {
-    const short: Corpus = {
-      generatedAt: '2026-08-06T00:00:00Z',
-      decks: [{ id: 'a', name: 'A', lines: ['hi', 'yo', 'ok'] }],
+    const short: Catalog = {
+      loadedAt: '2026-08-06T00:00:00Z',
+      levels: [{ id: 'A2', description: 'Elementary' }],
+      topics: [{ id: 'a', name: 'A' }],
+      sentences: ['hi', 'yo', 'ok'].map((text, i) => ({
+        id: `s-${i}`, topicId: 'a', levelId: 'A2', text,
+      })),
     };
     const { playback, banner } = setup(0, short);
     playback.play();
@@ -655,5 +661,87 @@ describe('PlaybackService on-demand line', () => {
     playback.playLine(2);
     expect(practice.index()).toBe(2);
     expect(practice.playing()).toBe(true);
+  });
+});
+
+describe('PlaybackService validation timing', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('opens validation only after the audio when spelling is off', async () => {
+    const { playback, speaker } = setup(1000);
+    const openedAfter: number[] = [];
+    playback.setValidationHook(() => {
+      openedAfter.push(speaker.spoken.length);
+      return new Promise<void>(() => {});
+    });
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(openedAfter).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(openedAfter).toEqual([1]);
+  });
+
+  it('opens validation as the audio starts when spelling is on', async () => {
+    const { playback, speaker } = setup(1000);
+    const openedAfter: number[] = [];
+    playback.setValidationTiming(() => true);
+    playback.setValidationHook(() => {
+      openedAfter.push(speaker.spoken.length);
+      return new Promise<void>(() => {});
+    });
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(openedAfter).toEqual([0]);
+  });
+
+  it('accepts an answer typed while the audio is still playing', async () => {
+    const { playback, practice } = setup(1000);
+    let release!: () => void;
+    playback.setValidationTiming(() => true);
+    playback.setValidationHook(() => new Promise<void>((r) => { release = r; }));
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(200);
+    release();
+
+    await vi.advanceTimersByTimeAsync(800);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(practice.index()).toBe(1);
+  });
+
+  it('closes a box it opened early when the session runs out during the audio', async () => {
+    const { playback, settings, timer } = setup(70_000);
+    const aborted = vi.fn();
+    playback.setValidationTiming(() => true);
+    playback.setValidationHook(() => new Promise<void>(() => {}));
+    playback.setValidationAbort(aborted);
+
+    settings.setDurationMin(1);
+    timer.reset(1);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(70_000);
+
+    expect(aborted).toHaveBeenCalled();
+  });
+
+  it('closes a box it opened early when playback is stopped mid-audio', async () => {
+    const { playback } = setup(1000);
+    const aborted = vi.fn();
+    playback.setValidationTiming(() => true);
+    playback.setValidationHook(() => new Promise<void>(() => {}));
+    playback.setValidationAbort(aborted);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(200);
+    playback.pause();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(aborted).toHaveBeenCalled();
   });
 });

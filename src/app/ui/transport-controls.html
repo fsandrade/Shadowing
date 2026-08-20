@@ -2,10 +2,7 @@
   [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
 <button type="button" id="next" [disabled]="!enabled()"
   title="Next (&rarr;)" (click)="playback.next()">&#9197;</button>
-<button type="button" id="validate" [disabled]="!sttSupported"
-  [attr.aria-pressed]="settings.sttEnabled()" [title]="RATE_TITLE"
-  (click)="toggleValidate()">&#9733; rate me</button>
-<button type="button" id="options" class="options-btn" aria-label="Options"
-  [attr.aria-expanded]="optionsOpen()" aria-controls="optionsPanel"
-  title="Show or hide the advanced options"
-  (click)="toggleOptions.emit()">&#9881;<span class="options-label"> options</span></button>
+<div appCheckMode></div>
+<button type="button" id="shuffle" class="shuffle-btn" [disabled]="!enabled()"
+  title="Reshuffle the sentences"
+  (click)="playback.shuffle()">&#8644; shuffle</button>

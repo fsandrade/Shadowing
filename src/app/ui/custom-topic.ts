@@ -33,7 +33,7 @@ export class CustomTopic {
 
   protected save(): void {
     this.custom.setText(this.draft());
-    this.practice.refreshLines();
+    this.practice.useCustomText();
     this.editing.set(false);
   }
 
@@ -44,7 +44,7 @@ export class CustomTopic {
 
   protected clear(): void {
     this.custom.clear();
-    this.practice.refreshLines();
+    this.practice.useCustomText();
     this.draft.set('');
     this.editing.set(false);
   }

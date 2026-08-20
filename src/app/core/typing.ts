@@ -1,4 +1,4 @@
-import { starsFromCounts } from './scoring';
+import { type AttemptCounts, starsFromCounts } from './scoring';
 
 export interface TypedWord {
   readonly text: string;
@@ -67,9 +67,14 @@ export function missedWords(base: string, typed: string): string[] {
   return target.filter((_, i) => !flags[i]).map((token) => token.raw);
 }
 
-export function typingStars(base: string, typed: string): number | null {
+export function typingCounts(base: string, typed: string): AttemptCounts {
   const target = normalizeTyping(base);
   const words = normalizeTyping(typed);
   const matched = matchFlags(target, words).filter(Boolean).length;
-  return starsFromCounts(target.length, words.length, matched);
+  return { targetLength: target.length, attemptLength: words.length, matched };
+}
+
+export function typingStars(base: string, typed: string): number | null {
+  const { targetLength, attemptLength, matched } = typingCounts(base, typed);
+  return starsFromCounts(targetLength, attemptLength, matched);
 }

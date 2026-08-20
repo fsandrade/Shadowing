@@ -15,7 +15,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: `npx ng serve --port ${PORT}`,
+    // The e2e configuration points the app at an unreachable Supabase host;
+    // the suite intercepts those requests. See tests/helpers/fake-supabase.ts.
+    command: `npx ng serve --configuration e2e --port ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -1,27 +1,39 @@
 import { TestBed } from '@angular/core/testing';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStartup } from './app-startup';
-import { type Corpus, CUSTOM_DECK_ID } from './core/deck';
+import { SENTENCE_IDS } from './data/progress-service';
+import { INITIAL_USER } from './platform/auth';
+import { SUPABASE } from './platform/supabase-client';
 import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
 import { SafeStorage } from './platform/storage';
-import { CORPUS_DATA } from './state/corpus-token';
+import { CATALOG } from './state/catalog-token';
 import { SETTINGS_KEY, SettingsStore } from './state/settings-store';
+import { NO_SHUFFLE, TEST_CATALOG } from './testing/catalog';
+import { RANDOM } from './platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{ id: 'a', name: 'A', lines: ['a1', 'a2'] }],
-};
+const DATA = TEST_CATALOG;
 
-function setup(storedDeckId: string) {
+function setup(storedLevelId: string | null) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
+      { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
+      { provide: INITIAL_USER, useValue: null },
+      {
+        provide: SUPABASE,
+        useValue: {
+          auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
+          from: () => { throw new Error('no writes expected in startup tests'); },
+        } as unknown as SupabaseClient,
+      },
       {
         provide: SafeStorage,
         useValue: {
-          read: (key: string) => (key === SETTINGS_KEY ? { deckId: storedDeckId } : null),
+          read: (key: string) => (key === SETTINGS_KEY ? { levelId: storedLevelId } : null),
           write: () => {},
         } as unknown as SafeStorage,
       },
@@ -52,19 +64,23 @@ function setup(storedDeckId: string) {
   return { settings: TestBed.inject(SettingsStore) };
 }
 
-describe('AppStartup deck recovery', () => {
+describe('AppStartup level recovery', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('keeps a deck that still exists in the corpus', () => {
-    expect(setup('a').settings.deckId()).toBe('a');
+  it('keeps a remembered level that still has sentences', () => {
+    expect(setup('A2').settings.levelId()).toBe('A2');
   });
 
-  it('falls back to All when the stored deck is gone', () => {
-    expect(setup('deck-that-was-removed').settings.deckId()).toBe('all');
+  it('forgets a level that no longer exists at all', () => {
+    expect(setup('Z9').settings.levelId()).toBeNull();
   });
 
-  it('keeps the custom topic even though it has no corpus lines', () => {
-    expect(setup(CUSTOM_DECK_ID).settings.deckId()).toBe(CUSTOM_DECK_ID);
+  it('forgets a level that exists but has been emptied', () => {
+    expect(setup('C2').settings.levelId()).toBeNull();
+  });
+
+  it('leaves a first-time visitor at the picker', () => {
+    expect(setup(null).settings.levelId()).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { soundsComplete, starsFor } from '../core/scoring';
 import { listenCeilingMs } from '../core/timing';
 import { missedWords, type TypedWord, typedWords, typingStars } from '../core/typing';
@@ -12,6 +12,8 @@ import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 
 export type LineStatus = 'listening' | 'typing' | 'scored' | 'failed';
+
+export type CheckMode = 'nothing' | 'speaking' | 'spelling';
 
 export interface LineResult {
   readonly transcript: string;
@@ -171,6 +173,24 @@ export class ValidationService {
   reset(): void {
     this.dispose();
     this.results.set(new Map());
+  }
+
+  readonly mode = computed<CheckMode>(() => {
+    if (!this.settings.sttEnabled()) { return 'nothing'; }
+    return this.settings.typingMode() ? 'spelling' : 'speaking';
+  });
+
+  async setMode(mode: CheckMode): Promise<CheckMode> {
+    if (mode === 'nothing') {
+      this.disable();
+      return 'nothing';
+    }
+
+    this.settings.setTypingMode(mode === 'spelling');
+    if (mode === 'spelling') { this.mic.release(); }
+
+    await this.enable();
+    return this.mode();
   }
 
   enable(): Promise<boolean> {

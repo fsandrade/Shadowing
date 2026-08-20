@@ -1,8 +1,15 @@
-// GENERATED FILE - do not edit by hand.
-// Regenerate with: node tools/convert-corpus.js
-import type { Corpus } from '../core/deck';
+interface AuthoredDeck {
+  readonly id: string;
+  readonly name: string;
+  readonly lines: readonly string[];
+}
 
-export const CORPUS: Corpus = {
+interface AuthoredCorpus {
+  readonly generatedAt: string;
+  readonly decks: readonly AuthoredDeck[];
+}
+
+export const CORPUS: AuthoredCorpus = {
   "generatedAt": "2026-08-06T18:26:33Z",
   "decks": [
     {
@@ -2389,6 +2396,42 @@ export const CORPUS: Corpus = {
         "My <b>research paper</b> is due at the end of the month.",
         "He quoted sources from across the <b>research</b> I read.",
         "The <b>research paper</b> had to be at least thirty pages."
+      ]
+    },
+    {
+      "id": "nuance-debate",
+      "name": "Nuance & Debate",
+      "lines": [
+        "He said the report was <b>competent</b>, which felt like damning it with faint praise.",
+        "Calling her performance “adequate” is <b>damning her with faint praise</b>.",
+        "I don't want to <b>damn the whole thing with faint praise</b>, but it was fine at best.",
+        "Once the funding fell through, the outcome was <b>a foregone conclusion</b>.",
+        "Everyone treated his promotion as <b>a foregone conclusion</b>, which annoyed the other candidates.",
+        "Nothing here is <b>a foregone conclusion</b> until the board actually votes.",
+        "We're <b>splitting hairs</b> over wording when the whole section needs rewriting.",
+        "I don't want to <b>split hairs</b>, but there's a real difference between the two.",
+        "That distinction isn't <b>splitting hairs</b> — it changes who is liable.",
+        "They're <b>hedging their bets</b> by running both suppliers for another quarter.",
+        "Stop <b>hedging your bets</b> and tell me which one you'd actually choose.",
+        "His answer <b>hedged</b> so carefully that I still don't know his position.",
+        "Saying it must be true because nobody disproved it rather <b>begs the question</b>.",
+        "That argument <b>begs the question</b>: it assumes exactly what it sets out to show.",
+        "Careful — you're using “<b>begs the question</b>” to mean “raises the question”.",
+        "Remote work is <b>a double-edged sword</b>: more focus, far less serendipity.",
+        "Her bluntness is <b>a double-edged sword</b> in negotiations.",
+        "Any rule that rigid is <b>a double-edged sword</b>, and we'll feel the other edge eventually.",
+        "Another reorganisation just <b>papers over the cracks</b> in how we hire.",
+        "We keep <b>papering over the cracks</b> instead of fixing the architecture.",
+        "That apology <b>papered over the cracks</b> without addressing what caused them.",
+        "Nobody wants to name <b>the elephant in the room</b>, which is that the launch date is fiction.",
+        "Let's address <b>the elephant in the room</b> before we go through the slides.",
+        "His absence was <b>the elephant in the room</b> for the entire meeting.",
+        "Explaining the benefits of testing here is <b>preaching to the choir</b>.",
+        "I know I'm <b>preaching to the choir</b>, but the point bears repeating outside this room.",
+        "That whole campaign ended up <b>preaching to the choir</b> and persuading nobody new.",
+        "They won the case, but the legal fees made it <b>a pyrrhic victory</b>.",
+        "Cutting the team to hit the date would be <b>a pyrrhic victory</b>.",
+        "It felt like <b>a pyrrhic victory</b> — we were right, and it cost us the client."
       ]
     }
   ]

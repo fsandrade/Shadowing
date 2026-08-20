@@ -1,11 +1,14 @@
 import { effect, inject, Injectable, signal } from '@angular/core';
-import { ALL_DECK_ID } from '../core/deck';
 import { SafeStorage } from '../platform/storage';
 
 export const SETTINGS_KEY = 'shadowing.settings';
 
+export type PracticeSource = 'catalog' | 'custom';
+
 interface StoredSettings {
-  deckId?: unknown;
+  levelId?: unknown;
+  topicId?: unknown;
+  source?: unknown;
   rate?: unknown;
   slack?: unknown;
   voiceName?: unknown;
@@ -16,16 +19,22 @@ interface StoredSettings {
   typing?: unknown;
 }
 
+function storedString(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SettingsStore {
   private readonly storage = inject(SafeStorage);
 
   private readonly saved = this.storage.read<StoredSettings>(SETTINGS_KEY) ?? {};
 
-  readonly deckId = signal<string>(
-    typeof this.saved.deckId === 'string' && this.saved.deckId
-      ? this.saved.deckId
-      : ALL_DECK_ID,
+  readonly levelId = signal<string | null>(storedString(this.saved.levelId));
+
+  readonly topicId = signal<string | null>(storedString(this.saved.topicId));
+
+  readonly source = signal<PracticeSource>(
+    this.saved.source === 'custom' ? 'custom' : 'catalog',
   );
 
   readonly rate = signal(Number(this.saved.rate) || 1);
@@ -42,7 +51,9 @@ export class SettingsStore {
   constructor() {
     effect(() => {
       this.storage.write(SETTINGS_KEY, {
-        deckId: this.deckId(),
+        levelId: this.levelId(),
+        topicId: this.topicId(),
+        source: this.source(),
         rate: this.rate(),
         slack: this.slack(),
         voiceName: this.voiceName(),
@@ -55,7 +66,13 @@ export class SettingsStore {
     });
   }
 
-  setDeckId(id: string): void { this.deckId.set(id); }
+  setLevelId(id: string | null): void {
+    this.levelId.set(id);
+    this.topicId.set(null);
+  }
+
+  setTopicId(id: string | null): void { this.topicId.set(id); }
+  setSource(source: PracticeSource): void { this.source.set(source); }
   setRate(v: number): void { this.rate.set(v); }
   setSlack(v: number): void { this.slack.set(v); }
   setVoiceName(name: string): void { this.voiceName.set(name); }

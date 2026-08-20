@@ -1,18 +1,16 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { CUSTOM_TEXT_LIMIT } from '../core/sentences';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from '../state/corpus-token';
+import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { PracticeStore } from '../state/practice-store';
 import { CustomTopic } from './custom-topic';
+import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{ id: 'a', name: 'A', lines: ['one', 'two'] }],
-};
+const DATA = TEST_CATALOG;
 
 @Component({
   imports: [CustomTopic],
@@ -25,7 +23,8 @@ function render(stored: unknown = null) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       {
         provide: SafeStorage,
         useValue: {
@@ -36,7 +35,7 @@ function render(stored: unknown = null) {
     ],
   });
   const practice = TestBed.inject(PracticeStore);
-  practice.selectDeck(CUSTOM_DECK_ID);
+  practice.useCustomText();
 
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();

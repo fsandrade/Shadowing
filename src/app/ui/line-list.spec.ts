@@ -1,27 +1,31 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { MicrophoneService } from '../platform/microphone';
 import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
 } from '../platform/speech-recognition';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from '../state/corpus-token';
+import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from '../validation/validation-service';
 import { LineList } from './line-list';
+import { NO_SHUFFLE, storedSettings } from '../testing/catalog';
+import type { Catalog } from '../core/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{
-    id: 'a',
-    name: 'A',
-    lines: ['plain one', 'with <b>a chunk</b> inside', 'third'],
-  }],
+const DATA: Catalog = {
+  loadedAt: '2026-08-06T00:00:00Z',
+  levels: [{ id: 'A2', description: 'Elementary' }],
+  topics: [{ id: 'a', name: 'A' }],
+  sentences: [
+    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'plain one' },
+    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'with <b>a chunk</b> inside' },
+    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third' },
+  ],
 };
 
 @Component({
@@ -52,9 +56,10 @@ function render(extra: readonly unknown[] = []) {
       ...extra,
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       {
         provide: Speaker,
         useValue: {
@@ -100,7 +105,7 @@ function renderCustom(rawLines: readonly string[]) {
   } as unknown as CustomTopicStore;
 
   const rendered = render([{ provide: CustomTopicStore, useValue: fake }]);
-  rendered.practice.selectDeck(CUSTOM_DECK_ID);
+  rendered.practice.useCustomText();
   rendered.fixture.detectChanges();
   return rendered;
 }
@@ -128,7 +133,7 @@ describe('LineList structure', () => {
 
   it('renumbers from one after a deck change', () => {
     const { fixture, lines, practice } = render();
-    practice.selectDeck('a');
+    practice.toggleTopic('a');
     fixture.detectChanges();
     expect([...lines.querySelectorAll('p .num')].map((n) => n.textContent))
       .toEqual(['1', '2', '3']);

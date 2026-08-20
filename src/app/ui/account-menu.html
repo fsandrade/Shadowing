@@ -1,0 +1,36 @@
+@if (auth.registered()) {
+  <button
+    type="button"
+    class="avatar-btn"
+    id="account"
+    [attr.aria-expanded]="open()"
+    aria-haspopup="menu"
+    aria-controls="accountMenu"
+    [attr.aria-label]="'Account: ' + auth.displayName()"
+    [title]="auth.displayName()"
+    (click)="toggle()"
+  >{{ auth.initial() }}</button>
+
+  @if (open()) {
+    <div class="account-menu" id="accountMenu" role="menu">
+      <p class="account-who">
+        <span class="account-name">{{ auth.displayName() }}</span>
+        @if (auth.email() && auth.email() !== auth.displayName()) {
+          <span class="account-email">{{ auth.email() }}</span>
+        }
+      </p>
+      <button type="button" role="menuitem" id="accountPreferences"
+        (click)="showSettings()">Preferences</button>
+      <button type="button" role="menuitem" id="signOut"
+        (click)="signOut()">Sign out</button>
+    </div>
+  }
+} @else {
+  <button
+    type="button"
+    class="signin-btn"
+    id="signIn"
+    [title]="hint()"
+    (click)="signIn()"
+  >{{ label() }}</button>
+}

@@ -1,32 +1,25 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
-import { type Corpus } from '../core/deck';
 import { PlaybackService } from '../playback/playback-service';
 import { SPEECH_RECOGNITION_CTOR } from '../platform/speech-recognition';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from '../state/corpus-token';
+import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 import { TransportControls } from './transport-controls';
+import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{ id: 'a', name: 'A', lines: ['one', 'two'] }],
-};
+const DATA = TEST_CATALOG;
 
 @Component({
   imports: [TransportControls],
-  template: `<div appTransportControls
-    [optionsOpen]="optionsOpen()"
-    (toggleOptions)="toggled = toggled + 1"></div>`,
+  template: `<div appTransportControls></div>`,
 })
-class Host {
-  readonly optionsOpen = signal(false);
-  toggled = 0;
-}
+class Host {}
 
 function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
   const voices = opts.voices
@@ -36,9 +29,10 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
     providers: [
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       {
         provide: Speaker,
         useValue: {
@@ -76,14 +70,15 @@ describe('TransportControls structure', () => {
     const { transport } = render();
     expect(transport.classList.contains('transport')).toBe(true);
     expect([...transport.querySelectorAll('button')].map((b) => b.id))
-      .toEqual(['play', 'next', 'validate', 'options']);
+      .toEqual(['play', 'next', 'check-nothing', 'check-speaking', 'check-spelling', 'shuffle']);
   });
 
   it('keeps the vanilla titles the specs and tooltips rely on', () => {
     const { btn } = render();
     expect(btn('play').title).toMatch(/Play\/Pause \(space\)/);
     expect(btn('next').title).toBe('Next (→)');
-    expect(btn('validate').title).toMatch(/Rate me/i);
+    expect(btn('check-speaking').title).toMatch(/say the sentence out loud/i);
+    expect(btn('check-spelling').title).toMatch(/type the sentence/i);
   });
 });
 
@@ -109,7 +104,7 @@ describe('TransportControls disabled state', () => {
 
   it('disables play and next when the deck is empty', () => {
     const { fixture, btn, practice } = render();
-    practice.selectDeck('missing');
+    practice.toggleTopic('missing');
     fixture.detectChanges();
     expect(btn('play').disabled).toBe(true);
   });
@@ -120,8 +115,11 @@ describe('TransportControls disabled state', () => {
     expect(btn('next').disabled).toBe(false);
   });
 
-  it('disables validate when speech recognition is unavailable', () => {
-    expect(render({ stt: false }).btn('validate').disabled).toBe(true);
+  it('disables only the speaking option when speech recognition is unavailable', () => {
+    const { btn } = render({ stt: false });
+    expect(btn('check-speaking').disabled).toBe(true);
+    expect(btn('check-spelling').disabled).toBe(false);
+    expect(btn('check-nothing').disabled).toBe(false);
   });
 });
 
@@ -140,13 +138,9 @@ describe('TransportControls toggles', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('the options button reports and toggles the panel', () => {
-    const { fixture, host, btn } = render();
-    expect(btn('options').getAttribute('aria-expanded')).toBe('false');
-    expect(btn('options').getAttribute('aria-controls')).toBe('optionsPanel');
-
-    btn('options').click();
-    fixture.detectChanges();
-    expect(host.toggled).toBe(1);
+  it('offers shuffle alongside the transport, not buried in a panel', () => {
+    const { btn } = render();
+    expect(btn('shuffle').title).toMatch(/reshuffle/i);
+    expect(btn('shuffle').hasAttribute('disabled')).toBe(false);
   });
 });

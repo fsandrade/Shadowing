@@ -1,19 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus, CUSTOM_DECK_ID } from '../core/deck';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from './corpus-token';
+import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
+import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import type { Catalog } from '../core/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [
-    { id: 'a', name: 'A', lines: ['a1', 'a2', 'a3'] },
-    { id: 'b', name: 'B', lines: ['b1'] },
-  ],
-};
+const DATA = TEST_CATALOG;
 
 function setup() {
   TestBed.resetTestingModule();
@@ -21,9 +17,10 @@ function setup() {
     providers: [
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
     ],
   });
   return {
@@ -40,7 +37,7 @@ describe('PracticeStore custom topic', () => {
 
   it('becomes active and empty when the custom topic is selected', () => {
     const { store } = setup();
-    store.selectDeck(CUSTOM_DECK_ID);
+    store.useCustomText();
     expect(store.customActive()).toBe(true);
     expect(store.lines()).toEqual([]);
     expect(store.hasLines()).toBe(false);
@@ -49,7 +46,7 @@ describe('PracticeStore custom topic', () => {
   it('serves the custom sentences once there is text', () => {
     const { store, custom } = setup();
     custom.setText('One here. Two here!');
-    store.selectDeck(CUSTOM_DECK_ID);
+    store.useCustomText();
     expect(store.lines()).toEqual(['One here.', 'Two here!']);
     expect(store.hasLines()).toBe(true);
   });
@@ -58,20 +55,20 @@ describe('PracticeStore custom topic', () => {
     const { store, custom } = setup();
     custom.setText('Mine only.');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
-    store.selectDeck('a');
+    store.toggleTopic('a');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
   });
 
   it('refreshLines drops a stale shuffle and resets progress', () => {
     const { store, custom } = setup();
     custom.setText('One. Two. Three.');
-    store.selectDeck(CUSTOM_DECK_ID);
+    store.useCustomText();
     store.shuffleLines(() => 0);
     store.goTo(2);
     store.markSpoken(2);
 
     custom.setText('Only this one.');
-    store.refreshLines();
+    store.useCustomText();
 
     expect(store.lines()).toEqual(['Only this one.']);
     expect(store.index()).toBe(0);
@@ -86,31 +83,33 @@ describe('PracticeStore lines', () => {
 
   it('narrows to a deck and drives the settings store', () => {
     const { store, settings } = setup();
-    store.selectDeck('b');
+    store.toggleTopic('b');
     expect(store.lines()).toEqual(['b1']);
-    expect(settings.deckId()).toBe('b');
+    expect(settings.topicId()).toBe('b');
   });
 
-  it('exposes deckOptions with All first', () => {
-    expect(setup().store.deckOptions()[0]).toEqual({ id: 'all', name: 'All' });
+  it('offers the topics present at the level, and no All entry', () => {
+    const topics = setup().store.topics();
+    expect(topics).toEqual([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
+    expect(topics.map((t) => t.id)).not.toContain('all');
   });
 
   it('reports whether there is anything to practise', () => {
     const { store } = setup();
     expect(store.hasLines()).toBe(true);
-    store.selectDeck('missing');
+    store.toggleTopic('missing');
     expect(store.hasLines()).toBe(false);
   });
 });
 
 describe('PracticeStore progressive rendering', () => {
-  const many: Corpus = {
-    generatedAt: '2026-08-06T00:00:00Z',
-    decks: [{
-      id: 'big',
-      name: 'Big',
-      lines: Array.from({ length: 200 }, (_, i) => `line ${i}`),
-    }],
+  const many: Catalog = {
+    loadedAt: '2026-08-06T00:00:00Z',
+    levels: [{ id: 'A2', description: 'Elementary' }],
+    topics: [{ id: 'big', name: 'Big' }],
+    sentences: Array.from({ length: 200 }, (_, i) => ({
+      id: `s-${i}`, topicId: 'big', levelId: 'A2', text: `line ${i}`,
+    })),
   };
 
   function withMany() {
@@ -119,9 +118,10 @@ describe('PracticeStore progressive rendering', () => {
       providers: [
         {
           provide: SafeStorage,
-          useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+          useValue: storedSettings() as unknown as SafeStorage,
         },
-        { provide: CORPUS_DATA, useValue: many },
+        { provide: CATALOG, useValue: many },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       ],
     });
     return TestBed.inject(PracticeStore);
@@ -177,7 +177,7 @@ describe('PracticeStore progressive rendering', () => {
     const store = withMany();
     store.goTo(150);
     expect(store.visibleLines().length).toBeGreaterThan(60);
-    store.selectDeck('big');
+    store.toggleTopic('big');
     expect(store.visibleLines().length).toBe(60);
   });
 
@@ -203,7 +203,7 @@ describe('PracticeStore progressive rendering', () => {
 describe('PracticeStore navigation', () => {
   it('advances with wraparound', () => {
     const { store } = setup();
-    store.selectDeck('a');
+    store.toggleTopic('a');
     store.advance();
     expect(store.index()).toBe(1);
     store.advance();
@@ -235,7 +235,7 @@ describe('PracticeStore reset semantics', () => {
     const { store } = setup();
     store.goTo(2);
     store.markSpoken(0);
-    store.selectDeck('a');
+    store.toggleTopic('a');
     expect(store.index()).toBe(0);
     expect(store.spoken().size).toBe(0);
   });
@@ -252,10 +252,12 @@ describe('PracticeStore reset semantics', () => {
     expect(store.lines()).not.toEqual(['a1', 'a2', 'a3', 'b1']);
   });
 
-  it('changing deck clears a previous shuffle', () => {
+  it('keeps a manual shuffle in force when the topic filter changes', () => {
     const { store } = setup();
     store.shuffleLines(() => 0);
-    store.selectDeck('a');
-    expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
+    store.toggleTopic('a');
+
+    expect([...store.lines()].sort()).toEqual(['a1', 'a2', 'a3']);
+    expect(store.index()).toBe(0);
   });
 });

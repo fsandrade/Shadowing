@@ -26,6 +26,7 @@ const EXPECTED: ReadonlyArray<readonly [string, string, number]> = [
   ['customer-service', 'Customer Service & Tech Support', 103],
   ['renting-housing', 'Renting & Housing', 99],
   ['school-learning', 'School & Learning', 99],
+  ['nuance-debate', 'Nuance & Debate', 30],
 ];
 
 const allLines = CORPUS.decks.flatMap((d) => d.lines);
@@ -34,7 +35,7 @@ it('exposes generatedAt as an ISO-ish UTC stamp', () => {
   expect(CORPUS.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
 });
 
-it('has the 24 decks in file order with the right names and counts', () => {
+it('has every deck in file order with the right names and counts', () => {
   expect(CORPUS.decks.length).toBe(EXPECTED.length);
   CORPUS.decks.forEach((deck, i) => {
     const [id, name, count] = EXPECTED[i];
@@ -44,8 +45,8 @@ it('has the 24 decks in file order with the right names and counts', () => {
   });
 });
 
-it('has 2242 lines in total', () => {
-  expect(allLines.length).toBe(2242);
+it('has 2272 lines in total', () => {
+  expect(allLines.length).toBe(2272);
 });
 
 describe('markup safety', () => {

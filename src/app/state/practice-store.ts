@@ -1,8 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { CUSTOM_DECK_ID, deckOptions, linesFor } from '../core/deck';
+import { type Level, type Sentence, sentencesAt, type Topic, topicsAt } from '../core/catalog';
+import { pacingFor } from '../core/pacing';
 import { type Rng, shuffle } from '../core/shuffle';
+import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
-import { CORPUS_DATA } from './corpus-token';
+import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { SettingsStore } from './settings-store';
 
@@ -12,26 +14,43 @@ const LOOKAHEAD = 10;
 
 @Injectable({ providedIn: 'root' })
 export class PracticeStore {
-  private readonly corpus = inject(CORPUS_DATA);
+  private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
+  private readonly random = inject(RANDOM);
 
-  private readonly order = signal<readonly string[] | null>(null);
   private readonly revealed = signal(FIRST_PAGE);
+  private readonly reshuffle = signal(0);
+  private readonly rng = signal<Rng | undefined>(undefined);
 
   readonly index = signal(0);
   readonly playing = signal(false);
   readonly spoken = signal<ReadonlySet<number>>(new Set<number>());
 
-  readonly deckOptions = computed(() => deckOptions(this.corpus));
+  readonly levels = computed<readonly Level[]>(() => this.catalog.levels);
 
-  readonly customActive = computed(() => this.settings.deckId() === CUSTOM_DECK_ID);
+  readonly level = computed<string | null>(() => this.settings.levelId());
+
+  readonly levelChosen = computed(() => this.level() !== null);
+
+  readonly customActive = computed(() => this.settings.source() === 'custom');
+
+  readonly topics = computed<readonly Topic[]>(() => {
+    const level = this.level();
+    return level ? topicsAt(this.catalog, level) : [];
+  });
+
+  readonly topicId = computed(() => this.settings.topicId());
+
+  readonly sentences = computed<readonly Sentence[]>(() => {
+    const level = this.level();
+    return level ? sentencesAt(this.catalog, level, this.settings.topicId()) : [];
+  });
 
   readonly lines = computed<readonly string[]>(() => {
-    const order = this.order();
-    if (order) { return order; }
     if (this.customActive()) { return this.custom.lines(); }
-    return linesFor(this.corpus, this.settings.deckId());
+    this.reshuffle();
+    return shuffle(this.sentences().map((s) => s.text), this.rng() ?? this.random);
   });
 
   readonly visibleLines = computed<readonly string[]>(
@@ -42,19 +61,48 @@ export class PracticeStore {
 
   readonly hasLines = computed(() => this.lines().length > 0);
 
-  selectDeck(id: string): void {
-    this.settings.setDeckId(id);
-    this.order.set(null);
+  selectLevel(id: string): void {
+    this.settings.setLevelId(id);
+    this.settings.setSource('catalog');
+    this.applyPacing(id);
     this.resetProgress();
   }
 
-  refreshLines(): void {
-    this.order.set(null);
+  private applyPacing(levelId: string): void {
+    const pacing = pacingFor(levelId);
+    this.settings.setRate(pacing.rate);
+    this.settings.setSlack(pacing.slack);
+  }
+
+  clearLevel(): void {
+    this.settings.setLevelId(null);
+    this.resetProgress();
+  }
+
+  toggleTopic(id: string): void {
+    this.settings.setTopicId(this.settings.topicId() === id ? null : id);
+    this.settings.setSource('catalog');
+    this.resetProgress();
+  }
+
+  clearTopic(): void {
+    this.settings.setTopicId(null);
+    this.resetProgress();
+  }
+
+  useCustomText(): void {
+    this.settings.setSource('custom');
+    this.resetProgress();
+  }
+
+  useCatalog(): void {
+    this.settings.setSource('catalog');
     this.resetProgress();
   }
 
   shuffleLines(rng?: Rng): void {
-    this.order.set(shuffle(this.lines(), rng));
+    this.rng.set(rng);
+    this.reshuffle.update((n) => n + 1);
     this.resetProgress();
   }
 

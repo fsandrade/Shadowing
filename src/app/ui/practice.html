@@ -1,11 +1,12 @@
-<div class="controls">
-  <div appTransportControls
-    [optionsOpen]="optionsOpen()"
-    (toggleOptions)="optionsOpen.set(!optionsOpen())"></div>
-  <div appOptionsPanel [open]="optionsOpen()"></div>
-</div>
-<div appBanner></div>
-@if (practice.customActive()) {
-  <div appCustomTopic></div>
+@if (!practice.levelChosen()) {
+  <div appLevelPicker></div>
+} @else {
+  <div class="controls">
+    <div appTransportControls></div>
+  </div>
+  <div appBanner></div>
+  @if (practice.customActive()) {
+    <div appCustomTopic></div>
+  }
+  <div appLineList></div>
 }
-<div appLineList></div>

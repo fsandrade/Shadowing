@@ -1,10 +1,22 @@
-<header appHeaderBar (help)="helpOpen.set(true)"></header>
+<header appHeaderBar
+  [settingsOpen]="settingsOpen()"
+  (help)="helpOpen.set(true)"
+  (toggleSettings)="settingsOpen.set(!settingsOpen())"></header>
+
 <div class="app" appShortcuts
   [enabled]="enabled()"
   [helpOpen]="helpOpen()"
   (closeHelp)="helpOpen.set(false)">
-  <aside appTopicList></aside>
-  <main appPractice></main>
+  @if (practice.levelChosen()) {
+    <aside appTopicList></aside>
+  }
+  <main appPractice [class.full]="!practice.levelChosen()"></main>
 </div>
+
+@if (settingsOpen()) {
+  <div class="scrim" (click)="settingsOpen.set(false)"></div>
+}
+<div appSettingsDrawer [open]="settingsOpen()" (close)="settingsOpen.set(false)"></div>
+
 <div appEdgeTip></div>
 <div appHelpModal [open]="helpOpen()" (close)="helpOpen.set(false)"></div>

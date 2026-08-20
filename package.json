@@ -8,8 +8,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test",
-    "test:e2e": "playwright test"
+    "test": "ng test && vitest run tools --environment node",
+    "test:e2e": "playwright test",
+    "db:seed": "node tools/generate-seed-sql.js"
   },
   "dependencies": {
     "@angular/common": "^22.1.0",
@@ -17,6 +18,7 @@
     "@angular/core": "^22.1.0",
     "@angular/forms": "^22.1.0",
     "@angular/platform-browser": "^22.1.0",
+    "@supabase/supabase-js": "^2.112.2",
     "dompurify": "^3.4.13",
     "rxjs": "~7.8.0",
     "sentence-splitter": "^5.0.1",
@@ -30,6 +32,7 @@
     "@types/node": "^26.1.2",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
+    "supabase": "^2.113.0",
     "typescript": "~6.0.2",
     "vitest": "^4.0.8"
   }

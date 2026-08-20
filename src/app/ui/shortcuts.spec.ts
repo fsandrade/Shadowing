@@ -1,18 +1,16 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Corpus } from '../core/deck';
 import { PlaybackService } from '../playback/playback-service';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from '../state/corpus-token';
+import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
 import { Shortcuts } from './shortcuts';
+import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{ id: 'a', name: 'A', lines: ['one', 'two', 'three', 'four'] }],
-};
+const DATA = TEST_CATALOG;
 
 @Component({
   imports: [Shortcuts],
@@ -47,9 +45,10 @@ function setup() {
     providers: [
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       {
         provide: Speaker,
         useValue: {

@@ -1,17 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { type Corpus } from '../core/deck';
 import { Clock } from '../platform/clock';
 import { SafeStorage } from '../platform/storage';
-import { CORPUS_DATA } from './corpus-token';
+import { CATALOG } from './catalog-token';
 import { PracticeStore } from './practice-store';
 import { SessionTimerStore } from './session-timer-store';
 import { SettingsStore } from './settings-store';
+import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { RANDOM } from '../platform/rng';
 
-const DATA: Corpus = {
-  generatedAt: '2026-08-06T00:00:00Z',
-  decks: [{ id: 'a', name: 'A', lines: ['one', 'two'] }],
-};
+const DATA = TEST_CATALOG;
 
 function setup() {
   let now = 1_000_000;
@@ -20,9 +18,10 @@ function setup() {
     providers: [
       {
         provide: SafeStorage,
-        useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
-      { provide: CORPUS_DATA, useValue: DATA },
+      { provide: CATALOG, useValue: DATA },
+      { provide: RANDOM, useValue: NO_SHUFFLE },
       {
         provide: Clock,
         useValue: {

@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, gotoApp, Page } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 
 const APP_URL = '/';
@@ -11,7 +11,7 @@ const PAYLOAD = [
 ].join(' ');
 
 async function openCustomTopic(page: Page): Promise<void> {
-  await page.locator('button[data-deck-id="custom"]').click();
+  await page.locator('#myText').click();
   await expect(page.locator('.custom-topic')).toBeVisible();
 }
 
@@ -22,7 +22,7 @@ async function useText(page: Page, text: string): Promise<void> {
 
 test('splits pasted text into practice lines', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
 
   await expect(page.locator('#customSave')).toBeDisabled();
@@ -38,7 +38,7 @@ test('splits pasted text into practice lines', async ({ page }) => {
 
 test('neutralises markup and scripts in pasted text', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, PAYLOAD);
 
@@ -61,7 +61,7 @@ test('neutralises markup and scripts in pasted text', async ({ page }) => {
 
 test('keeps ampersands and angle brackets the learner typed', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'R&D found that 5 < 10 and 20 > 3 in the report.');
 
@@ -71,20 +71,20 @@ test('keeps ampersands and angle brackets the learner typed', async ({ page }) =
 
 test('remembers the text and the topic across a reload', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'Kept after reload. And a second one.');
 
   await page.reload();
 
-  await expect(page.locator('button[data-deck-id="custom"]')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('#myText')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.lines p')).toHaveCount(2);
   await expect(page.locator('.lines p .text').first()).toHaveText('Kept after reload.');
 });
 
 test('sanitises text that was written straight into storage', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'Placeholder text.');
 
@@ -104,7 +104,7 @@ test('sanitises text that was written straight into storage', async ({ page }) =
 
 test('editing and clearing the text', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'Original one. Original two.');
 
@@ -122,7 +122,7 @@ test('editing and clearing the text', async ({ page }) => {
 
 test('speaks a custom sentence exactly as written', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'This first sentence is long enough to measure. A second one follows.');
 
@@ -135,7 +135,7 @@ test('speaks a custom sentence exactly as written', async ({ page }) => {
 
 test('speaks angle brackets that tag stripping would have swallowed', async ({ page }) => {
   installFakeAudio(page);
-  await page.goto(APP_URL);
+  await gotoApp(page);
   await openCustomTopic(page);
   await useText(page, 'Five < ten is a statement that is definitely true.');
 

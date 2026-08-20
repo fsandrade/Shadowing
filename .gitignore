@@ -1,6 +1,5 @@
 scripts/
 docs/*
-!docs/superpowers/
 
 # Playwright
 node_modules/
@@ -14,9 +13,5 @@ node_modules/
 dist/
 .angular/
 
-# Playwright MCP scratch output
-.playwright-mcp/
-
-# Stray browser screenshots dropped at the repo root. Scoped to the root on
-# purpose, so real image assets under src/ or public/ stay trackable.
-/*.png
+# Supabase CLI scratch
+supabase/.temp/

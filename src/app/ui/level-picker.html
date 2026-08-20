@@ -1,0 +1,25 @@
+<h2 class="level-title">Choose your level</h2>
+<p class="level-lede">You can change this at any time.</p>
+
+<div class="level-grid" id="levels" role="list">
+  @for (level of choices(); track level.id) {
+    <button
+      type="button"
+      role="listitem"
+      class="level-card"
+      [attr.data-level-id]="level.id"
+      [attr.aria-current]="level.id === current()"
+      [disabled]="!level.available"
+      [title]="level.available
+        ? level.description + ' — ' + level.blurb
+        : 'Not ready yet'"
+      (click)="pick(level.id, level.available)"
+    >
+      <span class="level-code">{{ level.id }}</span>
+      <span class="level-name">{{ level.description }}</span>
+      <span class="level-blurb">
+        {{ level.available ? level.blurb : 'Coming soon' }}
+      </span>
+    </button>
+  }
+</div>

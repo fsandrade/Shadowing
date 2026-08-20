@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { PracticeStore } from '../state/practice-store';
-import { SettingsStore } from '../state/settings-store';
 
 @Component({
   selector: 'aside[appTopicList]',
@@ -10,5 +9,12 @@ import { SettingsStore } from '../state/settings-store';
 })
 export class TopicList {
   protected readonly practice = inject(PracticeStore);
-  protected readonly settings = inject(SettingsStore);
+
+  protected toggleCustom(): void {
+    if (this.practice.customActive()) {
+      this.practice.useCatalog();
+    } else {
+      this.practice.useCustomText();
+    }
+  }
 }

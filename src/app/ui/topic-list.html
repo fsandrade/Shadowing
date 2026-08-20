@@ -1,13 +1,28 @@
 <h2 class="topics-title">Topics</h2>
-<nav class="decks" id="decks" aria-label="Topics">
+
+<nav class="decks" id="decks" aria-label="Filter by topic">
   <div class="decks-list">
-    @for (opt of practice.deckOptions(); track opt.id) {
+    @for (topic of practice.topics(); track topic.id) {
       <button
         type="button"
-        [attr.data-deck-id]="opt.id"
-        [attr.aria-current]="opt.id === settings.deckId()"
-        (click)="practice.selectDeck(opt.id)"
-      >{{ opt.name }}</button>
+        [attr.data-deck-id]="topic.id"
+        [attr.aria-pressed]="topic.id === practice.topicId()"
+        [title]="topic.id === practice.topicId()
+          ? 'Showing only this topic — click again to show all topics'
+          : 'Show only this topic'"
+        (click)="practice.toggleTopic(topic.id)"
+      >{{ topic.name }}</button>
     }
   </div>
 </nav>
+
+<div class="topics-aside">
+  <button
+    type="button"
+    id="myText"
+    class="my-text-btn"
+    [attr.aria-pressed]="practice.customActive()"
+    title="Practise your own text instead of the catalogue"
+    (click)="toggleCustom()"
+  >&#9998; My text</button>
+</div>

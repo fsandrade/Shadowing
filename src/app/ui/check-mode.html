@@ -1,0 +1,11 @@
+<span class="check-mode-label">Check</span>
+@for (opt of OPTIONS; track opt.id) {
+  <button
+    type="button"
+    [id]="'check-' + opt.id"
+    [attr.aria-pressed]="mode() === opt.id"
+    [disabled]="unavailable(opt.id)"
+    [title]="unavailable(opt.id) ? 'This browser cannot transcribe speech' : opt.title"
+    (click)="pick(opt.id)"
+  >{{ opt.label }}</button>
+}

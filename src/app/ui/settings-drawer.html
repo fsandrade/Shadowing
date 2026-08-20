@@ -1,0 +1,51 @@
+<div class="drawer-head">
+  <h2>Settings</h2>
+  <button type="button" class="icon-btn" id="closeSettings"
+    aria-label="Close settings" title="Close settings"
+    (click)="close.emit()">&#10005;</button>
+</div>
+
+<section class="drawer-section">
+  <h3>Session</h3>
+  <div class="durations" id="durations">
+    @for (opt of DURATIONS; track opt.min) {
+      <button type="button"
+        [attr.data-min]="opt.min"
+        [title]="opt.title"
+        [attr.aria-pressed]="settings.durationMin() === opt.min"
+        (click)="pickDuration(opt.min)"
+      >{{ opt.label }}</button>
+    }
+  </div>
+</section>
+
+<section class="drawer-section">
+  <h3>Playback</h3>
+  <div appSettingsSliders></div>
+  <button type="button" class="drawer-link" id="resetPacing"
+    [disabled]="atLevelPacing()"
+    [title]="'Back to the speed and gap suggested for ' + (practice.level() ?? 'this level')"
+    (click)="resetPacing()">Reset to level default</button>
+</section>
+
+<section class="drawer-section">
+  <h3>Practice</h3>
+  <div class="drawer-toggles">
+    <button type="button" id="blur"
+      [attr.aria-pressed]="settings.blur()"
+      [title]="BLUR_TITLE"
+      (click)="settings.setBlur(!settings.blur())">&#9682; blur text</button>
+
+    <button type="button" id="repeat"
+      [disabled]="!settings.sttEnabled()"
+      [attr.aria-pressed]="settings.repeatUntilFive()"
+      [title]="REPEAT_TITLE"
+      (click)="settings.setRepeatUntilFive(!settings.repeatUntilFive())"
+    >&#8635; retry until 5&#9733;</button>
+
+    <button type="button" id="shuffleSetting" class="mobile-only"
+      [disabled]="!practice.hasLines()"
+      title="Reshuffle the sentences"
+      (click)="shuffle()">&#8644; shuffle</button>
+  </div>
+</section>

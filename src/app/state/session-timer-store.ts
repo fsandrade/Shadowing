@@ -22,6 +22,10 @@ export class SessionTimerStore {
 
   readonly remainingMs = signal(0);
 
+  private readonly finished = signal(0);
+
+  readonly sessionsFinished = this.finished.asReadonly();
+
   readonly spokenCount = computed(() => this.practised().size);
 
   readonly starsWon = computed(() => {
@@ -89,6 +93,7 @@ export class SessionTimerStore {
       stars: this.starsByLine().size ? this.starsWon() : null,
     };
     this.reset(this.settings.durationMin());
+    this.finished.update((n) => n + 1);
     return tally;
   }
 

@@ -94,6 +94,22 @@ export function soundsComplete(base: string, transcript: string): boolean {
   return reachedEnd && matched / targetLength >= COMPLETE_COVERAGE;
 }
 
+export interface AttemptCounts {
+  readonly targetLength: number;
+  readonly attemptLength: number;
+  readonly matched: number;
+}
+
+export function speechCounts(base: string, transcript: string): AttemptCounts {
+  const { targetLength, spokenLength, matched } = align(base, transcript);
+  return { targetLength, attemptLength: spokenLength, matched };
+}
+
+export function similarityFromCounts(counts: AttemptCounts): number {
+  const total = counts.targetLength + counts.attemptLength;
+  return total ? (2 * counts.matched) / total : 0;
+}
+
 export function starsFromCounts(
   targetLength: number,
   attemptLength: number,
