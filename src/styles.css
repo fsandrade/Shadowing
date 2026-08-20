@@ -57,8 +57,12 @@ header {
 header h1 { font-size: 17px; font-weight: 600; margin: 0; }
 .clock {
   font-variant-numeric: tabular-nums; font-size: 20px;
-  min-width: 68px; text-align: right; margin-left: auto;
+  min-width: 68px; text-align: right;
 }
+
+/* Holds the right-hand icon group at the edge of the header even when the
+   clock is absent from the DOM (onboarding, chooser, summary). */
+#settings { margin-left: auto; }
 
 .level-chip {
   display: inline-flex; align-items: baseline; gap: 7px;
@@ -467,7 +471,7 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
 
   header { flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; }
   header h1 { font-size: 15px; }
-  .clock { margin-left: auto; font-size: 16px; }
+  .clock { font-size: 16px; }
 
   .app { grid-template-columns: 1fr; }
 

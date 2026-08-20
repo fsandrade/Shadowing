@@ -47,7 +47,7 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     },
   } as unknown as SpeechRecognizer;
 
-  const denied = opts.micDenied ?? false;
+  let denied = opts.micDenied ?? false;
   const mic = {
     denied: () => denied,
     ensure: () => (denied
@@ -85,6 +85,7 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
     heard: (text: string) => recognition.onResult?.(text),
+    setMicDenied: (value: boolean) => { denied = value; },
   };
 }
 
@@ -221,6 +222,30 @@ describe('FlowStore starting an activity', () => {
     expect(banner.html()).toBeNull();
 
     await flow.start(activityById('listening')!, 'a', 10);
+    expect(banner.html()).toBeNull();
+  });
+
+  it('retracts the denied-mic warning once an activity that needs no microphone starts', async () => {
+    const { flow, banner } = setup({ micDenied: true });
+
+    await flow.start(activityById('speaking')!, 'a', 10);
+    expect(banner.html()).toBe(MESSAGES.micDenied);
+
+    // Listening asks for 'nothing', which a denied mic can always deliver -
+    // the warning is about a session that never happened, and must not
+    // survive on screen for it.
+    await flow.start(activityById('listening')!, 'a', 10);
+    expect(banner.html()).toBeNull();
+  });
+
+  it('retracts the denied-mic warning once the microphone is granted and Speaking restarts', async () => {
+    const { flow, banner, setMicDenied } = setup({ micDenied: true });
+
+    await flow.start(activityById('speaking')!, 'a', 10);
+    expect(banner.html()).toBe(MESSAGES.micDenied);
+
+    setMicDenied(false);
+    await flow.start(activityById('speaking')!, 'a', 10);
     expect(banner.html()).toBeNull();
   });
 

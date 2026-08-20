@@ -88,6 +88,8 @@ export class FlowStore {
     // Play, because play() clears only the banners a retry can disprove.
     if (applied !== checkMode) {
       this.banner.show(MESSAGES.micDenied, 'stt-denied');
+    } else {
+      this.banner.clear('stt-denied');
     }
 
     this.timer.reset(minutes);

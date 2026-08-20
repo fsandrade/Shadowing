@@ -1,4 +1,6 @@
-import { test, expect, gotoApp, Page } from './helpers/fixtures';
+import {
+  test, expect, gotoApp, startActivity, Page,
+} from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 import { breakSupabase } from './helpers/fake-supabase';
 
@@ -135,6 +137,24 @@ test('choosing an activity practises it, finishing shows a summary, back returns
 
     await page.locator('#backToChooser').click();
     await expect(page.locator('#activities')).toBeVisible();
+  });
+
+test('the header keeps its right-hand controls flush right on the chooser and in practice',
+  async ({ page }) => {
+    installFakeAudio(page);
+    await gotoApp(page, { activity: null });
+
+    // There is no clock on the chooser - the icon group must still be held
+    // against the right edge rather than collapsing next to the level chip.
+    const headerWidth = await page.locator('header').evaluate((el) => el.getBoundingClientRect().width);
+    const chooserLeft = await page.locator('#settings')
+      .evaluate((el) => el.getBoundingClientRect().left);
+    expect(chooserLeft).toBeGreaterThan(headerWidth / 2);
+
+    await startActivity(page, 'shadowing');
+    const practiceLeft = await page.locator('#settings')
+      .evaluate((el) => el.getBoundingClientRect().left);
+    expect(practiceLeft).toBeGreaterThan(headerWidth / 2);
   });
 
 test('the activity sets blur, but the learner can still override it', async ({ page }) => {
