@@ -21,15 +21,18 @@ update public.practice_sessions
    set activity = case mode
                     when 'typing' then 'spelling'::public.practice_activity
                     else 'speaking'::public.practice_activity
-                  end
- where activity is null;
+                  end;
 
 alter table public.practice_sessions
   alter column activity set not null;
 
--- mode is now derivable from activity, and two columns that say nearly the
--- same thing drift apart. sentence_attempts.mode stays: there it describes how
--- one attempt was entered, which is a different fact about a different row.
+-- Dropped, not kept alongside: mode carried less than activity does - it never
+-- could tell listening from shadowing apart, which is the whole reason this
+-- migration exists - and two columns that say nearly the same thing drift
+-- apart. The drop is irreversible: the backfill above maps mode onto activity,
+-- but nothing maps the four activities back onto two modes.
+-- sentence_attempts.mode stays: there it describes how one attempt was
+-- entered, which is a different fact about a different row.
 alter table public.practice_sessions
   drop column mode;
 
