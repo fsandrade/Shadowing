@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { activityById } from '../core/activity';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { BannerStore } from '../state/banner-store';
 import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
+import { FlowStore } from '../state/flow-store';
 import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
@@ -70,6 +72,7 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
     timer,
     banner: TestBed.inject(BannerStore),
     custom: TestBed.inject(CustomTopicStore),
+    flow: TestBed.inject(FlowStore),
   };
 }
 
@@ -341,92 +344,115 @@ describe('PlaybackService session expiry', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('finishes with a summary once a timed session runs out', async () => {
-    const { playback, practice, settings, timer, banner } = setup(1000);
-    settings.setDurationMin(1);
-    timer.reset(1);
+  // Expiry now ends the activity rather than raising a banner, and finish() is
+  // a no-op unless a session is running - so these tests have to start one.
+  // start() also applies the level's pacing; the gap arithmetic below is
+  // written in whole speech lengths, so put the slack back to 1.
+  async function startSession(
+    t: { flow: FlowStore; settings: SettingsStore },
+    minutes: number,
+  ): Promise<void> {
+    await t.flow.start(activityById('shadowing')!, 'a', minutes);
+    t.settings.setSlack(1);
+  }
 
-    playback.play();
+  const SHADOWING = activityById('shadowing')!;
+
+  it('finishes and reports the session once a timed session runs out', async () => {
+    const t = setup(1000);
+    await startSession(t, 1);
+
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(70_000);
 
-    expect(practice.playing()).toBe(false);
-
-    expect(banner.html()).toMatch(/^Session complete: 1 min · \d+ sentences? repeated\.$/);
-    expect(timer.spokenCount()).toBe(0);
+    expect(t.practice.playing()).toBe(false);
+    expect(t.flow.screen()).toBe('summary');
+    expect(t.flow.result()).toEqual({
+      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: null,
+    });
+    expect(t.timer.spokenCount()).toBe(0);
   });
 
   it('includes the stars won once the validator has scored', async () => {
-    const { playback, settings, timer, banner } = setup(1000);
-    settings.setDurationMin(1);
-    timer.reset(1);
-    playback.setValidationHook((lineIndex) => {
-      timer.recordStars(lineIndex, 4);
+    const t = setup(1000);
+    await startSession(t, 1);
+    t.playback.setValidationHook((lineIndex) => {
+      t.timer.recordStars(lineIndex, 4);
       return Promise.resolve();
     });
 
-    playback.play();
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(70_000);
 
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 3, 12));
+    expect(t.flow.result()).toEqual({
+      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: 12,
+    });
   });
 
   it('counts a repeated sentence and its stars only once', async () => {
-    const { playback, settings, timer, banner } = setup(1000);
-    settings.setDurationMin(1);
-    timer.reset(1);
+    const t = setup(1000);
+    await startSession(t, 1);
     let scored = 0;
-    playback.setValidationHook((lineIndex) => {
+    t.playback.setValidationHook((lineIndex) => {
       scored++;
-      timer.recordStars(lineIndex, 5);
+      t.timer.recordStars(lineIndex, 5);
       return Promise.resolve();
     });
-    playback.setRepeatPolicy((_, repeatsDone) => repeatsDone < 2);
+    t.playback.setRepeatPolicy((_, repeatsDone) => repeatsDone < 2);
 
-    playback.play();
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(scored).toBeGreaterThan(3);
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 3, 15));
+    expect(t.flow.result()).toEqual({
+      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: 15,
+    });
   });
 
   it('does not finish while time remains in the session', async () => {
-    const { playback, practice, banner } = setup(1000);
-    playback.play();
+    const t = setup(1000);
+    await startSession(t, 10);
+
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(120_000);
-    expect(practice.playing()).toBe(true);
-    expect(banner.visible()).toBe(false);
+
+    expect(t.practice.playing()).toBe(true);
+    expect(t.flow.screen()).toBe('practice');
+    expect(t.flow.result()).toBeNull();
   });
 
   it('catches expiry at the post-speak checkpoint, before running a gap', async () => {
-    const { playback, practice, settings, timer, banner } = setup(1000);
-    settings.setDurationMin(1);
-    timer.reset(1);
-    timer.remainingMs.set(500);
+    const t = setup(1000);
+    await startSession(t, 1);
+    t.timer.remainingMs.set(500);
 
-    playback.play();
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1, null));
-    expect(playback.inGap()).toBe(false);
-    expect(practice.playing()).toBe(false);
-    expect(practice.index()).toBe(0);
+    expect(t.flow.result()).toEqual({
+      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 1, stars: null,
+    });
+    expect(t.playback.inGap()).toBe(false);
+    expect(t.practice.playing()).toBe(false);
+    expect(t.practice.index()).toBe(0);
   });
 
   it('catches expiry at the post-gap checkpoint, before advancing', async () => {
-    const { playback, practice, settings, timer, banner } = setup(1000);
-    settings.setDurationMin(1);
-    timer.reset(1);
-    timer.remainingMs.set(1500);
+    const t = setup(1000);
+    await startSession(t, 1);
+    t.timer.remainingMs.set(1500);
 
-    playback.play();
+    t.playback.play();
     await vi.advanceTimersByTimeAsync(1000);
-    expect(banner.visible()).toBe(false);
-    expect(playback.inGap()).toBe(true);
+    expect(t.flow.result()).toBeNull();
+    expect(t.playback.inGap()).toBe(true);
 
     await vi.advanceTimersByTimeAsync(1000);
-    expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 1, null));
-    expect(practice.playing()).toBe(false);
-    expect(practice.index()).toBe(0);
+    expect(t.flow.result()).toEqual({
+      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 1, stars: null,
+    });
+    expect(t.practice.playing()).toBe(false);
+    expect(t.practice.index()).toBe(0);
   });
 });
 

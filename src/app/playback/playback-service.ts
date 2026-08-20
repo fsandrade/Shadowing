@@ -5,6 +5,7 @@ import { pauseMs } from '../core/timing';
 import { Clock } from '../platform/clock';
 import { Speaker } from '../platform/speaker';
 import { BannerStore } from '../state/banner-store';
+import { FlowStore } from '../state/flow-store';
 import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
@@ -36,6 +37,7 @@ export class PlaybackService {
   private readonly timer = inject(SessionTimerStore);
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
+  private readonly flow = inject(FlowStore);
 
   private generation = 0;
   private silentStreak = 0;
@@ -223,10 +225,8 @@ export class PlaybackService {
 
   private finishIfExpired(): boolean {
     if (!this.timer.expired()) { return false; }
-    const minutes = this.settings.durationMin();
     this.stop();
-    const tally = this.timer.finish();
-    this.banner.show(MESSAGES.sessionSummary(minutes, tally.spoken, tally.stars), 'summary');
+    this.flow.finish();
     return true;
   }
 

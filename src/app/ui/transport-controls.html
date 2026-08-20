@@ -2,7 +2,12 @@
   [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
 <button type="button" id="next" [disabled]="!enabled()"
   title="Next (&rarr;)" (click)="playback.next()">&#9197;</button>
-<div appCheckMode></div>
+@if (customActivity()) {
+  <div appCheckMode></div>
+}
 <button type="button" id="shuffle" class="shuffle-btn" [disabled]="!enabled()"
   title="Reshuffle the sentences"
   (click)="playback.shuffle()">&#8644; shuffle</button>
+<button type="button" id="finish" class="shuffle-btn"
+  title="End this activity and see your summary"
+  (click)="flow.finish()">Finish</button>

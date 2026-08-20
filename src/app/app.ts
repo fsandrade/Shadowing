@@ -10,14 +10,15 @@ import { HeaderBar } from './ui/header-bar';
 import { HelpModal } from './ui/help-modal';
 import { LevelPicker } from './ui/level-picker';
 import { Practice } from './ui/practice';
+import { SessionSummary } from './ui/session-summary';
 import { SettingsDrawer } from './ui/settings-drawer';
 import { Shortcuts } from './ui/shortcuts';
 
 @Component({
   selector: 'app-root',
   imports: [
-    HeaderBar, LevelPicker, ActivityChooser, Practice, Shortcuts, EdgeTip, HelpModal,
-    SettingsDrawer,
+    HeaderBar, LevelPicker, ActivityChooser, Practice, SessionSummary, Shortcuts, EdgeTip,
+    HelpModal, SettingsDrawer,
   ],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

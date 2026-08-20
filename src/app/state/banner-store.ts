@@ -4,8 +4,7 @@ export type BannerSource =
   | 'no-voice'
   | 'unsupported'
   | 'dead-voice'
-  | 'stt-denied'
-  | 'summary';
+  | 'stt-denied';
 
 @Injectable({ providedIn: 'root' })
 export class BannerStore {

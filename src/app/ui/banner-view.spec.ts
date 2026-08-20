@@ -70,7 +70,7 @@ describe('BannerView dismissal', () => {
   });
 
   it('closes whichever source raised it', () => {
-    for (const source of ['no-voice', 'unsupported', 'dead-voice', 'stt-denied', 'summary'] as const) {
+    for (const source of ['no-voice', 'unsupported', 'dead-voice', 'stt-denied'] as const) {
       const { fixture, store, close } = render();
       store.show('something happened', source);
       fixture.detectChanges();

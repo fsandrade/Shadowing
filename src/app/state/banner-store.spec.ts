@@ -47,7 +47,7 @@ describe('BannerStore', () => {
   });
 
   it('clear on an empty banner is harmless', () => {
-    expect(() => banner.clear('summary')).not.toThrow();
+    expect(() => banner.clear('dead-voice')).not.toThrow();
     expect(banner.visible()).toBe(false);
   });
 });

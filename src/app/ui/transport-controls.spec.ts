@@ -1,11 +1,13 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
+import { activityById } from '../core/activity';
 import { PlaybackService } from '../playback/playback-service';
 import { SPEECH_RECOGNITION_CTOR } from '../platform/speech-recognition';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
+import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
@@ -58,12 +60,23 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
   return {
     fixture,
     host: fixture.componentInstance,
+    root,
     transport: root.querySelector('.transport')!,
     practice: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
     playback: TestBed.inject(PlaybackService),
+    flow: TestBed.inject(FlowStore),
     btn: (id: string) => root.querySelector(`#${id}`) as HTMLButtonElement,
   };
+}
+
+// The check-mode control only shows for My text now, so the tests that are
+// about the control itself have to put that activity on screen first.
+async function renderCustom(opts: { stt?: boolean } = {}) {
+  const r = render(opts);
+  await r.flow.start(activityById('custom')!, null, 10);
+  r.fixture.detectChanges();
+  return r;
 }
 
 describe('TransportControls structure', () => {
@@ -71,11 +84,11 @@ describe('TransportControls structure', () => {
     const { transport } = render();
     expect(transport.classList.contains('transport')).toBe(true);
     expect([...transport.querySelectorAll('button')].map((b) => b.id))
-      .toEqual(['play', 'next', 'check-nothing', 'check-speaking', 'check-spelling', 'shuffle']);
+      .toEqual(['play', 'next', 'shuffle', 'finish']);
   });
 
-  it('keeps the vanilla titles the specs and tooltips rely on', () => {
-    const { btn } = render();
+  it('keeps the vanilla titles the specs and tooltips rely on', async () => {
+    const { btn } = await renderCustom();
     expect(btn('play').title).toMatch(/Play\/Pause \(space\)/);
     expect(btn('next').title).toBe('Next (→)');
     expect(btn('check-speaking').title).toMatch(/say the sentence out loud/i);
@@ -116,8 +129,8 @@ describe('TransportControls disabled state', () => {
     expect(btn('next').disabled).toBe(false);
   });
 
-  it('disables only the speaking option when speech recognition is unavailable', () => {
-    const { btn } = render({ stt: false });
+  it('disables only the speaking option when speech recognition is unavailable', async () => {
+    const { btn } = await renderCustom({ stt: false });
     expect(btn('check-speaking').disabled).toBe(true);
     expect(btn('check-spelling').disabled).toBe(false);
     expect(btn('check-nothing').disabled).toBe(false);
@@ -143,5 +156,32 @@ describe('TransportControls toggles', () => {
     const { btn } = render();
     expect(btn('shuffle').title).toMatch(/reshuffle/i);
     expect(btn('shuffle').hasAttribute('disabled')).toBe(false);
+  });
+});
+
+describe('TransportControls and the activity', () => {
+  it('hides the check-mode control — the activity owns it', async () => {
+    const { fixture, root, flow } = render();
+    await flow.start(activityById('speaking')!, 'a', 10);
+    fixture.detectChanges();
+    expect(root.querySelector('.check-mode')).toBeNull();
+  });
+
+  it('shows it for My text, where the choice is the learner\'s', async () => {
+    const { fixture, root, flow } = render();
+    await flow.start(activityById('custom')!, null, 10);
+    fixture.detectChanges();
+    expect(root.querySelector('.check-mode')).not.toBeNull();
+  });
+
+  it('finishing ends the activity', async () => {
+    const { fixture, root, flow } = render();
+    await flow.start(activityById('listening')!, 'a', 10);
+    fixture.detectChanges();
+
+    root.querySelector<HTMLButtonElement>('#finish')!.click();
+    fixture.detectChanges();
+
+    expect(flow.screen()).toBe('summary');
   });
 });
