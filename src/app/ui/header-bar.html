@@ -10,7 +10,9 @@
   </span>
 }
 
-<div class="clock" id="clock" [title]="clockTitle()">{{ timer.clockText() }}</div>
+@if (practising()) {
+  <div class="clock" id="clock" [title]="clockTitle()">{{ timer.clockText() }}</div>
+}
 
 <button
   type="button"

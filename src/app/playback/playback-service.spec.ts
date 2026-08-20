@@ -332,6 +332,29 @@ describe('PlaybackService dead-voice detection', () => {
     expect(banner.html()).not.toBe(MESSAGES.deadVoice);
   });
 
+  it('a fresh Play retracts the dead-voice complaint it raised itself', async () => {
+    const { playback, banner } = setup(0);
+    playback.play();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(banner.html()).toBe(MESSAGES.deadVoice);
+
+    playback.play();
+    expect(banner.html()).toBeNull();
+    playback.pause();
+  });
+
+  it('a fresh Play leaves the refused-microphone warning standing', () => {
+    const { playback, banner } = setup(1000);
+    // Raised by FlowStore.start() when Speaking degrades to unscored. Pressing
+    // Play does not un-deny the microphone, so it must survive.
+    banner.show(MESSAGES.micDenied, 'stt-denied');
+
+    playback.play();
+
+    expect(banner.html()).toBe(MESSAGES.micDenied);
+    playback.pause();
+  });
+
   it('counts only healthy utterances toward the session tally', async () => {
     const { playback, timer } = setup(1000);
     playback.play();

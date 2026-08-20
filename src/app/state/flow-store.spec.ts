@@ -13,8 +13,10 @@ import { SafeStorage } from '../platform/storage';
 import { SUPABASE } from '../platform/supabase-client';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
 import { ValidationService } from '../validation/validation-service';
+import { BannerStore } from './banner-store';
 import { CATALOG } from './catalog-token';
 import { FlowStore } from './flow-store';
+import { MESSAGES } from './messages';
 import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
@@ -80,6 +82,7 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     settings: TestBed.inject(SettingsStore),
     profile: TestBed.inject(ProfileStore),
     progress: TestBed.inject(ProgressService),
+    banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
     heard: (text: string) => recognition.onResult?.(text),
   };
@@ -198,6 +201,27 @@ describe('FlowStore starting an activity', () => {
 
     expect(validation.results().size).toBe(0);
     expect(validation.activeLine()).toBeNull();
+  });
+
+  it('says so when Speaking degrades to unscored because the mic was refused', async () => {
+    const { flow, settings, banner } = setup({ micDenied: true });
+
+    await flow.start(activityById('speaking')!, 'a', 10);
+
+    // Silently, this is Shadowing under another name - and the session row
+    // still says activity = 'speaking'.
+    expect(settings.sttEnabled()).toBe(false);
+    expect(banner.html()).toBe(MESSAGES.micDenied);
+  });
+
+  it('raises no warning when the activity got the mode it asked for', async () => {
+    const { flow, banner } = setup();
+
+    await flow.start(activityById('speaking')!, 'a', 10);
+    expect(banner.html()).toBeNull();
+
+    await flow.start(activityById('listening')!, 'a', 10);
+    expect(banner.html()).toBeNull();
   });
 
   it('never opens a database session for My text', async () => {

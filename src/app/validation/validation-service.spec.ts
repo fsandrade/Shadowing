@@ -382,6 +382,19 @@ describe('ValidationService enable flow', () => {
     expect(settings.sttEnabled()).toBe(false);
   });
 
+  it('enable turns the setting back off when a refusal follows a typing session', async () => {
+    const { validation, mic, settings } = setup();
+    // Spelling turns the flag on without ever touching the microphone. Leaving
+    // it on through a refused Speaking would make mode() claim 'speaking'.
+    settings.setSttEnabled(true);
+    mic.ensure.mockRejectedValue(new Error('denied'));
+
+    expect(await validation.enable()).toBe(false);
+
+    expect(settings.sttEnabled()).toBe(false);
+    expect(validation.mode()).toBe('nothing');
+  });
+
   it('a second enable while the first is pending does not re-prompt', async () => {
     const { validation, mic } = setup();
     let release!: (v: unknown) => void;

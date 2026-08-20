@@ -3,6 +3,8 @@ import type { Activity, CheckMode } from '../core/activity';
 import { pacingFor } from '../core/pacing';
 import { ProgressService } from '../data/progress-service';
 import { ValidationService } from '../validation/validation-service';
+import { BannerStore } from './banner-store';
+import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
 import { ProfileStore } from './profile-store';
 import { SessionTimerStore } from './session-timer-store';
@@ -30,6 +32,7 @@ export class FlowStore {
   private readonly practice = inject(PracticeStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly validation = inject(ValidationService);
+  private readonly banner = inject(BannerStore);
   private readonly progress = inject(ProgressService);
 
   private readonly running = signal<Activity | null>(null);
@@ -76,7 +79,16 @@ export class FlowStore {
 
     // setMode owns the microphone permission and the stt/typing flags; going
     // around it would leave the validator half-configured.
-    await this.validation.setMode(checkMode);
+    const applied = await this.validation.setMode(checkMode);
+
+    // A denied microphone makes Speaking resolve to 'nothing', which is
+    // Shadowing with a different name - and the row still says activity =
+    // 'speaking'. Nothing else says so: the check-mode selector that used to
+    // snap back to Nothing now only shows for My text. The banner outlives
+    // Play, because play() clears only the banners a retry can disprove.
+    if (applied !== checkMode) {
+      this.banner.show(MESSAGES.micDenied, 'stt-denied');
+    }
 
     this.timer.reset(minutes);
 

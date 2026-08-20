@@ -208,6 +208,10 @@ export class ValidationService {
       },
       () => {
         this.enabling = null;
+        // Say so, rather than leaving whatever the last activity set. Spelling
+        // turns the flag on without the microphone, so a denied Speaking that
+        // followed it would otherwise still report itself as enabled.
+        this.settings.setSttEnabled(false);
         return false;
       },
     );

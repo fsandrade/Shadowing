@@ -46,6 +46,25 @@ describe('BannerStore', () => {
     expect(banner.visible()).toBe(false);
   });
 
+  it('clearTransient drops a complaint a retry can disprove', () => {
+    banner.show('the voice made no sound', 'dead-voice');
+    banner.clearTransient();
+    expect(banner.visible()).toBe(false);
+  });
+
+  it('clearTransient keeps a standing fact about the browser or the session', () => {
+    for (const source of ['stt-denied', 'no-voice', 'unsupported'] as const) {
+      banner.show(source, source);
+      banner.clearTransient();
+      expect(banner.html(), `${source} should survive a retry`).toBe(source);
+    }
+  });
+
+  it('clearTransient on an empty banner is harmless', () => {
+    expect(() => banner.clearTransient()).not.toThrow();
+    expect(banner.visible()).toBe(false);
+  });
+
   it('clear on an empty banner is harmless', () => {
     expect(() => banner.clear('dead-voice')).not.toThrow();
     expect(banner.visible()).toBe(false);

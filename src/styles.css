@@ -20,7 +20,9 @@ body {
   color: var(--text);
   font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
   display: grid;
-  grid-template-rows: auto 1fr;
+  /* Header, banner, screen. The banner row is auto and the banner is
+     display:none until something is wrong, so it collapses to nothing. */
+  grid-template-rows: auto auto 1fr;
 }
 
 .booting { color: var(--dim); padding: 24px 20px; margin: 0; }
@@ -73,7 +75,7 @@ header h1 { font-size: 17px; font-weight: 600; margin: 0; }
 .icon-btn:hover, .icon-btn:focus-visible { color: var(--text); border-color: var(--dim); background: #232a33; }
 .icon-btn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
 
-.app { display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
+.app { grid-row: 3; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
 .app:has(main.full) { grid-template-columns: 1fr; }
 
 .decks { overflow-y: auto; padding: 4px 0 10px; }

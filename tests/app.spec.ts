@@ -213,6 +213,18 @@ test('warns and disables the controls when no English voice is available', async
   await expect(page.locator('#shuffle')).toBeDisabled();
 });
 
+test('warns about the audio on the chooser, before an activity is picked', async ({ page }) => {
+  installFakeAudio(page, { voices: [{ name: 'Maria', lang: 'pt-BR' }] });
+  await gotoApp(page, { activity: null });
+
+  // The warning is raised at boot and the screen that boots is the chooser:
+  // telling the learner only after they have picked an activity and a
+  // duration is telling them too late.
+  await expect(page.locator('#activities')).toBeVisible();
+  await expect(page.locator('#banner')).toBeVisible();
+  await expect(page.locator('#banner')).toContainText(/no english voice/i);
+});
+
 test('a banner can be dismissed with its close button', async ({ page }) => {
   installFakeAudio(page, { voices: [{ name: 'Maria', lang: 'pt-BR' }] });
   await gotoApp(page);

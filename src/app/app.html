@@ -3,6 +3,11 @@
   (help)="helpOpen.set(true)"
   (toggleSettings)="settingsOpen.set(!settingsOpen())"></header>
 
+<!-- Outside the switch: "this browser cannot speak" is raised at boot, and the
+     screen that boots is the chooser. Inside practice it was invisible until
+     the learner had already picked an activity and a duration. -->
+<div appBanner></div>
+
 <div class="app" appShortcuts
   [enabled]="enabled()"
   [helpOpen]="helpOpen()"

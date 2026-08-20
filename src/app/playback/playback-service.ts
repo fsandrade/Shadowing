@@ -71,7 +71,7 @@ export class PlaybackService {
     this.timer.accrue();
     this.practice.setPlaying(true);
     this.timer.resume();
-    this.banner.clearAll();
+    this.banner.clearTransient();
     void this.runLoop(gen).catch(() => this.stop());
   }
 

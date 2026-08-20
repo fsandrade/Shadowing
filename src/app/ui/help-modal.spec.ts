@@ -55,6 +55,19 @@ describe('HelpModal content', () => {
       expect(text, `help should mention ${term}`).toContain(term);
     }
   });
+
+  it('describes only controls the app actually has', () => {
+    const text = render(true).modal.textContent ?? '';
+    // "rate me" and "type it" were the old transport toggles. They are the
+    // Speaking and Spelling activities now, and the only thing left to choose
+    // is My text's Check control.
+    for (const gone of ['rate me', 'type it']) {
+      expect(text, `help should not name the removed ${gone} control`).not.toContain(gone);
+    }
+    for (const term of ['Speaking', 'Spelling', 'Check', 'My text']) {
+      expect(text, `help should describe ${term}`).toContain(term);
+    }
+  });
 });
 
 describe('HelpModal dismissal', () => {

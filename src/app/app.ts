@@ -5,6 +5,7 @@ import { FlowStore } from './state/flow-store';
 import { PracticeStore } from './state/practice-store';
 import { VoiceStore } from './state/voice-store';
 import { ActivityChooser } from './ui/activity-chooser';
+import { BannerView } from './ui/banner-view';
 import { EdgeTip } from './ui/edge-tip';
 import { HeaderBar } from './ui/header-bar';
 import { HelpModal } from './ui/help-modal';
@@ -17,8 +18,8 @@ import { Shortcuts } from './ui/shortcuts';
 @Component({
   selector: 'app-root',
   imports: [
-    HeaderBar, LevelPicker, ActivityChooser, Practice, SessionSummary, Shortcuts, EdgeTip,
-    HelpModal, SettingsDrawer,
+    HeaderBar, BannerView, LevelPicker, ActivityChooser, Practice, SessionSummary, Shortcuts,
+    EdgeTip, HelpModal, SettingsDrawer,
   ],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
