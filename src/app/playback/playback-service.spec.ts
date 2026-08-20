@@ -57,12 +57,17 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
       { provide: Speaker, useValue: speaker.impl },
     ],
   });
+  const settings = TestBed.inject(SettingsStore);
+  const timer = TestBed.inject(SessionTimerStore);
+  // Mirror AppStartup: a real session always starts with its timer seeded,
+  // so tests that are not about expiry get a duration long enough to ignore.
+  timer.reset(settings.durationMin());
   return {
     speaker,
     playback: TestBed.inject(PlaybackService),
     practice: TestBed.inject(PracticeStore),
-    settings: TestBed.inject(SettingsStore),
-    timer: TestBed.inject(SessionTimerStore),
+    settings,
+    timer,
     banner: TestBed.inject(BannerStore),
     custom: TestBed.inject(CustomTopicStore),
   };
@@ -384,7 +389,7 @@ describe('PlaybackService session expiry', () => {
     expect(banner.html()).toBe(MESSAGES.sessionSummary(1, 3, 15));
   });
 
-  it('does not finish an unlimited session', async () => {
+  it('does not finish while time remains in the session', async () => {
     const { playback, practice, banner } = setup(1000);
     playback.play();
     await vi.advanceTimersByTimeAsync(120_000);

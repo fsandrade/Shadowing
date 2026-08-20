@@ -12,7 +12,7 @@ function startInTypingMode(page: Page): void {
       rate: 1,
       slack: 1,
       voiceName: '',
-      durationMin: 0,
+      durationMin: 10,
       blur: false,
       stt: true,
       repeat: false,

@@ -18,7 +18,6 @@ const DURATIONS: readonly DurationOption[] = [
   { min: 5, label: '5 min', title: 'Set a 5-minute session' },
   { min: 10, label: '10 min', title: 'Set a 10-minute session' },
   { min: 15, label: '15 min', title: 'Set a 15-minute session' },
-  { min: 0, label: 'No limit', title: 'Practice with no time limit' },
 ];
 
 const BLUR_TITLE = 'Hide the text so you practise by ear';

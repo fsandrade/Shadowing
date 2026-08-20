@@ -36,11 +36,7 @@ export class SessionTimerStore {
 
   readonly clockText = computed(() => {
     this.ticker();
-    const elapsed = this.elapsed();
-    const ms = this.settings.durationMin() > 0
-      ? this.remainingMs() - elapsed
-      : this.remainingMs() + elapsed;
-    return formatClock(ms / 1000);
+    return formatClock((this.remainingMs() - this.elapsed()) / 1000);
   });
 
   tick(): void {
@@ -54,15 +50,12 @@ export class SessionTimerStore {
   accrue(): void {
     if (!this.practice.playing()) { return; }
     const used = this.clock.now() - this.resumedAt;
-    this.remainingMs.update((ms) =>
-      this.settings.durationMin() > 0 ? ms - used : ms + used,
-    );
+    this.remainingMs.update((ms) => ms - used);
     this.resumedAt = this.clock.now();
   }
 
   expired(): boolean {
-    return this.settings.durationMin() > 0
-      && this.remainingMs() - this.elapsed() <= 0;
+    return this.remainingMs() - this.elapsed() <= 0;
   }
 
   reset(minutes: number): void {

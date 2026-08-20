@@ -41,24 +41,33 @@ function setup() {
   };
 }
 
-describe('SessionTimerStore in count-up mode (no limit)', () => {
-  it('starts at 00:00 and counts elapsed time up', () => {
-    const { timer, practice, advance } = setup();
-    expect(timer.clockText()).toBe('00:00');
+describe('SessionTimerStore always counts down', () => {
+  it('spends the time it is given', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(5);
+    timer.reset(5);
+    expect(timer.remainingMs()).toBe(300_000);
 
     practice.setPlaying(true);
     timer.resume();
-    advance(65_000);
-    timer.tick();
-    expect(timer.clockText()).toBe('01:05');
+    advance(60_000);
+    timer.accrue();
+
+    expect(timer.remainingMs()).toBe(240_000);
+    expect(timer.expired()).toBe(false);
   });
 
-  it('never expires', () => {
-    const { timer, practice, advance } = setup();
+  it('expires once the time is gone', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(5);
+    timer.reset(5);
+
     practice.setPlaying(true);
     timer.resume();
-    advance(60 * 60_000);
-    expect(timer.expired()).toBe(false);
+    advance(300_001);
+    timer.accrue();
+
+    expect(timer.expired()).toBe(true);
   });
 });
 

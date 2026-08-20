@@ -22,10 +22,7 @@ export class HeaderBar {
   readonly help = output<void>();
   readonly toggleSettings = output<void>();
 
-  protected readonly clockTitle = computed(() => {
-    const minutes = this.settings.durationMin();
-    return minutes > 0
-      ? `Time left in this ${minutes}-minute session`
-      : 'Time spent practising';
-  });
+  protected readonly clockTitle = computed(
+    () => `Time left in this ${this.settings.durationMin()}-minute session`,
+  );
 }

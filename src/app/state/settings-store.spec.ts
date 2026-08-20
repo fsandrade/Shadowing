@@ -23,9 +23,12 @@ describe('SettingsStore defaults', () => {
     expect(store.rate()).toBe(1);
     expect(store.slack()).toBe(1);
     expect(store.voiceName()).toBe('');
-    expect(store.durationMin()).toBe(0);
     expect(store.blur()).toBe(false);
     expect(store.sttEnabled()).toBe(false);
+  });
+
+  it('defaults to a ten-minute session — there is no unlimited session any more', () => {
+    expect(setup(null).store.durationMin()).toBe(10);
   });
 
   it('restores stored values', () => {
@@ -53,9 +56,9 @@ describe('SettingsStore defaults', () => {
     expect(setup({ blur: 'yes', stt: 1 }).store.sttEnabled()).toBe(false);
   });
 
-  it('coerces a missing or unparseable durationMin to 0', () => {
-    expect(setup({ durationMin: 'nope' }).store.durationMin()).toBe(0);
-    expect(setup({}).store.durationMin()).toBe(0);
+  it('coerces a stored zero or unparseable duration to ten minutes', () => {
+    expect(setup({ durationMin: 0 }).store.durationMin()).toBe(10);
+    expect(setup({ durationMin: 'nope' }).store.durationMin()).toBe(10);
   });
 });
 
@@ -71,7 +74,7 @@ describe('SettingsStore persistence', () => {
     expect(key).toBe(SETTINGS_KEY);
     expect(payload).toEqual({
       topicId: 'travel', source: 'catalog', rate: 1.6, slack: 1, voiceName: '',
-      durationMin: 0, blur: false, stt: true, repeat: false, typing: false,
+      durationMin: 10, blur: false, stt: true, repeat: false, typing: false,
     });
   });
 

@@ -39,7 +39,10 @@ export class SettingsStore {
   readonly voiceName = signal(
     typeof this.saved.voiceName === 'string' ? this.saved.voiceName : '',
   );
-  readonly durationMin = signal(Number(this.saved.durationMin) || 0);
+  // Every session is time-boxed now: the timer expiring is what ends an
+  // activity and shows the summary. Zero used to mean "no limit"; a stored
+  // zero from before that change lands on the default like any other junk.
+  readonly durationMin = signal(Number(this.saved.durationMin) || 10);
   readonly blur = signal(this.saved.blur === true);
   readonly sttEnabled = signal(this.saved.stt === true);
   readonly repeatUntilFive = signal(this.saved.repeat === true);
