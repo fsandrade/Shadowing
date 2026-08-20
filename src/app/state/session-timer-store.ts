@@ -7,6 +7,9 @@ import { SettingsStore } from './settings-store';
 export interface SessionTally {
   readonly spoken: number;
   readonly stars: number | null;
+  // Time the countdown actually consumed, so the summary can report what was
+  // practised instead of what was planned.
+  readonly usedMs: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -77,9 +80,22 @@ export class SessionTimerStore {
   }
 
   finish(): SessionTally {
+    const plannedMs = this.settings.durationMin() * 60_000;
+
+    // Both callers stop playback first, which accrues the open slice, so
+    // remainingMs is already current here; the live slice is not added again.
+    // Clamped because an expired session overshoots zero by up to one tick.
+    //
+    // This is playing time, not wall-clock: practice_sessions.elapsed_ms counts
+    // pauses too, so the two will not match for a session that sat paused. That
+    // is deliberate - the summary answers "how long did I practise", the row
+    // answers "how long was this session open".
+    const usedMs = Math.min(plannedMs, Math.max(0, plannedMs - this.remainingMs()));
+
     const tally: SessionTally = {
       spoken: this.spokenCount(),
       stars: this.starsByLine().size ? this.starsWon() : null,
+      usedMs,
     };
     this.reset(this.settings.durationMin());
     return tally;

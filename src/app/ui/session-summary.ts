@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, computed, inject, signal,
+} from '@angular/core';
+import { formatPractised } from '../core/timing';
 import { type AccumulatedProgress, HistoryService } from '../data/history-service';
 import { FlowStore } from '../state/flow-store';
 import { ProfileStore } from '../state/profile-store';
@@ -16,6 +19,11 @@ export class SessionSummary {
   protected readonly flow = inject(FlowStore);
 
   protected readonly progress = signal<AccumulatedProgress | null>(null);
+
+  protected readonly practised = computed(() => {
+    const result = this.flow.result();
+    return result ? formatPractised(result.practisedMs) : '';
+  });
 
   constructor() {
     void this.history

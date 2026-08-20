@@ -33,7 +33,14 @@ function configureTestBed(extra: Provider[] = []): void {
   });
 }
 
-async function renderAfterSession(activityId: string, minutes: number, extra: Provider[] = []) {
+async function renderAfterSession(
+  activityId: string,
+  minutes: number,
+  extra: Provider[] = [],
+  // Stands in for the practising itself: the countdown is the only record of
+  // how much of the session was spent by the time Finish is pressed.
+  spend: (timer: SessionTimerStore) => void = () => {},
+) {
   configureTestBed(extra);
   const flow = TestBed.inject(FlowStore);
 
@@ -43,6 +50,7 @@ async function renderAfterSession(activityId: string, minutes: number, extra: Pr
     TestBed.inject(SessionTimerStore).countSpoken(0);
     TestBed.inject(SessionTimerStore).recordStars(0, 4);
   }
+  spend(TestBed.inject(SessionTimerStore));
   flow.finish();
 
   const fixture = TestBed.createComponent(Host);
@@ -56,10 +64,32 @@ async function renderAfterSession(activityId: string, minutes: number, extra: Pr
 
 describe('SessionSummary', () => {
   it('reports what the session was', async () => {
-    const { root, flow } = await renderAfterSession('shadowing', 10);
+    const { root, flow } = await renderAfterSession('shadowing', 10, [], (timer) => {
+      timer.remainingMs.set(4 * 60_000);
+    });
     expect(root.querySelector('.summary-title')?.textContent).toMatch(/Shadowing/);
-    expect(root.textContent).toMatch(/10 min/);
+    expect(root.textContent).toMatch(/6 min/);
     expect(flow.screen()).toBe('summary');
+  });
+
+  it('reports the time practised, not the duration that was picked', async () => {
+    // 15 minutes chosen, 90 seconds of it spent before Finish.
+    const { root } = await renderAfterSession('shadowing', 15, [], (timer) => {
+      timer.remainingMs.set(15 * 60_000 - 90_000);
+    });
+
+    const time = root.querySelector('[data-stat="minutes"] .summary-value');
+    expect(time?.textContent?.trim()).toBe('1 min');
+    expect(root.textContent).not.toMatch(/15 min/);
+  });
+
+  it('reports a session under a minute in seconds instead of claiming zero', async () => {
+    const { root } = await renderAfterSession('shadowing', 5, [], (timer) => {
+      timer.remainingMs.set(5 * 60_000 - 20_000);
+    });
+
+    const time = root.querySelector('[data-stat="minutes"] .summary-value');
+    expect(time?.textContent?.trim()).toBe('20 sec');
   });
 
   it('counts the sentences and the stars', async () => {

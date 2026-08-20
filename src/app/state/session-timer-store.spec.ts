@@ -128,6 +128,43 @@ describe('SessionTimerStore in countdown mode', () => {
     expect(timer.remainingMs()).toBe(300_000);
   });
 
+  it('finish reports the time consumed, not the time that was planned', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(15);
+    timer.reset(15);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(90_000);
+    timer.accrue();
+
+    expect(timer.finish().usedMs).toBe(90_000);
+  });
+
+  it('finish reports the whole duration for a session that ran out', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(5);
+    timer.reset(5);
+
+    practice.setPlaying(true);
+    timer.resume();
+    // Overshoots zero the way a real tick does; the report must not exceed the
+    // duration the learner asked for.
+    advance(300_400);
+    timer.accrue();
+
+    expect(timer.finish().usedMs).toBe(300_000);
+  });
+
+  it('finish reports nothing consumed when play was never pressed', () => {
+    const { timer, settings, advance } = setup();
+    settings.setDurationMin(10);
+    timer.reset(10);
+    advance(120_000);
+
+    expect(timer.finish().usedMs).toBe(0);
+  });
+
   it('finish returns the spoken count then resets both', () => {
     const { timer, settings } = setup();
     settings.setDurationMin(5);
@@ -158,14 +195,16 @@ describe('SessionTimerStore tally', () => {
   });
 
   it('adds up the stars across sentences', () => {
-    const { timer } = setup();
+    const { timer, settings } = setup();
+    settings.setDurationMin(5);
+    timer.reset(5);
     timer.countSpoken(0);
     timer.recordStars(0, 5);
     timer.countSpoken(1);
     timer.recordStars(1, 3);
 
     expect(timer.starsWon()).toBe(8);
-    expect(timer.finish()).toEqual({ spoken: 2, stars: 8 });
+    expect(timer.finish()).toEqual({ spoken: 2, stars: 8, usedMs: 0 });
   });
 
   it('keeps only the latest score for a repeated sentence', () => {

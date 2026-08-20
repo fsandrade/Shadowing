@@ -368,7 +368,7 @@ describe('PlaybackService session expiry', () => {
     expect(t.practice.playing()).toBe(false);
     expect(t.flow.screen()).toBe('summary');
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: null,
+      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: null,
     });
     expect(t.timer.spokenCount()).toBe(0);
   });
@@ -385,7 +385,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: 12,
+      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 12,
     });
   });
 
@@ -405,7 +405,7 @@ describe('PlaybackService session expiry', () => {
 
     expect(scored).toBeGreaterThan(3);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 3, stars: 15,
+      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 15,
     });
   });
 
@@ -430,7 +430,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 1, stars: null,
+      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
     });
     expect(t.playback.inGap()).toBe(false);
     expect(t.practice.playing()).toBe(false);
@@ -449,7 +449,7 @@ describe('PlaybackService session expiry', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', minutes: 1, spoken: 1, stars: null,
+      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
     });
     expect(t.practice.playing()).toBe(false);
     expect(t.practice.index()).toBe(0);

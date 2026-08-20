@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatClock, listenCeilingMs, nextIndex, pauseMs, safetyTimeoutMs,
+  formatClock, formatPractised, listenCeilingMs, nextIndex, pauseMs, safetyTimeoutMs,
 } from './timing';
 
 describe('pauseMs', () => {
@@ -80,5 +80,31 @@ describe('formatClock', () => {
 
   it('keeps counting in minutes past an hour', () => {
     expect(formatClock(3661)).toBe('61:01');
+  });
+});
+
+describe('formatPractised', () => {
+  it('renders whole minutes, rounded down so it never over-claims', () => {
+    expect(formatPractised(600_000)).toBe('10 min');
+    expect(formatPractised(899_000)).toBe('14 min');
+  });
+
+  it('renders a session that ran its full length as that length', () => {
+    expect(formatPractised(900_000)).toBe('15 min');
+  });
+
+  it('renders under a minute in seconds rather than as zero minutes', () => {
+    expect(formatPractised(45_000)).toBe('45 sec');
+    expect(formatPractised(1_400)).toBe('1 sec');
+  });
+
+  it('crosses into minutes only once a whole one is there', () => {
+    expect(formatPractised(59_400)).toBe('59 sec');
+    expect(formatPractised(59_600)).toBe('1 min');
+  });
+
+  it('reports a session that never played as no seconds at all', () => {
+    expect(formatPractised(0)).toBe('0 sec');
+    expect(formatPractised(-5)).toBe('0 sec');
   });
 });

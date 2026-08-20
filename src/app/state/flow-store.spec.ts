@@ -4,10 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { activityById } from '../core/activity';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
 import { INITIAL_USER } from '../platform/auth';
+import { MicrophoneService } from '../platform/microphone';
 import { RANDOM } from '../platform/rng';
+import {
+  type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
+} from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
 import { SUPABASE } from '../platform/supabase-client';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { ValidationService } from '../validation/validation-service';
 import { CATALOG } from './catalog-token';
 import { FlowStore } from './flow-store';
 import { ProfileStore } from './profile-store';
@@ -25,11 +30,30 @@ function fakeSupabase() {
   } as unknown as SupabaseClient;
 }
 
-function setup(opts: { level?: string | null } = {}) {
+function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
   const level = opts.level === undefined ? TEST_LEVEL : opts.level;
   const store = new Map<string, unknown>([
     ['shadowing.profile', level === null ? { levelId: null } : { levelId: level }],
   ]);
+
+  let recognition: RecognitionOptions = {};
+  const recognizer = {
+    supported: () => true,
+    recognize: (o: RecognitionOptions) => {
+      recognition = o;
+      return { start() {}, stop() {}, abort() {} } as unknown as RecognitionSession;
+    },
+  } as unknown as SpeechRecognizer;
+
+  const denied = opts.micDenied ?? false;
+  const mic = {
+    denied: () => denied,
+    ensure: () => (denied
+      ? Promise.reject(new Error('microphone-denied'))
+      : Promise.resolve({})),
+    markDenied: () => {},
+    release: () => {},
+  } as unknown as MicrophoneService;
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -39,6 +63,8 @@ function setup(opts: { level?: string | null } = {}) {
       { provide: SUPABASE, useValue: fakeSupabase() },
       { provide: INITIAL_USER, useValue: null },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
+      { provide: SpeechRecognizer, useValue: recognizer },
+      { provide: MicrophoneService, useValue: mic },
       {
         provide: SafeStorage,
         useValue: {
@@ -54,6 +80,8 @@ function setup(opts: { level?: string | null } = {}) {
     settings: TestBed.inject(SettingsStore),
     profile: TestBed.inject(ProfileStore),
     progress: TestBed.inject(ProgressService),
+    validation: TestBed.inject(ValidationService),
+    heard: (text: string) => recognition.onResult?.(text),
   };
 }
 
@@ -154,6 +182,24 @@ describe('FlowStore starting an activity', () => {
     expect(startSession).toHaveBeenCalledWith('shadowing', 'a', 15);
   });
 
+  it('starts the scored screen empty when the same activity restarts on the same topic', async () => {
+    const { flow, validation, heard } = setup();
+
+    await flow.start(activityById('speaking')!, 'a', 10);
+    void validation.begin(0, 'a1');
+    heard('a1');
+    await Promise.resolve();
+    expect(validation.results().size).toBe(1);
+
+    flow.finish();
+    // Same activity, same topic: no signal the validator watches changes, so
+    // nothing else clears the last session's transcripts and stars.
+    await flow.start(activityById('speaking')!, 'a', 10);
+
+    expect(validation.results().size).toBe(0);
+    expect(validation.activeLine()).toBeNull();
+  });
+
   it('never opens a database session for My text', async () => {
     const { flow, progress } = setup();
     const startSession = vi.spyOn(progress, 'startSession');
@@ -174,7 +220,9 @@ describe('FlowStore finishing', () => {
     const result = flow.result()!;
     expect(result.activity.id).toBe('shadowing');
     expect(result.topicId).toBe('a');
-    expect(result.minutes).toBe(15);
+    // Nothing was ever played, so nothing was practised - the summary reports
+    // the time consumed, not the 15 minutes that were planned.
+    expect(result.practisedMs).toBe(0);
     expect(result.spoken).toBe(0);
     expect(result.stars).toBeNull();
   });

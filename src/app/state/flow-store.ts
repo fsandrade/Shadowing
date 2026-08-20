@@ -13,7 +13,9 @@ export type Screen = 'onboarding' | 'chooser' | 'practice' | 'summary';
 export interface SessionResult {
   readonly activity: Activity;
   readonly topicId: string | null;
-  readonly minutes: number;
+  // Time actually spent practising, not the duration that was picked. Pressing
+  // Finish early is a first-class exit, so the two are usually different.
+  readonly practisedMs: number;
   readonly spoken: number;
   readonly stars: number | null;
 }
@@ -52,6 +54,13 @@ export class FlowStore {
     this.finished.set(null);
     this.topic.set(topicId);
 
+    // Restarting the same activity on the same topic changes no signal the
+    // validator watches - selectTopic writes values it already holds, so
+    // lines() never recomputes and the effect that drops stale results never
+    // runs. Without this the "fresh" screen still shows the last session's
+    // transcripts and stars, and a typing box left open swallows Enter.
+    this.validation.reset();
+
     if (activity.id === 'custom') {
       this.practice.useCustomText();
     } else {
@@ -86,14 +95,13 @@ export class FlowStore {
     const activity = this.running();
     if (!activity) { return; }
 
-    const minutes = this.settings.durationMin();
     const tally = this.timer.finish();
     this.progress.endSession();
 
     this.finished.set({
       activity,
       topicId: this.topic(),
-      minutes,
+      practisedMs: tally.usedMs,
       spoken: tally.spoken,
       stars: tally.stars,
     });

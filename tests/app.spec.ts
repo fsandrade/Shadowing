@@ -122,10 +122,15 @@ test('choosing an activity practises it, finishing shows a summary, back returns
     await expect(page.locator('#play')).toBeVisible();
     await expect(page.locator('.check-mode')).toHaveCount(0);
 
+    await page.locator('#play').click();
+    await expect(page.locator('#clock')).not.toHaveText('05:00');
     await page.locator('#finish').click();
 
     await expect(page.locator('.summary-title')).toContainText('Listening');
-    await expect(page.locator('[data-stat="minutes"]')).toContainText('5 min');
+    // Seconds into a 5-minute session: the summary reports the time that was
+    // spent, not the duration that was picked.
+    await expect(page.locator('[data-stat="minutes"]')).toContainText(/\d+ sec/);
+    await expect(page.locator('[data-stat="minutes"]')).not.toContainText('5 min');
     await expect(page.locator('[data-stat="stars"]')).toHaveCount(0);
 
     await page.locator('#backToChooser').click();
