@@ -10,7 +10,7 @@ import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { PlaybackService } from './playback-service';
-import { NO_SHUFFLE, storedSettings } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
@@ -47,9 +47,10 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedSettings() as unknown as SafeStorage,
+        useValue: storedProfile() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: corpus },
       { provide: RANDOM, useValue: NO_SHUFFLE },

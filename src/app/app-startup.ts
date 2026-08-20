@@ -10,6 +10,7 @@ import { BannerStore } from './state/banner-store';
 import { CATALOG } from './state/catalog-token';
 import { MESSAGES } from './state/messages';
 import { PracticeStore } from './state/practice-store';
+import { ProfileStore } from './state/profile-store';
 import { SessionTimerStore } from './state/session-timer-store';
 import { SettingsStore } from './state/settings-store';
 import { VoiceStore } from './state/voice-store';
@@ -26,6 +27,7 @@ export class AppStartup {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly practice = inject(PracticeStore);
+  private readonly profile = inject(ProfileStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
@@ -48,6 +50,7 @@ export class AppStartup {
     setInterval(() => this.speaker.keepAlive(), KEEPALIVE_MS);
 
     this.auth.watch();
+    void this.profile.load();
 
     this.progress.flush();
 
@@ -98,9 +101,9 @@ export class AppStartup {
   }
 
   private forgetLevelThatNoLongerExists(): void {
-    const levelId = this.settings.levelId();
+    const levelId = this.profile.levelId();
     if (levelId !== null && !isKnownLevel(this.catalog, levelId)) {
-      this.settings.setLevelId(null);
+      this.profile.clear();
     }
   }
 

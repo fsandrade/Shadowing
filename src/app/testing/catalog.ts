@@ -1,4 +1,8 @@
+import type { Provider } from '@angular/core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Catalog, Sentence } from '../core/catalog';
+import { INITIAL_USER } from '../platform/auth';
+import { SUPABASE } from '../platform/supabase-client';
 
 function sentence(id: string, topicId: string, levelId: string, text: string): Sentence {
   return { id, topicId, levelId, text };
@@ -32,12 +36,38 @@ export const TEST_LINES = ['a1', 'a2', 'a3', 'b1'];
 
 export const NO_SHUFFLE = (): number => 1;
 
-export function storedSettings(
+export function storedProfile(
   overrides: Record<string, unknown> = {},
 ): { read: (key: string) => unknown; write: () => void } {
-  const settings = { levelId: TEST_LEVEL, ...overrides };
+  const profile = { levelId: TEST_LEVEL };
+  const settings = { ...overrides };
   return {
-    read: (key: string) => (key === 'shadowing.settings' ? settings : null),
+    read: (key: string) => {
+      if (key === 'shadowing.profile') { return profile; }
+      if (key === 'shadowing.settings') { return settings; }
+      return null;
+    },
     write: () => {},
   };
+}
+
+// PracticeStore reaches ProfileStore, which injects Supabase and the auth
+// store. Signed out, both load() and the push back no-op, so a spec that only
+// needs a level never has to await anything.
+export function signedOutBackend(): Provider[] {
+  return [
+    { provide: INITIAL_USER, useValue: null },
+    {
+      provide: SUPABASE,
+      useValue: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+          }),
+          upsert: () => Promise.resolve({ error: null }),
+        }),
+        auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
+      } as unknown as SupabaseClient,
+    },
+  ];
 }

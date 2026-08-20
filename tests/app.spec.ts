@@ -73,7 +73,7 @@ test('a first-time visitor is asked for a level before anything else', async ({ 
   await expect(page.locator('#levelChip')).toContainText('B1');
 });
 
-test('the level survives a reload and can be changed from the app bar', async ({ page }) => {
+test('the level survives a reload, and the app bar states it rather than changing it', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page);
   await expect(page.locator('#levelChip')).toContainText('B1');
@@ -81,12 +81,11 @@ test('the level survives a reload and can be changed from the app bar', async ({
   await page.reload();
   await expect(page.locator('#levelChip')).toContainText('B1');
 
+  // The level is asked once. The chip reports it; it is not a way back to the picker.
+  await expect(page.locator('button#levelChip')).toHaveCount(0);
   await page.locator('#levelChip').click();
-  await expect(page.locator('.level-title')).toBeVisible();
-  await page.locator('.level-card[data-level-id="A2"]').click();
-
-  await expect(page.locator('#levelChip')).toContainText('A2');
-  await expect.poll(() => loadedLines(page)).toBe(327);
+  await expect(page.locator('.level-title')).toHaveCount(0);
+  await expect(page.locator('#levelChip')).toContainText('B1');
 });
 
 test('the sentences arrive shuffled rather than grouped by topic', async ({ page }) => {

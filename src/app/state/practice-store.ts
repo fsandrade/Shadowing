@@ -1,11 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type Level, type Sentence, sentencesAt, type Topic, topicsAt } from '../core/catalog';
-import { pacingFor } from '../core/pacing';
 import { type Rng, shuffle } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
+import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
 const FIRST_PAGE = 60;
@@ -17,6 +17,7 @@ export class PracticeStore {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
+  private readonly profile = inject(ProfileStore);
   private readonly random = inject(RANDOM);
 
   private readonly revealed = signal(FIRST_PAGE);
@@ -29,7 +30,7 @@ export class PracticeStore {
 
   readonly levels = computed<readonly Level[]>(() => this.catalog.levels);
 
-  readonly level = computed<string | null>(() => this.settings.levelId());
+  readonly level = computed<string | null>(() => this.profile.levelId());
 
   readonly levelChosen = computed(() => this.level() !== null);
 
@@ -61,21 +62,9 @@ export class PracticeStore {
 
   readonly hasLines = computed(() => this.lines().length > 0);
 
-  selectLevel(id: string): void {
-    this.settings.setLevelId(id);
+  selectTopic(id: string | null): void {
+    this.settings.setTopicId(id);
     this.settings.setSource('catalog');
-    this.applyPacing(id);
-    this.resetProgress();
-  }
-
-  private applyPacing(levelId: string): void {
-    const pacing = pacingFor(levelId);
-    this.settings.setRate(pacing.rate);
-    this.settings.setSlack(pacing.slack);
-  }
-
-  clearLevel(): void {
-    this.settings.setLevelId(null);
     this.resetProgress();
   }
 

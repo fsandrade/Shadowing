@@ -1,16 +1,13 @@
 <h1>Shadowing</h1>
 
 @if (practice.levelChosen()) {
-  <button
-    type="button"
+  <span
     class="level-chip"
     id="levelChip"
-    [title]="'Level ' + practice.level() + ' — click to change'"
-    (click)="practice.clearLevel()"
+    [title]="'Your level: ' + practice.level()"
   >
     <span class="level-chip-code">{{ practice.level() }}</span>
-    <span class="level-chip-hint">change</span>
-  </button>
+  </span>
 }
 
 <div class="clock" id="clock" [title]="clockTitle()">{{ timer.clockText() }}</div>

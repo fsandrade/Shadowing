@@ -5,7 +5,7 @@ import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
-import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
@@ -15,9 +15,10 @@ function setup() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedSettings() as unknown as SafeStorage,
+        useValue: storedProfile() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -88,6 +89,29 @@ describe('PracticeStore lines', () => {
     expect(settings.topicId()).toBe('b');
   });
 
+  it('selectTopic pins one topic, returns to the catalog and resets progress', () => {
+    const { store, settings } = setup();
+    store.useCustomText();
+    store.goTo(1);
+    store.markSpoken(1);
+
+    store.selectTopic('b');
+
+    expect(settings.topicId()).toBe('b');
+    expect(store.customActive()).toBe(false);
+    expect(store.lines()).toEqual(['b1']);
+    expect(store.index()).toBe(0);
+    expect(store.spoken().size).toBe(0);
+  });
+
+  it('selectTopic with no topic practises the whole level', () => {
+    const { store } = setup();
+    store.toggleTopic('b');
+    store.selectTopic(null);
+    expect(store.topicId()).toBeNull();
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+  });
+
   it('offers the topics present at the level, and no All entry', () => {
     const topics = setup().store.topics();
     expect(topics).toEqual([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
@@ -116,9 +140,10 @@ describe('PracticeStore progressive rendering', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        ...signedOutBackend(),
         {
           provide: SafeStorage,
-          useValue: storedSettings() as unknown as SafeStorage,
+          useValue: storedProfile() as unknown as SafeStorage,
         },
         { provide: CATALOG, useValue: many },
       { provide: RANDOM, useValue: NO_SHUFFLE },

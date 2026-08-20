@@ -9,7 +9,8 @@ import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
 import { SafeStorage } from './platform/storage';
 import { CATALOG } from './state/catalog-token';
-import { SETTINGS_KEY, SettingsStore } from './state/settings-store';
+import { ProfileStore } from './state/profile-store';
+import { SETTINGS_KEY } from './state/settings-store';
 import { NO_SHUFFLE, TEST_CATALOG } from './testing/catalog';
 import { RANDOM } from './platform/rng';
 
@@ -61,7 +62,7 @@ function setup(storedLevelId: string | null) {
   });
   const startup = TestBed.inject(AppStartup);
   TestBed.runInInjectionContext(() => startup.run());
-  return { settings: TestBed.inject(SettingsStore) };
+  return { profile: TestBed.inject(ProfileStore) };
 }
 
 describe('AppStartup level recovery', () => {
@@ -69,18 +70,18 @@ describe('AppStartup level recovery', () => {
   afterEach(() => vi.useRealTimers());
 
   it('keeps a remembered level that still has sentences', () => {
-    expect(setup('A2').settings.levelId()).toBe('A2');
+    expect(setup('A2').profile.levelId()).toBe('A2');
   });
 
   it('forgets a level that no longer exists at all', () => {
-    expect(setup('Z9').settings.levelId()).toBeNull();
+    expect(setup('Z9').profile.levelId()).toBeNull();
   });
 
   it('forgets a level that exists but has been emptied', () => {
-    expect(setup('C2').settings.levelId()).toBeNull();
+    expect(setup('C2').profile.levelId()).toBeNull();
   });
 
   it('leaves a first-time visitor at the picker', () => {
-    expect(setup(null).settings.levelId()).toBeNull();
+    expect(setup(null).profile.levelId()).toBeNull();
   });
 });

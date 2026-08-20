@@ -6,7 +6,7 @@ import { CATALOG } from './catalog-token';
 import { PracticeStore } from './practice-store';
 import { SessionTimerStore } from './session-timer-store';
 import { SettingsStore } from './settings-store';
-import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
@@ -16,9 +16,10 @@ function setup() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedSettings() as unknown as SafeStorage,
+        useValue: storedProfile() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },

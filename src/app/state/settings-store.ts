@@ -6,7 +6,6 @@ export const SETTINGS_KEY = 'shadowing.settings';
 export type PracticeSource = 'catalog' | 'custom';
 
 interface StoredSettings {
-  levelId?: unknown;
   topicId?: unknown;
   source?: unknown;
   rate?: unknown;
@@ -29,8 +28,6 @@ export class SettingsStore {
 
   private readonly saved = this.storage.read<StoredSettings>(SETTINGS_KEY) ?? {};
 
-  readonly levelId = signal<string | null>(storedString(this.saved.levelId));
-
   readonly topicId = signal<string | null>(storedString(this.saved.topicId));
 
   readonly source = signal<PracticeSource>(
@@ -51,7 +48,6 @@ export class SettingsStore {
   constructor() {
     effect(() => {
       this.storage.write(SETTINGS_KEY, {
-        levelId: this.levelId(),
         topicId: this.topicId(),
         source: this.source(),
         rate: this.rate(),
@@ -64,11 +60,6 @@ export class SettingsStore {
         typing: this.typingMode(),
       });
     });
-  }
-
-  setLevelId(id: string | null): void {
-    this.levelId.set(id);
-    this.topicId.set(null);
   }
 
   setTopicId(id: string | null): void { this.topicId.set(id); }

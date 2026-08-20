@@ -7,7 +7,7 @@ import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { PracticeStore } from '../state/practice-store';
 import { CustomTopic } from './custom-topic';
-import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
@@ -23,6 +23,7 @@ function render(stored: unknown = null) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       {

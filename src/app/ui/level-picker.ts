@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { countAt } from '../core/catalog';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
+import { ProfileStore } from '../state/profile-store';
 
 const BLURBS: Readonly<Record<string, string>> = {
   A1: 'You can follow very short, simple sentences',
@@ -20,6 +21,7 @@ const BLURBS: Readonly<Record<string, string>> = {
 export class LevelPicker {
   private readonly catalog = inject(CATALOG);
   protected readonly practice = inject(PracticeStore);
+  private readonly profile = inject(ProfileStore);
 
   protected readonly choices = computed(() => this.catalog.levels.map((level) => ({
     ...level,
@@ -31,6 +33,6 @@ export class LevelPicker {
 
   protected pick(id: string, available: boolean): void {
     if (!available) { return; }
-    this.practice.selectLevel(id);
+    this.profile.setLevel(id);
   }
 }

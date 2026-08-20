@@ -10,7 +10,7 @@ import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 import { TransportControls } from './transport-controls';
-import { NO_SHUFFLE, storedSettings, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
@@ -27,9 +27,10 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedSettings() as unknown as SafeStorage,
+        useValue: storedProfile() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },

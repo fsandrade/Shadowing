@@ -5,7 +5,7 @@ import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
-import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, TEST_CATALOG } from '../testing/catalog';
 import { LevelPicker } from './level-picker';
 
 @Component({
@@ -18,6 +18,7 @@ function render() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       {
         provide: SafeStorage,
         useValue: { read: () => null, write: () => {} } as unknown as SafeStorage,

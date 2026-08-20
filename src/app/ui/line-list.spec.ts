@@ -13,7 +13,7 @@ import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from '../validation/validation-service';
 import { LineList } from './line-list';
-import { NO_SHUFFLE, storedSettings } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
@@ -53,10 +53,11 @@ function render(extra: readonly unknown[] = []) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...signedOutBackend(),
       ...extra,
       {
         provide: SafeStorage,
-        useValue: storedSettings() as unknown as SafeStorage,
+        useValue: storedProfile() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },

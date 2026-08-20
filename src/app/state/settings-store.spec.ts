@@ -18,7 +18,6 @@ function setup(stored: unknown = null) {
 describe('SettingsStore defaults', () => {
   it('falls back to the vanilla defaults with nothing stored', () => {
     const { store } = setup(null);
-    expect(store.levelId()).toBeNull();
     expect(store.topicId()).toBeNull();
     expect(store.source()).toBe('catalog');
     expect(store.rate()).toBe(1);
@@ -31,10 +30,9 @@ describe('SettingsStore defaults', () => {
 
   it('restores stored values', () => {
     const { store } = setup({
-      levelId: 'B2', topicId: 'meetings', rate: 1.4, slack: 2, voiceName: 'David',
+      topicId: 'meetings', rate: 1.4, slack: 2, voiceName: 'David',
       durationMin: 10, blur: true, stt: true,
     });
-    expect(store.levelId()).toBe('B2');
     expect(store.topicId()).toBe('meetings');
     expect(store.rate()).toBe(1.4);
     expect(store.slack()).toBe(2);
@@ -64,7 +62,6 @@ describe('SettingsStore defaults', () => {
 describe('SettingsStore persistence', () => {
   it('writes the legacy JSON shape, using the `stt` key', () => {
     const { store, write } = setup(null);
-    store.setLevelId('A2');
     store.setTopicId('travel');
     store.setRate(1.6);
     store.setSttEnabled(true);
@@ -73,7 +70,7 @@ describe('SettingsStore persistence', () => {
     const [key, payload] = write.mock.lastCall as [string, Record<string, unknown>];
     expect(key).toBe(SETTINGS_KEY);
     expect(payload).toEqual({
-      levelId: 'A2', topicId: 'travel', source: 'catalog', rate: 1.6, slack: 1, voiceName: '',
+      topicId: 'travel', source: 'catalog', rate: 1.6, slack: 1, voiceName: '',
       durationMin: 0, blur: false, stt: true, repeat: false, typing: false,
     });
   });
