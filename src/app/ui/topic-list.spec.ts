@@ -1,10 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
-import { PracticeStore } from '../state/practice-store';
 import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import { TopicList } from './topic-list';
 
@@ -12,9 +11,14 @@ const DATA = TEST_CATALOG;
 
 @Component({
   imports: [TopicList],
-  template: `<aside appTopicList></aside>`,
+  template: `<nav appTopicList [selected]="selected()" (pick)="picked.push($event)"></nav>`,
 })
-class Host {}
+class Host {
+  // A signal, not a plain field: change detection is zoneless, so only a
+  // signal read from the template marks this host dirty for the next tick.
+  readonly selected = signal<string | null>(null);
+  readonly picked: Array<string | null> = [];
+}
 
 function render() {
   TestBed.resetTestingModule();
@@ -31,82 +35,54 @@ function render() {
   });
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
-  const sidebar = (fixture.nativeElement as HTMLElement).querySelector('.sidebar')!;
+  const root = (fixture.nativeElement as HTMLElement).querySelector('#decks')!;
   return {
     fixture,
-    sidebar,
-    practice: TestBed.inject(PracticeStore),
-    topicButtons: () =>
-      [...sidebar.querySelectorAll<HTMLButtonElement>('#decks button')],
+    root,
+    host: fixture.componentInstance,
+    buttons: () => [...root.querySelectorAll<HTMLButtonElement>('button')],
   };
 }
 
 describe('TopicList', () => {
-  it('renders as an <aside class="sidebar">', () => {
-    const { sidebar } = render();
-    expect(sidebar.tagName).toBe('ASIDE');
-    expect(sidebar.classList.contains('sidebar')).toBe(true);
+  it('offers All topics first, then every topic at the level', () => {
+    const { buttons } = render();
+    expect(buttons()[0].textContent?.trim()).toBe('All topics');
+    expect(buttons().slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b']);
   });
 
-  it('keeps the Topics heading and the labelled nav the stylesheet targets', () => {
-    const { sidebar } = render();
-    expect(sidebar.querySelector('.topics-title')?.textContent).toBe('Topics');
-    const nav = sidebar.querySelector('nav.decks');
-    expect(nav?.id).toBe('decks');
-
-    expect(nav?.getAttribute('aria-label')).toBe('Filter by topic');
-    expect(nav?.querySelector('.decks-list')).not.toBeNull();
+  it('marks All topics when nothing is selected', () => {
+    const { buttons } = render();
+    expect(buttons()[0].getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('lists only the topics present at the chosen level, with no All entry', () => {
-    const { topicButtons } = render();
-
-    expect(topicButtons().map((b) => b.textContent?.trim())).toEqual(['A', 'B']);
-  });
-
-  it('shows no line counts', () => {
-    const { sidebar } = render();
-    expect(sidebar.querySelectorAll('.count').length).toBe(0);
-    expect(sidebar.querySelector('#decks')?.textContent).not.toMatch(/\d/);
-  });
-
-  it('starts unfiltered, with no topic pressed', () => {
-    const { topicButtons, practice } = render();
-    expect(practice.topicId()).toBeNull();
-    expect(topicButtons().every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true);
-  });
-
-  it('filters to one topic, and the same click again clears the filter', () => {
-    const { fixture, topicButtons, practice } = render();
-
-    topicButtons()[0].click();
+  it('marks the selected topic instead', () => {
+    const { fixture, host, buttons } = render();
+    host.selected.set('b');
     fixture.detectChanges();
-    expect(practice.topicId()).toBe('a');
-    expect(topicButtons()[0].getAttribute('aria-pressed')).toBe('true');
-    expect(topicButtons()[1].getAttribute('aria-pressed')).toBe('false');
-    expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
-
-    topicButtons()[0].click();
-    fixture.detectChanges();
-    expect(practice.topicId()).toBeNull();
-    expect(topicButtons()[0].getAttribute('aria-pressed')).toBe('false');
-    expect(practice.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect(buttons()[0].getAttribute('aria-pressed')).toBe('false');
+    expect(buttons().find((b) => b.dataset['deckId'] === 'b')!.getAttribute('aria-pressed'))
+      .toBe('true');
   });
 
-  it('keeps My text out of the filter, as its own mode', () => {
-    const { fixture, sidebar, practice, topicButtons } = render();
-    const myText = sidebar.querySelector<HTMLButtonElement>('#myText')!;
-
-    expect(topicButtons().map((b) => b.id)).not.toContain('myText');
-    expect(myText.getAttribute('aria-pressed')).toBe('false');
-
-    myText.click();
+  it('reports a pick without changing anything itself', () => {
+    const { fixture, host, buttons } = render();
+    buttons()[1].click();
     fixture.detectChanges();
-    expect(practice.customActive()).toBe(true);
-    expect(myText.getAttribute('aria-pressed')).toBe('true');
+    expect(host.picked).toEqual(['a']);
+    expect(host.selected()).toBeNull();
+  });
 
-    myText.click();
+  it('reports null when All topics is picked', () => {
+    const { fixture, host, buttons } = render();
+    host.selected.set('a');
     fixture.detectChanges();
-    expect(practice.customActive()).toBe(false);
+    buttons()[0].click();
+    expect(host.picked).toEqual([null]);
+  });
+
+  it('no longer offers My text — that is an activity now', () => {
+    const { root } = render();
+    expect(root.querySelector('#myText')).toBeNull();
   });
 });

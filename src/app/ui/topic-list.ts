@@ -1,20 +1,15 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { PracticeStore } from '../state/practice-store';
 
 @Component({
-  selector: 'aside[appTopicList]',
-  host: { class: 'sidebar' },
+  selector: 'nav[appTopicList]',
+  host: { class: 'decks', id: 'decks', 'aria-label': 'Choose a topic' },
   templateUrl: './topic-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopicList {
   protected readonly practice = inject(PracticeStore);
 
-  protected toggleCustom(): void {
-    if (this.practice.customActive()) {
-      this.practice.useCatalog();
-    } else {
-      this.practice.useCustomText();
-    }
-  }
+  readonly selected = input<string | null>(null);
+  readonly pick = output<string | null>();
 }

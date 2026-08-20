@@ -1,11 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { PlaybackService } from './playback/playback-service';
+import { FlowStore } from './state/flow-store';
 import { PracticeStore } from './state/practice-store';
 import { ProfileStore } from './state/profile-store';
 import { SettingsStore } from './state/settings-store';
 
 @Injectable({ providedIn: 'root' })
 export class DebugBridge {
+  private readonly flow = inject(FlowStore);
   private readonly practice = inject(PracticeStore);
   private readonly profile = inject(ProfileStore);
   private readonly settings = inject(SettingsStore);
@@ -13,10 +15,12 @@ export class DebugBridge {
 
   install(): void {
     if (typeof window === 'undefined') { return; }
-    const { practice, profile, settings, playback } = this;
+    const { flow, practice, profile, settings, playback } = this;
 
     (window as unknown as Record<string, unknown>)['__shadowing'] = {
       state: {
+        get screen() { return flow.screen(); },
+        get activity() { return flow.activity()?.id ?? null; },
         get index() { return practice.index(); },
         get playing() { return practice.playing(); },
         get lines() { return practice.lines(); },

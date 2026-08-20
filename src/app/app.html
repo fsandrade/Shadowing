@@ -7,10 +7,17 @@
   [enabled]="enabled()"
   [helpOpen]="helpOpen()"
   (closeHelp)="helpOpen.set(false)">
-  @if (practice.levelChosen()) {
-    <aside appTopicList></aside>
+  @switch (flow.screen()) {
+    @case ('onboarding') {
+      <main class="full"><div appLevelPicker></div></main>
+    }
+    @case ('chooser') {
+      <main appActivityChooser class="full"></main>
+    }
+    @default {
+      <main appPractice class="full"></main>
+    }
   }
-  <main appPractice [class.full]="!practice.levelChosen()"></main>
 </div>
 
 @if (settingsOpen()) {

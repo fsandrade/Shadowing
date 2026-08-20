@@ -1,0 +1,53 @@
+<h2 class="chooser-title">What do you want to practise?</h2>
+<p class="chooser-lede">Pick an activity, a topic and how long you have.</p>
+
+<div class="activity-grid" id="activities" role="list">
+  @for (activity of ACTIVITIES; track activity.id) {
+    <button
+      type="button"
+      role="listitem"
+      class="activity-card"
+      [attr.data-activity-id]="activity.id"
+      [attr.aria-pressed]="activity.id === chosen()?.id"
+      [disabled]="unavailable(activity)"
+      [title]="unavailable(activity) ? 'This browser cannot transcribe speech' : activity.blurb"
+      (click)="choose(activity)"
+    >
+      <span class="activity-name">{{ activity.name }}</span>
+      <span class="activity-blurb">
+        {{ unavailable(activity) ? 'This browser cannot transcribe speech' : activity.blurb }}
+      </span>
+    </button>
+  }
+</div>
+
+@if (chosen()) {
+  <section class="chooser-section">
+    @if (custom()) {
+      <div appCustomTopic></div>
+      <div appCheckMode></div>
+    } @else {
+      <h3 class="chooser-heading">Topic</h3>
+      <nav appTopicList [selected]="topicId()" (pick)="pickTopic($event)"></nav>
+    }
+  </section>
+
+  <section class="chooser-section">
+    <h3 class="chooser-heading">How long</h3>
+    <div class="durations">
+      @for (opt of DURATIONS; track opt.min) {
+        <button type="button"
+          [attr.data-min]="opt.min"
+          [title]="opt.title"
+          [attr.aria-pressed]="minutes() === opt.min"
+          (click)="pickDuration(opt.min)"
+        >{{ opt.label }}</button>
+      }
+    </div>
+  </section>
+}
+
+<button type="button" id="startActivity" class="start-btn"
+  [disabled]="!ready()"
+  title="Start this activity"
+  (click)="begin()">Start</button>

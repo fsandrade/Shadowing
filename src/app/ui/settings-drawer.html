@@ -6,20 +6,6 @@
 </div>
 
 <section class="drawer-section">
-  <h3>Session</h3>
-  <div class="durations" id="durations">
-    @for (opt of DURATIONS; track opt.min) {
-      <button type="button"
-        [attr.data-min]="opt.min"
-        [title]="opt.title"
-        [attr.aria-pressed]="settings.durationMin() === opt.min"
-        (click)="pickDuration(opt.min)"
-      >{{ opt.label }}</button>
-    }
-  </div>
-</section>
-
-<section class="drawer-section">
   <h3>Playback</h3>
   <div appSettingsSliders></div>
   <button type="button" class="drawer-link" id="resetPacing"
