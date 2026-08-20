@@ -1,5 +1,6 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ActivityId } from '../core/activity';
 import {
   type AttemptCounts, similarityFromCounts, speechCounts,
 } from '../core/scoring';
@@ -47,9 +48,43 @@ export class ProgressService {
   private draining: Promise<void> | null = null;
   private queuedWhileDraining = false;
 
+  startSession(
+    activity: Exclude<ActivityId, 'custom'>,
+    topicId: string | null,
+    minutes: number,
+  ): void {
+    // Whatever was running is over the moment a new activity begins.
+    this.endSession();
+
+    const userId = this.auth.userId();
+    if (!userId) { return; }
+
+    this.sessionId = uuid();
+    this.sessionStartedAt = Date.now();
+
+    this.enqueue({
+      kind: 'session',
+      userId,
+      row: {
+        id: this.sessionId,
+        user_id: userId,
+        deck_id: topicId,
+        activity,
+        started_at: new Date(this.sessionStartedAt).toISOString(),
+        planned_duration_min: minutes,
+      },
+    });
+  }
+
   record(attempt: Attempt): void {
     const userId = this.auth.userId();
     if (!userId) { return; }
+
+    // Every practice run opens a session first. An attempt without one means
+    // the client is in a state we did not design; writing it with a null
+    // session_id would silently skew the per-session rollups.
+    const sessionId = this.sessionId;
+    if (!sessionId) { return; }
 
     const sentenceId = this.sentenceIds.get(attempt.line);
     if (!sentenceId) { return; }
@@ -58,7 +93,7 @@ export class ProgressService {
     const row = {
       id: uuid(),
       user_id: userId,
-      session_id: this.openSession(userId),
+      session_id: sessionId,
       sentence_id: sentenceId,
       mode: this.mode(),
       status: attempt.status,
@@ -102,29 +137,6 @@ export class ProgressService {
     return this.mode() === 'typing'
       ? typingCounts(attempt.baseText, attempt.transcript)
       : speechCounts(attempt.baseText, attempt.transcript);
-  }
-
-  private openSession(userId: string): string {
-    if (this.sessionId) { return this.sessionId; }
-
-    this.sessionId = uuid();
-    this.sessionStartedAt = Date.now();
-
-    this.enqueue({
-      kind: 'session',
-      userId,
-      row: {
-        id: this.sessionId,
-        user_id: userId,
-
-        deck_id: this.settings.topicId(),
-        mode: this.mode(),
-        started_at: new Date(this.sessionStartedAt).toISOString(),
-        planned_duration_min: this.settings.durationMin(),
-      },
-    });
-
-    return this.sessionId;
   }
 
   private enqueue(entry: Pending): void {

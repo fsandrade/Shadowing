@@ -87,9 +87,10 @@ const scored: Attempt = {
 beforeEach(() => { vi.restoreAllMocks(); });
 
 describe('ProgressService', () => {
-  it('opens a session and records the attempt against it', async () => {
+  it('records the full attempt detail against the session that is already open', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -105,6 +106,7 @@ describe('ProgressService', () => {
   it('reuses one session across attempts', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     progress.record({ ...scored, stars: 3 });
@@ -116,6 +118,7 @@ describe('ProgressService', () => {
   it('records the counts the score was actually derived from', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record({ ...scored, transcript: "I must've hit the snooze" });
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -129,6 +132,7 @@ describe('ProgressService', () => {
   it('records a failed attempt with no stars', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record({ ...scored, stars: null, status: 'failed', transcript: '' });
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -140,20 +144,22 @@ describe('ProgressService', () => {
     const { progress, settings, sent } = setup();
     settings.setTypingMode(true);
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
     expect(sent[1].row['mode']).toBe('typing');
-    expect(sent[0].row['mode']).toBe('typing');
   });
 
   it('ignores practice on text that is not in the corpus', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record({ ...scored, line: 'Something the learner pasted in.' });
-    await new Promise((r) => setTimeout(r, 0));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
 
-    expect(sent).toHaveLength(0);
+    // Only the session was written; the unrecognised line produced no attempt.
+    expect(sent[0].table).toBe('practice_sessions');
   });
 
   it('records nothing at all when there is no signed-in user', async () => {
@@ -165,21 +171,10 @@ describe('ProgressService', () => {
     expect(sent).toHaveLength(0);
   });
 
-  it('sends deck_id for a filtered topic and null when unfiltered', async () => {
-    const withDeck = setup(() => ({ status: 201 }), { stored: { topicId: 'travel' } });
-    withDeck.progress.record(scored);
-    await vi.waitFor(() => expect(withDeck.sent).toHaveLength(2));
-    expect(withDeck.sent[0].row['deck_id']).toBe('travel');
-
-    const all = setup(() => ({ status: 201 }), { stored: { topicId: null } });
-    all.progress.record(scored);
-    await vi.waitFor(() => expect(all.sent).toHaveLength(2));
-    expect(all.sent[0].row['deck_id']).toBeNull();
-  });
-
   it('closes the session with an elapsed time', async () => {
     const { progress, sent } = setup();
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     progress.endSession();
@@ -204,6 +199,7 @@ describe('ProgressService when the network is down', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const offline = setup(() => ({ status: 503, message: 'service unavailable' }));
 
+    offline.progress.startSession('speaking', null, 10);
     offline.progress.record(scored);
     await vi.waitFor(() => expect(offline.sent.length).toBeGreaterThan(0));
 
@@ -218,6 +214,7 @@ describe('ProgressService when the network is down', () => {
     const { progress, sent, store } = setup((table) =>
       table === 'practice_sessions' ? { status: 503 } : { status: 201 });
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent.length).toBeGreaterThan(0));
 
@@ -229,6 +226,7 @@ describe('ProgressService when the network is down', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { progress, sent, store } = setup(() => ({ status: 400, message: 'malformed' }));
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -240,6 +238,7 @@ describe('ProgressService when the network is down', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { progress, sent, store } = setup(() => ({ status: 409, message: 'duplicate key' }));
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -249,6 +248,7 @@ describe('ProgressService when the network is down', () => {
   it('retries a rate-limited write rather than discarding it', async () => {
     const { progress, sent, store } = setup(() => ({ status: 429 }));
 
+    progress.startSession('speaking', null, 10);
     progress.record(scored);
     await vi.waitFor(() => expect(sent.length).toBeGreaterThan(0));
 
@@ -311,6 +311,63 @@ describe('ProgressService when the network is down', () => {
     TestBed.inject(ProgressService).flush();
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].row['id']).toBe('a2');
+  });
+});
+
+describe('ProgressService session lifecycle', () => {
+  it('opens a session for an unscored activity, with no attempt in sight', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', 'travel', 10);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    expect(sent[0].table).toBe('practice_sessions');
+    expect(sent[0].row['activity']).toBe('listening');
+    expect(sent[0].row['deck_id']).toBe('travel');
+    expect(sent[0].row['planned_duration_min']).toBe(10);
+    expect(sent[0].row).not.toHaveProperty('mode');
+  });
+
+  it('files an attempt against the session that is already open', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('speaking', 'travel', 10);
+    progress.record(scored);
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    expect(sent[1].table).toBe('sentence_attempts');
+    expect(sent[1].row['session_id']).toBe(sent[0].row['id']);
+  });
+
+  it('drops an attempt that arrives with no session open', async () => {
+    const { progress, sent } = setup();
+
+    progress.record(scored);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(sent).toEqual([]);
+  });
+
+  it('starting a second activity closes the first session', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', 'travel', 10);
+    progress.startSession('shadowing', 'travel', 5);
+    await vi.waitFor(() => expect(sent).toHaveLength(3));
+
+    expect(sent.map((s) => s.op)).toEqual(['insert', 'update', 'insert']);
+    expect(sent[0].row['activity']).toBe('listening');
+    expect(sent[1].row).toHaveProperty('ended_at');
+    expect(sent[2].row['activity']).toBe('shadowing');
+  });
+
+  it('records the topic as null when the learner picked every topic', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', null, 15);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+
+    expect(sent[0].row['deck_id']).toBeNull();
   });
 });
 
