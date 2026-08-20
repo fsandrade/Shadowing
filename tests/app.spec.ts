@@ -378,6 +378,35 @@ test('help modal opens, describes features, and closes', async ({ page }) => {
   await expect(page.locator('#helpModal')).not.toBeVisible();
 });
 
+test('the chooser fits one screen once an activity is picked', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-activity-id="shadowing"]').click();
+  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
+
+  // One screen, three choices, one button: the topic list must not push the
+  // duration control and Start below the fold.
+  const below = await page.evaluate(() => ['#decks', '.durations', '#startActivity']
+    .filter((sel) => document.querySelector(sel)!.getBoundingClientRect().bottom
+      > window.innerHeight + 0.5));
+  expect(below).toEqual([]);
+
+  // It fits because the list gives ground, not because the topics went away.
+  const scrolls = await page.locator('#decks')
+    .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+  expect(scrolls).toBe(true);
+
+  // Start is at the foot of the screen now, so the one-time Edge tip must not
+  // land on top of the button it is tipping about.
+  const overlaps = await page.evaluate(() => {
+    const start = document.querySelector('#startActivity')!.getBoundingClientRect();
+    const tip = document.querySelector('#snackbar')!.getBoundingClientRect();
+    return start.right > tip.left && tip.right > start.left
+      && start.bottom > tip.top && tip.bottom > start.top;
+  });
+  expect(overlaps).toBe(false);
+});
+
 test('mobile keeps the chooser topics bar as a single compact row', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   installFakeAudio(page);

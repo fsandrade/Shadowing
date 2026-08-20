@@ -182,15 +182,35 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
 .level-name { font-size: 15px; }
 .level-blurb { font-size: 13px; color: var(--dim); line-height: 1.35; }
 
-/* display: block overrides the `main { display: grid }` rule above: the chooser
-   is the <main> itself, and a grid would stretch its title over the free row. */
-.chooser { display: block; padding: 6vh 24px 32px; overflow-y: auto; }
+/* A column, not a block: the chooser must be "one screen, three choices, one
+   button", and the topic list is the only part of it that can give ground.
+   Everything else keeps its height and the topic list absorbs what is left,
+   down to a floor of about three rows, so the duration control and Start stay
+   on screen at any viewport. */
+.chooser {
+  display: flex; flex-direction: column;
+  padding: 3vh 24px 24px; overflow-y: auto;
+}
+.chooser > * { flex: 0 0 auto; }
 .chooser-title { margin: 0 0 6px; font-size: 26px; font-weight: 600; text-align: center; }
-.chooser-lede { margin: 0 0 28px; color: var(--dim); text-align: center; }
-.chooser-section { max-width: 760px; margin: 0 auto 24px; }
+.chooser-lede { margin: 0 0 16px; color: var(--dim); text-align: center; }
+.chooser-section { max-width: 760px; width: 100%; margin: 0 auto 20px; }
+/* The topic section is the one that flexes, so it has to pass the height down
+   to the list rather than let it grow to its content. */
+.chooser-section:has(.decks) {
+  display: flex; flex-direction: column;
+  /* The floor is on the section, not the list: a list that refused to shrink
+     inside a section that did would simply overflow it and sit on top of the
+     duration control. Below this the whole chooser scrolls instead. */
+  flex: 1 1 auto; min-height: 140px;
+}
+.chooser .decks {
+  flex: 1 1 auto; min-height: 0;
+  border: 1px solid var(--line); border-radius: 8px;
+}
 .chooser-heading { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
 .activity-grid {
-  display: grid; gap: 14px; max-width: 760px; margin: 0 auto 32px;
+  display: grid; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto 16px;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 .activity-card {
@@ -287,9 +307,12 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
 }
 .edge-tip-close:hover, .edge-tip-close:focus-visible { color: var(--text); border-color: var(--dim); }
 
+/* Bottom right, not bottom centre: the chooser's Start button is centred at
+   the foot of the screen now that the whole chooser fits on one, and an
+   eight-second tip must not sit on top of the button it is tipping about. */
 .snackbar {
-  position: fixed; left: 50%; bottom: 24px; z-index: 10;
-  transform: translateX(-50%) translateY(12px);
+  position: fixed; right: 24px; bottom: 24px; z-index: 10;
+  transform: translateY(12px);
   display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px));
   padding: 10px 14px; border-radius: 8px;
   background: var(--panel); border: 1px solid var(--line);
@@ -299,7 +322,7 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
   transition: opacity .2s ease, transform .2s ease, visibility .2s;
 }
 .snackbar.show {
-  opacity: 1; transform: translateX(-50%); visibility: visible; pointer-events: auto;
+  opacity: 1; transform: none; visibility: visible; pointer-events: auto;
 }
 .snackbar-close {
   flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 4px;
@@ -459,6 +482,11 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
     border-left-width: 1px; padding: 6px 12px; white-space: nowrap;
   }
   .decks button[aria-pressed="true"] { border-color: var(--accent); }
+
+  /* On a phone the topic list is a single scrolling row of pills, so it is
+     already as short as it can be - it must not flex or claim a floor. */
+  .chooser-section:has(.decks) { flex: 0 0 auto; }
+  .chooser .decks { flex: 0 0 auto; min-height: 0; border: 0; border-radius: 0; }
 
   .check-mode { padding: 3px 4px 3px 8px; gap: 4px; order: 3; flex: 1 1 100%; justify-content: space-between; }
   .check-mode button { padding: 6px 10px; }
