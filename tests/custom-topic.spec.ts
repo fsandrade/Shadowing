@@ -1,7 +1,5 @@
-import { test, expect, gotoApp, Page } from './helpers/fixtures';
+import { test, expect, gotoApp, Page, startActivity } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
-
-const APP_URL = '/';
 
 const PAYLOAD = [
   '<script>window.__xssRan = true;</script>First sentence here.',
@@ -10,8 +8,9 @@ const PAYLOAD = [
   'Mr. Smith paid $3.50, so this stays one sentence.',
 ].join(' ');
 
-async function openCustomTopic(page: Page): Promise<void> {
-  await page.locator('#myText').click();
+/** Starts the My text activity and lands on the practice screen with the editor open. */
+async function gotoCustom(page: Page): Promise<void> {
+  await gotoApp(page, { activity: 'custom' });
   await expect(page.locator('.custom-topic')).toBeVisible();
 }
 
@@ -22,8 +21,7 @@ async function useText(page: Page, text: string): Promise<void> {
 
 test('splits pasted text into practice lines', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
 
   await expect(page.locator('#customSave')).toBeDisabled();
 
@@ -38,8 +36,7 @@ test('splits pasted text into practice lines', async ({ page }) => {
 
 test('neutralises markup and scripts in pasted text', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, PAYLOAD);
 
   await expect(page.locator('.lines p')).toHaveCount(4);
@@ -61,8 +58,7 @@ test('neutralises markup and scripts in pasted text', async ({ page }) => {
 
 test('keeps ampersands and angle brackets the learner typed', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'R&D found that 5 < 10 and 20 > 3 in the report.');
 
   await expect(page.locator('.lines p .text').first())
@@ -71,21 +67,24 @@ test('keeps ampersands and angle brackets the learner typed', async ({ page }) =
 
 test('remembers the text and the topic across a reload', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'Kept after reload. And a second one.');
 
   await page.reload();
 
-  await expect(page.locator('#myText')).toHaveAttribute('aria-pressed', 'true');
+  // A reload lands on the chooser: the session is not persisted, but the text
+  // and the choice of My text over the catalogue are.
+  await expect(page.locator('#activities')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__shadowing.state.source)).toBe('custom');
+
+  await startActivity(page, 'custom');
   await expect(page.locator('.lines p')).toHaveCount(2);
   await expect(page.locator('.lines p .text').first()).toHaveText('Kept after reload.');
 });
 
 test('sanitises text that was written straight into storage', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'Placeholder text.');
 
   await page.evaluate(() => {
@@ -95,6 +94,7 @@ test('sanitises text that was written straight into storage', async ({ page }) =
     );
   });
   await page.reload();
+  await startActivity(page, 'custom');
 
   await expect(page.locator('.lines p')).toHaveCount(2);
   await expect(page.locator('.lines img')).toHaveCount(0);
@@ -104,8 +104,7 @@ test('sanitises text that was written straight into storage', async ({ page }) =
 
 test('editing and clearing the text', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'Original one. Original two.');
 
   await page.locator('#customEdit').click();
@@ -122,8 +121,7 @@ test('editing and clearing the text', async ({ page }) => {
 
 test('speaks a custom sentence exactly as written', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'This first sentence is long enough to measure. A second one follows.');
 
   await page.locator('#play').click();
@@ -135,8 +133,7 @@ test('speaks a custom sentence exactly as written', async ({ page }) => {
 
 test('speaks angle brackets that tag stripping would have swallowed', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
-  await openCustomTopic(page);
+  await gotoCustom(page);
   await useText(page, 'Five < ten is a statement that is definitely true.');
 
   await page.locator('#play').click();

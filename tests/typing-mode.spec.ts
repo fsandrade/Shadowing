@@ -1,24 +1,28 @@
 import { test, expect, gotoApp, Page } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 
-const APP_URL = '/';
-
-function startInTypingMode(page: Page): void {
-  void page.addInitScript(() => {
-    localStorage.setItem('shadowing.settings', JSON.stringify({
-      levelId: 'B1',
-      topicId: null,
-      source: 'catalog',
-      rate: 1,
-      slack: 1,
-      voiceName: '',
-      durationMin: 10,
-      blur: false,
-      stt: true,
-      repeat: false,
-      typing: true,
-    }));
+/**
+ * Misspells exactly one word, whatever the sentence is.
+ *
+ * The longest run of letters is mangled by swapping its last letter for "xz",
+ * a pair no target word can end in, so the scorer always sees one unmatched
+ * typed word and one missed target word. Every sentence has a longest word,
+ * which is why this cannot degrade into a no-op the way "the first word of six
+ * letters or more" did on the 68 B1 sentences that have no such word.
+ */
+function misspellOneWord(sentence: string): string {
+  const parts = sentence.split(/(\s+)/);
+  let at = -1;
+  let longest = 0;
+  parts.forEach((part, i) => {
+    const word = /[A-Za-z']+/.exec(part)?.[0] ?? '';
+    if (word.length > longest) { longest = word.length; at = i; }
   });
+  if (at < 0) { throw new Error(`no word to misspell in: ${sentence}`); }
+
+  return parts
+    .map((part, i) => (i === at ? part.replace(/[A-Za-z']+/, (w) => `${w.slice(0, -1)}xz`) : part))
+    .join('');
 }
 
 async function currentLineText(page: Page): Promise<string> {
@@ -31,46 +35,29 @@ async function openTypingBox(page: Page): Promise<string> {
   return currentLineText(page);
 }
 
-async function openSettings(page: Page): Promise<void> {
-  const toggle = page.locator('#settings');
-  if (await toggle.getAttribute('aria-expanded') !== 'true') {
-    await toggle.click();
-  }
-  await expect(page.locator('#settingsDrawer')).toHaveClass(/open/);
-
-  await page.waitForFunction(() => {
-    const el = document.querySelector('#settingsDrawer');
-    if (!el) { return false; }
-    const box = el.getBoundingClientRect();
-    return box.right <= window.innerWidth + 0.5;
-  });
-}
-
-async function closeSettings(page: Page): Promise<void> {
-  await page.locator('#closeSettings').click();
-  await expect(page.locator('.scrim')).toHaveCount(0);
-}
-
-test('the option remembers itself and needs no microphone', async ({ page }) => {
+test('the spelling check mode remembers itself and needs no microphone', async ({ page }) => {
   installFakeAudio(page);
   await page.addInitScript(() => {
     const media = navigator.mediaDevices;
     if (media) { media.getUserMedia = () => Promise.reject(new Error('denied')); }
   });
-  await gotoApp(page);
+  // The check-mode control belongs to My text now: every other activity brings
+  // its own mode, and the chooser is where it is picked.
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-activity-id="custom"]').click();
 
   await page.locator('#check-spelling').click();
   await expect(page.locator('#check-spelling')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#check-nothing')).toHaveAttribute('aria-pressed', 'false');
 
   await page.reload();
+  await page.locator('[data-activity-id="custom"]').click();
   await expect(page.locator('#check-spelling')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('typing the sentence exactly scores five stars', async ({ page }) => {
   installFakeAudio(page);
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   const sentence = await openTypingBox(page);
   await page.locator('.validate-box.typing input').fill(sentence);
@@ -84,11 +71,10 @@ test('typing the sentence exactly scores five stars', async ({ page }) => {
 
 test('a misspelled word is marked and costs the top mark', async ({ page }) => {
   installFakeAudio(page);
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   const sentence = await openTypingBox(page);
-  const broken = sentence.replace(/\b(\w{6,})\b/, (w) => `${w.slice(0, -2)}xz`);
+  const broken = misspellOneWord(sentence);
   expect(broken).not.toBe(sentence);
 
   await page.locator('.validate-box.typing input').fill(broken);
@@ -102,8 +88,7 @@ test('a misspelled word is marked and costs the top mark', async ({ page }) => {
 
 test('a missing word is named', async ({ page }) => {
   installFakeAudio(page);
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   const sentence = await openTypingBox(page);
   const words = sentence.split(/\s+/);
@@ -117,7 +102,6 @@ test('a missing word is named', async ({ page }) => {
 
 test('no microphone is ever requested in typing mode', async ({ page }) => {
   installFakeAudio(page);
-  startInTypingMode(page);
   await page.addInitScript(() => {
     (window as any).__micAsked = false;
     const media = navigator.mediaDevices;
@@ -128,7 +112,7 @@ test('no microphone is ever requested in typing mode', async ({ page }) => {
       };
     }
   });
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   const sentence = await openTypingBox(page);
   await page.locator('.validate-box.typing input').fill(sentence);
@@ -140,8 +124,7 @@ test('no microphone is ever requested in typing mode', async ({ page }) => {
 
 test('space typed into the box does not toggle playback', async ({ page }) => {
   installFakeAudio(page);
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   await openTypingBox(page);
   const input = page.locator('.validate-box.typing input');
@@ -153,8 +136,7 @@ test('space typed into the box does not toggle playback', async ({ page }) => {
 
 test('playback waits for the typed answer, then moves on', async ({ page }) => {
   installFakeAudio(page, { speakMs: 200 });
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   await page.locator('#play').click();
   await expect(page.locator('.validate-box.typing input')).toBeVisible({ timeout: 15_000 });
@@ -171,8 +153,7 @@ test('playback waits for the typed answer, then moves on', async ({ page }) => {
 
 test('the box opens while the audio is still playing, not after it', async ({ page }) => {
   installFakeAudio(page, { speakMs: 4000 });
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   await page.locator('#play').click();
 
@@ -185,8 +166,7 @@ test('the box opens while the audio is still playing, not after it', async ({ pa
 
 test('an answer typed during the audio is accepted', async ({ page }) => {
   installFakeAudio(page, { speakMs: 3000 });
-  startInTypingMode(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'spelling' });
 
   await page.locator('#play').click();
   const input = page.locator('.validate-box.typing input');

@@ -40,8 +40,6 @@ test('loads the corpus with numbered lines', async ({ page }) => {
   await gotoApp(page);
 
   await expect(page).toHaveTitle('Shadowing');
-  await expect(page.locator('.topics-title')).toHaveText('Topics');
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL);
   await openSettings(page);
   await expect(page.locator('.sliders label').first()).toHaveAttribute('title', /speed/i);
   expect(await loadedLines(page)).toBe(TOTAL_LINES);
@@ -56,7 +54,7 @@ test('a first-time visitor is asked for a level before anything else', async ({ 
   await expect(page.locator('.level-title')).toHaveText('Choose your level');
 
   await expect(page.locator('.lines p')).toHaveCount(0);
-  await expect(page.locator('#decks')).toHaveCount(0);
+  await expect(page.locator('#activities')).toHaveCount(0);
 
   const cards = page.locator('.level-card');
   await expect(cards).toHaveCount(6);
@@ -67,9 +65,23 @@ test('a first-time visitor is asked for a level before anything else', async ({ 
 
   await page.locator('.level-card[data-level-id="B1"]').click();
 
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL);
+  await expect(page.locator('#activities')).toBeVisible();
   await expect.poll(() => loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('#levelChip')).toContainText('B1');
+});
+
+test('a first visit asks for a level once, then never again', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { level: null });
+  await expect(page.locator('#levels')).toBeVisible();
+
+  await page.locator('[data-level-id="B1"]').click();
+  await expect(page.locator('#activities')).toBeVisible();
+  await expect(page.locator('#levels')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.locator('#activities')).toBeVisible();
+  await expect(page.locator('#levels')).toHaveCount(0);
 });
 
 test('the level survives a reload, and the app bar states it rather than changing it', async ({ page }) => {
@@ -80,11 +92,66 @@ test('the level survives a reload, and the app bar states it rather than changin
   await page.reload();
   await expect(page.locator('#levelChip')).toContainText('B1');
 
-  // The level is asked once. The chip reports it; it is not a way back to the picker.
+  // The level is asked once. The chip reports it; it is not a control.
   await expect(page.locator('button#levelChip')).toHaveCount(0);
-  await page.locator('#levelChip').click();
-  await expect(page.locator('.level-title')).toHaveCount(0);
-  await expect(page.locator('#levelChip')).toContainText('B1');
+});
+
+test('the chooser offers every activity, every topic and three durations', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: null });
+
+  await expect(page.locator('.activity-card')).toHaveCount(5);
+  await expect(page.locator('#startActivity')).toBeDisabled();
+  await expect(page.locator('#decks')).toHaveCount(0);
+
+  await page.locator('[data-activity-id="listening"]').click();
+
+  await expect(page.locator('#allTopics')).toBeVisible();
+  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+  await expect(page.locator('.durations button')).toHaveCount(3);
+  await expect(page.locator('.durations button').first())
+    .toHaveAttribute('title', /minute/i);
+  await expect(page.locator('#startActivity')).toBeEnabled();
+});
+
+test('choosing an activity practises it, finishing shows a summary, back returns to the chooser',
+  async ({ page }) => {
+    installFakeAudio(page);
+    await gotoApp(page, { activity: 'listening', topic: null, minutes: 5 });
+
+    await expect(page.locator('#play')).toBeVisible();
+    await expect(page.locator('.check-mode')).toHaveCount(0);
+
+    await page.locator('#finish').click();
+
+    await expect(page.locator('.summary-title')).toContainText('Listening');
+    await expect(page.locator('[data-stat="minutes"]')).toContainText('5 min');
+    await expect(page.locator('[data-stat="stars"]')).toHaveCount(0);
+
+    await page.locator('#backToChooser').click();
+    await expect(page.locator('#activities')).toBeVisible();
+  });
+
+test('the activity sets blur, but the learner can still override it', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'listening', minutes: 5 });
+
+  const blurred = () => page.evaluate(() => (window as any).__shadowing.state.blur as boolean);
+  expect(await blurred()).toBe(true);
+
+  await openSettings(page);
+  await page.locator('#blur').click();
+  expect(await blurred()).toBe(false);
+});
+
+test('My text keeps its own check-mode choice', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-activity-id="custom"]').click();
+
+  await expect(page.locator('#decks')).toHaveCount(0);
+  await expect(page.locator('.chooser .custom-topic')).toBeVisible();
+  await expect(page.locator('.chooser .check-mode')).toBeVisible();
 });
 
 test('the sentences arrive shuffled rather than grouped by topic', async ({ page }) => {
@@ -150,11 +217,10 @@ test('a banner can be dismissed with its close button', async ({ page }) => {
   await expect(page.locator('#banner')).not.toBeVisible();
 });
 
-test('filtering by topic narrows the list and renumbers from one', async ({ page }) => {
+test('starting on one topic narrows the list and renumbers from one', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
+  await gotoApp(page, { topic: 'socializing' });
 
-  await page.locator('#decks button', { hasText: 'Socializing' }).click();
   await expect.poll(() => loadedLines(page)).toBe(26);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
@@ -295,13 +361,17 @@ test('help modal opens, describes features, and closes', async ({ page }) => {
   await expect(page.locator('#helpModal')).not.toBeVisible();
 });
 
-test('mobile keeps the topics bar as a single compact row', async ({ page }) => {
+test('mobile keeps the chooser topics bar as a single compact row', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   installFakeAudio(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-activity-id="shadowing"]').click();
 
   const height = await page.locator('.decks').evaluate((el) => el.getBoundingClientRect().height);
   expect(height).toBeLessThan(120);
+
+  await page.locator('.durations [data-min="15"]').click();
+  await page.locator('#startActivity').click();
   await expect(page.locator('.lines p').first()).toBeVisible();
 });
 
@@ -312,8 +382,8 @@ test('mobile keeps every control on screen with the settings drawer open', async
   await openSettings(page);
 
   const offscreen = await page.evaluate(() => {
-    const controls = '#play, #next, #validate, #shuffle, #settings, #help, #levelChip'
-      + ', #blur, #repeat, #typing, #rate, #slack, #voice, #rateOut, #slackOut';
+    const controls = '#play, #next, #shuffle, #finish, #settings, #help'
+      + ', #blur, #repeat, #rate, #slack, #voice, #rateOut, #slackOut';
     return [...document.querySelectorAll(controls)]
       .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 0.5)
       .map((el) => el.id);
