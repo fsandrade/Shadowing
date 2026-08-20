@@ -118,7 +118,7 @@ describe('TransportControls disabled state', () => {
 
   it('disables play and next when the deck is empty', () => {
     const { fixture, btn, practice } = render();
-    practice.toggleTopic('missing');
+    practice.selectTopic('missing');
     fixture.detectChanges();
     expect(btn('play').disabled).toBe(true);
   });

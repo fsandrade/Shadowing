@@ -56,7 +56,7 @@ describe('PracticeStore custom topic', () => {
     const { store, custom } = setup();
     custom.setText('Mine only.');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
-    store.toggleTopic('a');
+    store.selectTopic('a');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
   });
 
@@ -82,13 +82,6 @@ describe('PracticeStore lines', () => {
     expect(setup().store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
   });
 
-  it('narrows to a deck and drives the settings store', () => {
-    const { store, settings } = setup();
-    store.toggleTopic('b');
-    expect(store.lines()).toEqual(['b1']);
-    expect(settings.topicId()).toBe('b');
-  });
-
   it('selectTopic pins one topic, returns to the catalog and resets progress', () => {
     const { store, settings } = setup();
     store.useCustomText();
@@ -106,7 +99,7 @@ describe('PracticeStore lines', () => {
 
   it('selectTopic with no topic practises the whole level', () => {
     const { store } = setup();
-    store.toggleTopic('b');
+    store.selectTopic('b');
     store.selectTopic(null);
     expect(store.topicId()).toBeNull();
     expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
@@ -121,7 +114,7 @@ describe('PracticeStore lines', () => {
   it('reports whether there is anything to practise', () => {
     const { store } = setup();
     expect(store.hasLines()).toBe(true);
-    store.toggleTopic('missing');
+    store.selectTopic('missing');
     expect(store.hasLines()).toBe(false);
   });
 });
@@ -202,7 +195,7 @@ describe('PracticeStore progressive rendering', () => {
     const store = withMany();
     store.goTo(150);
     expect(store.visibleLines().length).toBeGreaterThan(60);
-    store.toggleTopic('big');
+    store.selectTopic('big');
     expect(store.visibleLines().length).toBe(60);
   });
 
@@ -228,7 +221,7 @@ describe('PracticeStore progressive rendering', () => {
 describe('PracticeStore navigation', () => {
   it('advances with wraparound', () => {
     const { store } = setup();
-    store.toggleTopic('a');
+    store.selectTopic('a');
     store.advance();
     expect(store.index()).toBe(1);
     store.advance();
@@ -260,7 +253,7 @@ describe('PracticeStore reset semantics', () => {
     const { store } = setup();
     store.goTo(2);
     store.markSpoken(0);
-    store.toggleTopic('a');
+    store.selectTopic('a');
     expect(store.index()).toBe(0);
     expect(store.spoken().size).toBe(0);
   });
@@ -280,7 +273,7 @@ describe('PracticeStore reset semantics', () => {
   it('keeps a manual shuffle in force when the topic filter changes', () => {
     const { store } = setup();
     store.shuffleLines(() => 0);
-    store.toggleTopic('a');
+    store.selectTopic('a');
 
     expect([...store.lines()].sort()).toEqual(['a1', 'a2', 'a3']);
     expect(store.index()).toBe(0);

@@ -161,7 +161,7 @@ describe('PlaybackService transport', () => {
 
   it('does nothing when there are no lines', () => {
     const { playback, practice } = setup();
-    practice.toggleTopic('missing');
+    practice.selectTopic('missing');
     playback.play();
     expect(practice.playing()).toBe(false);
   });
@@ -218,7 +218,7 @@ describe('PlaybackService cancellation', () => {
     playback.play();
     await vi.advanceTimersByTimeAsync(1200);
     playback.stop();
-    practice.toggleTopic('a');
+    practice.selectTopic('a');
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(practice.index()).toBe(0);

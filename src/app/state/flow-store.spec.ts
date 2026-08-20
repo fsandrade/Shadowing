@@ -251,6 +251,16 @@ describe('FlowStore finishing', () => {
     expect(result.stars).toBeNull();
   });
 
+  it('closes the progress session it opened', async () => {
+    const { flow, progress } = setup();
+    await flow.start(activityById('shadowing')!, 'a', 15);
+    const endSession = vi.spyOn(progress, 'endSession');
+
+    flow.finish();
+
+    expect(endSession).toHaveBeenCalledOnce();
+  });
+
   it('clears the last result when the next activity starts', async () => {
     const { flow } = setup();
     await flow.start(activityById('shadowing')!, 'a', 15);

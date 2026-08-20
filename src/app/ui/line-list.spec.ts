@@ -134,7 +134,7 @@ describe('LineList structure', () => {
 
   it('renumbers from one after a deck change', () => {
     const { fixture, lines, practice } = render();
-    practice.toggleTopic('a');
+    practice.selectTopic('a');
     fixture.detectChanges();
     expect([...lines.querySelectorAll('p .num')].map((n) => n.textContent))
       .toEqual(['1', '2', '3']);

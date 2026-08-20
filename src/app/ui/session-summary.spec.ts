@@ -40,11 +40,12 @@ async function renderAfterSession(
   // Stands in for the practising itself: the countdown is the only record of
   // how much of the session was spent by the time Finish is pressed.
   spend: (timer: SessionTimerStore) => void = () => {},
+  topic: string | null = 'a',
 ) {
   configureTestBed(extra);
   const flow = TestBed.inject(FlowStore);
 
-  await flow.start(activityById(activityId)!, 'a', minutes);
+  await flow.start(activityById(activityId)!, topic, minutes);
   if (activityId === 'speaking') {
     // Give the scored case something to report, so the stars stat has a value.
     TestBed.inject(SessionTimerStore).countSpoken(0);
@@ -102,6 +103,39 @@ describe('SessionSummary', () => {
 
     const stars = root.querySelector('[data-stat="stars"]')!;
     expect(stars.querySelector('.summary-value')?.textContent?.trim()).toBe('4★');
+  });
+
+  it('names the topic that was practised, not just the activity', async () => {
+    const { root } = await renderAfterSession('shadowing', 10);
+    expect(root.querySelector('.summary-title')?.textContent).toBe('Shadowing · A');
+  });
+
+  it('says All topics when the session was never narrowed to one', async () => {
+    const { root } = await renderAfterSession('shadowing', 10, [], () => {}, null);
+    expect(root.querySelector('.summary-title')?.textContent).toBe('Shadowing · All topics');
+  });
+
+  it('names no topic for My text, which has none', async () => {
+    const { root } = await renderAfterSession('custom', 10, [], () => {}, null);
+    expect(root.querySelector('.summary-title')?.textContent).toBe('My text');
+  });
+
+  it('averages the stars over the sentences practised', async () => {
+    // The setup scores line 0 four stars; this adds a second at three.
+    const { root } = await renderAfterSession('speaking', 5, [], (timer) => {
+      timer.countSpoken(1);
+      timer.recordStars(1, 3);
+    });
+
+    const average = root.querySelector('[data-stat="average"]')!;
+    expect(average.querySelector('.summary-value')?.textContent?.trim()).toBe('3.5★');
+    expect(average.querySelector('.summary-label')?.textContent?.trim()).toBe('per sentence');
+  });
+
+  it('omits the average wherever it omits the stars', async () => {
+    const { root } = await renderAfterSession('listening', 5);
+    expect(root.querySelector('[data-stat="stars"]')).toBeNull();
+    expect(root.querySelector('[data-stat="average"]')).toBeNull();
   });
 
   it('omits the stars when nothing was scored, rather than showing zero', async () => {

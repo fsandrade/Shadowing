@@ -68,24 +68,8 @@ export class PracticeStore {
     this.resetProgress();
   }
 
-  toggleTopic(id: string): void {
-    this.settings.setTopicId(this.settings.topicId() === id ? null : id);
-    this.settings.setSource('catalog');
-    this.resetProgress();
-  }
-
-  clearTopic(): void {
-    this.settings.setTopicId(null);
-    this.resetProgress();
-  }
-
   useCustomText(): void {
     this.settings.setSource('custom');
-    this.resetProgress();
-  }
-
-  useCatalog(): void {
-    this.settings.setSource('catalog');
     this.resetProgress();
   }
 
