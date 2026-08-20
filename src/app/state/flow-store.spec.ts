@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { activityById } from '../core/activity';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
 import { INITIAL_USER } from '../platform/auth';
@@ -142,6 +142,25 @@ describe('FlowStore starting an activity', () => {
     const { flow } = setup();
     await flow.start(activityById('speaking')!, 'a', 10);
     expect(flow.activity()?.id).toBe('speaking');
+  });
+
+  it('opens a progress session for a ladder activity with the chosen topic and minutes', async () => {
+    const { flow, progress } = setup();
+    const startSession = vi.spyOn(progress, 'startSession');
+
+    await flow.start(activityById('shadowing')!, 'a', 15);
+
+    expect(startSession).toHaveBeenCalledOnce();
+    expect(startSession).toHaveBeenCalledWith('shadowing', 'a', 15);
+  });
+
+  it('never opens a database session for My text', async () => {
+    const { flow, progress } = setup();
+    const startSession = vi.spyOn(progress, 'startSession');
+
+    await flow.start(activityById('custom')!, null, 10);
+
+    expect(startSession).not.toHaveBeenCalled();
   });
 });
 
