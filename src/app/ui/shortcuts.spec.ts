@@ -185,12 +185,14 @@ describe('Shortcuts', () => {
     expect(host.closed).toBe(0);
   });
 
-  it('cannot close the modal while disabled, matching the vanilla guard order', () => {
+  it('Escape closes the modal even when the practice shortcuts are off', () => {
+    // The modal opens from the chooser and the summary too, where the practice
+    // shortcuts are disabled. Escape still has to be a way out.
     const { fixture, host } = setup();
     host.enabled.set(false);
     host.helpOpen.set(true);
     fixture.detectChanges();
     press('Escape');
-    expect(host.closed).toBe(0);
+    expect(host.closed).toBe(1);
   });
 });

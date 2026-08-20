@@ -11,6 +11,7 @@ import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { ValidationService } from '../validation/validation-service';
 import { ActivityChooser } from './activity-chooser';
 
 @Component({
@@ -62,6 +63,7 @@ function render() {
     q,
     flow: TestBed.inject(FlowStore),
     settings: TestBed.inject(SettingsStore),
+    validation: TestBed.inject(ValidationService),
     cards: () => [...root.querySelectorAll<HTMLButtonElement>('.activity-card')],
     durations: () => [...root.querySelectorAll<HTMLButtonElement>('.durations button')],
     start: () => q<HTMLButtonElement>('#startActivity'),
@@ -128,6 +130,26 @@ describe('ActivityChooser', () => {
     expect(flow.activity()?.id).toBe('shadowing');
     expect(settings.topicId()).toBe('b');
     expect(settings.durationMin()).toBe(15);
+  });
+
+  it('carries the check mode chosen for My text into the session', async () => {
+    // The control below the editor applies the mode as it is clicked, so begin()
+    // has to hand it to start(). Dropping that argument would fall back to the
+    // custom preset, 'nothing', and silently undo the learner.
+    const { fixture, cards, root, flow, validation } = render();
+
+    cards()[4].click();
+    fixture.detectChanges();
+
+    root.querySelector<HTMLButtonElement>('#check-spelling')!.click();
+    await fixture.whenStable();
+    expect(validation.mode()).toBe('spelling');
+
+    root.querySelector<HTMLButtonElement>('#startActivity')!.click();
+    await fixture.whenStable();
+
+    expect(flow.screen()).toBe('practice');
+    expect(validation.mode()).toBe('spelling');
   });
 
   it('swaps the topic list for the editor and a check-mode choice on My text', () => {

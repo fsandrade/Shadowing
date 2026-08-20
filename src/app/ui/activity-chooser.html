@@ -1,11 +1,10 @@
 <h2 class="chooser-title">What do you want to practise?</h2>
 <p class="chooser-lede">Pick an activity, a topic and how long you have.</p>
 
-<div class="activity-grid" id="activities" role="list">
+<div class="activity-grid" id="activities" role="group" aria-label="Activities">
   @for (activity of ACTIVITIES; track activity.id) {
     <button
       type="button"
-      role="listitem"
       class="activity-card"
       [attr.data-activity-id]="activity.id"
       [attr.aria-pressed]="activity.id === chosen()?.id"
