@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import type { CheckMode } from '../core/activity';
 import { soundsComplete, starsFor } from '../core/scoring';
 import { listenCeilingMs } from '../core/timing';
 import { missedWords, type TypedWord, typedWords, typingStars } from '../core/typing';
@@ -13,7 +14,7 @@ import { SettingsStore } from '../state/settings-store';
 
 export type LineStatus = 'listening' | 'typing' | 'scored' | 'failed';
 
-export type CheckMode = 'nothing' | 'speaking' | 'spelling';
+export type { CheckMode };
 
 export interface LineResult {
   readonly transcript: string;
