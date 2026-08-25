@@ -20,8 +20,8 @@ const BLURBS: Readonly<Record<string, string>> = {
 })
 export class LevelPicker {
   private readonly catalog = inject(CATALOG);
-  protected readonly practice = inject(PracticeStore);
-  private readonly profile = inject(ProfileStore);
+  private readonly practice = inject(PracticeStore);
+  protected readonly profile = inject(ProfileStore);
 
   protected readonly choices = computed(() => this.catalog.levels.map((level) => ({
     ...level,
@@ -29,7 +29,7 @@ export class LevelPicker {
     available: countAt(this.catalog, level.id) > 0,
   })));
 
-  protected readonly current = computed(() => this.practice.level());
+  protected readonly current = computed(() => this.profile.levelId());
 
   protected pick(id: string, available: boolean): void {
     if (!available) { return; }

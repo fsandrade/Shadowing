@@ -51,7 +51,8 @@ describe('HelpModal content', () => {
   it('documents every feature the spec checks for', () => {
     const text = render(true).modal.textContent ?? '';
     for (const term of ['How to use this app', 'Blur', 'gap', 'speed', 'voice',
-                        'Shuffle', 'Play / Pause', 'Next', 'Session']) {
+                        'Play / Pause', 'Next', 'Session', 'Finish',
+                        'retry until 5', 'unlimited']) {
       expect(text, `help should mention ${term}`).toContain(term);
     }
   });
@@ -60,8 +61,9 @@ describe('HelpModal content', () => {
     const text = render(true).modal.textContent ?? '';
     // "rate me" and "type it" were the old transport toggles. They are the
     // Speaking and Spelling activities now, and the only thing left to choose
-    // is My text's Check control.
-    for (const gone of ['rate me', 'type it']) {
+    // is My text's Check control. "Shuffle" went the same way: the order is
+    // reshuffled on every start, so there is no control to document.
+    for (const gone of ['rate me', 'type it', 'Shuffle']) {
       expect(text, `help should not name the removed ${gone} control`).not.toContain(gone);
     }
     for (const term of ['Speaking', 'Spelling', 'Check', 'My text']) {

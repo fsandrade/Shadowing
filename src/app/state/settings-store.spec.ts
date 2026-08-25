@@ -27,7 +27,11 @@ describe('SettingsStore defaults', () => {
     expect(store.sttEnabled()).toBe(false);
   });
 
-  it('defaults to a ten-minute session — there is no unlimited session any more', () => {
+  it('keeps a stored zero, because zero is the unlimited session', () => {
+    expect(setup({ durationMin: 0 }).store.durationMin()).toBe(0);
+  });
+
+  it('defaults to a ten-minute session when nothing is stored', () => {
     expect(setup(null).store.durationMin()).toBe(10);
   });
 
@@ -56,9 +60,9 @@ describe('SettingsStore defaults', () => {
     expect(setup({ blur: 'yes', stt: 1 }).store.sttEnabled()).toBe(false);
   });
 
-  it('coerces a stored zero or unparseable duration to ten minutes', () => {
-    expect(setup({ durationMin: 0 }).store.durationMin()).toBe(10);
+  it('coerces an unparseable or negative duration to ten minutes', () => {
     expect(setup({ durationMin: 'nope' }).store.durationMin()).toBe(10);
+    expect(setup({ durationMin: -5 }).store.durationMin()).toBe(10);
   });
 });
 

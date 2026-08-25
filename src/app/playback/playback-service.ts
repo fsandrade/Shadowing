@@ -1,5 +1,4 @@
 import { inject, Injectable } from '@angular/core';
-import { type Rng } from '../core/shuffle';
 import { stripTags } from '../core/text';
 import { pauseMs } from '../core/timing';
 import { Clock } from '../platform/clock';
@@ -106,11 +105,15 @@ export class PlaybackService {
     this.play();
   }
 
-  shuffle(rng?: Rng): void {
-    const wasPlaying = this.practice.playing();
-    this.stop();
-    this.practice.shuffleLines(rng);
-    if (wasPlaying) { this.play(); }
+  // Say the current line again, for a typist who missed it. Deliberately inert
+  // towards the loop: no bump(), so the generation and the gap survive. During
+  // Spelling the loop is parked inside gap.run() awaiting the typed answer, and
+  // playLine() would cancel both and abandon the validation. Only the speaker
+  // is touched - cancelled first, so a second press replaces the reading rather
+  // than queueing a second one on top of it.
+  repeatLine(): void {
+    this.speaker.cancel();
+    void this.speak(this.practice.index()).catch(() => {});
   }
 
   playLine(i: number): void {

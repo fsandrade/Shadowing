@@ -412,3 +412,40 @@ describe('AttemptQueue', () => {
     expect(held[499].row['id']).toBe('a599');
   });
 });
+
+describe('ProgressService recording practice time', () => {
+  it('sends the time actually practised alongside the wall clock', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', null, 10);
+    progress.endSession(90_000);
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    const close = sent[1];
+    expect(close.op).toBe('update');
+    expect(close.row['practised_ms']).toBe(90_000);
+    // Wall clock stays: the gap between the two is what marks an abandoned
+    // session, so neither number replaces the other.
+    expect(close.row).toHaveProperty('elapsed_ms');
+  });
+
+  it('records no practice time for a session that never played', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', null, 10);
+    progress.endSession();
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    expect(sent[1].row['practised_ms']).toBe(0);
+  });
+
+  it('never sends a negative practice time', async () => {
+    const { progress, sent } = setup();
+
+    progress.startSession('listening', null, 10);
+    progress.endSession(-5000);
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+
+    expect(sent[1].row['practised_ms']).toBe(0);
+  });
+});

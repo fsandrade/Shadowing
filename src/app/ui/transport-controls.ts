@@ -3,10 +3,12 @@ import { PlaybackService } from '../playback/playback-service';
 import { Speaker } from '../platform/speaker';
 import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
+import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 import { CheckModeControl } from './check-mode';
 
 const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (←)';
+const REPEAT_TITLE = 'Repeat a sentence until you score five stars';
 
 @Component({
   selector: 'div[appTransportControls]',
@@ -22,7 +24,10 @@ export class TransportControls {
   private readonly voices = inject(VoiceStore);
   private readonly speaker = inject(Speaker);
 
+  protected readonly settings = inject(SettingsStore);
+
   protected readonly PLAY_TITLE = PLAY_TITLE;
+  protected readonly REPEAT_TITLE = REPEAT_TITLE;
 
   protected readonly enabled = computed(
     () => this.practice.hasLines() && this.speaker.supported && this.voices.hasEnglish(),

@@ -64,10 +64,20 @@ export class FlowStore {
     // transcripts and stars, and a typing box left open swallows Enter.
     this.validation.reset();
 
+    // Read the profile level once, here. Everything downstream uses the frozen
+    // copy, so a level changed mid-activity only lands on the next start.
+    this.practice.activateLevel(this.profile.levelId());
+
     if (activity.id === 'custom') {
       this.practice.useCustomText();
     } else {
       this.practice.selectTopic(topicId);
+      // Every activity starts on a fresh order, so there is no shuffle button
+      // to press. It has to be explicit for the same reason validation.reset()
+      // does: restarting the same topic leaves lines() cached, so nothing would
+      // reshuffle on its own. After selectTopic, or it would shuffle the topic
+      // the learner just left.
+      this.practice.shuffleLines();
     }
 
     const pacing = pacingFor(this.profile.levelId());
@@ -110,7 +120,7 @@ export class FlowStore {
     if (!activity) { return; }
 
     const tally = this.timer.finish();
-    this.progress.endSession();
+    this.progress.endSession(tally.usedMs);
 
     this.finished.set({
       activity,

@@ -33,9 +33,16 @@ export class SessionTimerStore {
     return total;
   });
 
+  // A session with no time limit has nothing to count down from, so the same
+  // signal counts up instead and remainingMs holds time spent, not time left.
+  private readonly unlimited = computed(() => this.settings.durationMin() === 0);
+
   readonly clockText = computed(() => {
     this.ticker();
-    return formatClock((this.remainingMs() - this.elapsed()) / 1000);
+    const ms = this.unlimited()
+      ? this.remainingMs() + this.elapsed()
+      : this.remainingMs() - this.elapsed();
+    return formatClock(ms / 1000);
   });
 
   tick(): void {
@@ -49,11 +56,23 @@ export class SessionTimerStore {
   accrue(): void {
     if (!this.practice.playing()) { return; }
     const used = this.clock.now() - this.resumedAt;
-    this.remainingMs.update((ms) => ms - used);
+    this.remainingMs.update((ms) => (this.unlimited() ? ms + used : ms - used));
     this.resumedAt = this.clock.now();
   }
 
+  // Time the session has actually spent playing, live - the open slice is
+  // included, so a session ended mid-play does not report zero. A method
+  // rather than a computed because elapsed() reads the clock, which no signal
+  // tracks; a computed would serve a stale value.
+  consumedMs(): number {
+    if (this.unlimited()) { return Math.max(0, this.remainingMs() + this.elapsed()); }
+    const plannedMs = this.settings.durationMin() * 60_000;
+    const left = this.remainingMs() - this.elapsed();
+    return Math.min(plannedMs, Math.max(0, plannedMs - left));
+  }
+
   expired(): boolean {
+    if (this.unlimited()) { return false; }
     return this.remainingMs() - this.elapsed() <= 0;
   }
 
@@ -90,7 +109,9 @@ export class SessionTimerStore {
     // pauses too, so the two will not match for a session that sat paused. That
     // is deliberate - the summary answers "how long did I practise", the row
     // answers "how long was this session open".
-    const usedMs = Math.min(plannedMs, Math.max(0, plannedMs - this.remainingMs()));
+    const usedMs = this.unlimited()
+      ? Math.max(0, this.remainingMs())
+      : Math.min(plannedMs, Math.max(0, plannedMs - this.remainingMs()));
 
     const tally: SessionTally = {
       spoken: this.spokenCount(),

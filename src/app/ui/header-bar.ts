@@ -2,7 +2,7 @@ import {
   ChangeDetectionStrategy, Component, computed, inject, input, output,
 } from '@angular/core';
 import { FlowStore } from '../state/flow-store';
-import { PracticeStore } from '../state/practice-store';
+import { ProfileStore } from '../state/profile-store';
 import { AccountMenu } from './account-menu';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
@@ -15,7 +15,7 @@ import { SettingsStore } from '../state/settings-store';
 })
 export class HeaderBar {
   protected readonly timer = inject(SessionTimerStore);
-  protected readonly practice = inject(PracticeStore);
+  protected readonly profile = inject(ProfileStore);
   private readonly flow = inject(FlowStore);
   private readonly settings = inject(SettingsStore);
 
@@ -30,7 +30,10 @@ export class HeaderBar {
   readonly help = output<void>();
   readonly toggleSettings = output<void>();
 
-  protected readonly clockTitle = computed(
-    () => `Time left in this ${this.settings.durationMin()}-minute session`,
-  );
+  protected readonly clockTitle = computed(() => {
+    const minutes = this.settings.durationMin();
+    return minutes === 0
+      ? 'Time spent practising'
+      : `Time left in this ${minutes}-minute session`;
+  });
 }

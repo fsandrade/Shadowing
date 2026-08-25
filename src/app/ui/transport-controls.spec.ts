@@ -84,7 +84,7 @@ describe('TransportControls structure', () => {
     const { transport } = render();
     expect(transport.classList.contains('transport')).toBe(true);
     expect([...transport.querySelectorAll('button')].map((b) => b.id))
-      .toEqual(['play', 'next', 'shuffle', 'finish']);
+      .toEqual(['play', 'next', 'repeat', 'finish']);
   });
 
   it('keeps the vanilla titles the specs and tooltips rely on', async () => {
@@ -152,10 +152,40 @@ describe('TransportControls toggles', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('offers shuffle alongside the transport, not buried in a panel', () => {
+  it('has no shuffle button — every activity starts on a fresh order', () => {
     const { btn } = render();
-    expect(btn('shuffle').title).toMatch(/reshuffle/i);
-    expect(btn('shuffle').hasAttribute('disabled')).toBe(false);
+    expect(btn('shuffle')).toBeNull();
+  });
+
+  it('offers retry until five stars alongside the transport, not buried in a panel', () => {
+    const { btn } = render();
+    expect(btn('repeat').title).toMatch(/five stars/i);
+  });
+
+  it('cannot retry toward a score the activity does not keep', async () => {
+    const { btn, fixture, flow } = render();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    fixture.detectChanges();
+    expect(btn('repeat').disabled).toBe(true);
+
+    await flow.start(activityById('spelling')!, 'a', 10);
+    fixture.detectChanges();
+    expect(btn('repeat').disabled).toBe(false);
+  });
+
+  it('retry reports its state and toggles the setting', async () => {
+    const { btn, fixture, flow, settings } = render();
+
+    await flow.start(activityById('spelling')!, 'a', 10);
+    fixture.detectChanges();
+    expect(btn('repeat').getAttribute('aria-pressed')).toBe('false');
+
+    btn('repeat').click();
+    fixture.detectChanges();
+
+    expect(settings.repeatUntilFive()).toBe(true);
+    expect(btn('repeat').getAttribute('aria-pressed')).toBe('true');
   });
 });
 

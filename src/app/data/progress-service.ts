@@ -108,7 +108,10 @@ export class ProgressService {
     this.enqueue({ kind: 'attempt', userId, row });
   }
 
-  endSession(): void {
+  // practisedMs is the time the audio was actually running, which only the
+  // session timer knows. Kept a parameter rather than injecting that store:
+  // this layer writes rows, it does not read practice state.
+  endSession(practisedMs = 0): void {
     const userId = this.auth.userId();
     if (!userId || !this.sessionId) { return; }
 
@@ -119,6 +122,7 @@ export class ProgressService {
         id: this.sessionId,
         ended_at: new Date().toISOString(),
         elapsed_ms: Math.max(0, Date.now() - this.sessionStartedAt),
+        practised_ms: Math.max(0, Math.round(practisedMs)),
       },
     });
 
@@ -184,7 +188,11 @@ export class ProgressService {
       const { error, status } = entry.kind === 'session-end'
         ? await this.client
           .from('practice_sessions')
-          .update({ ended_at: entry.row['ended_at'], elapsed_ms: entry.row['elapsed_ms'] })
+          .update({
+            ended_at: entry.row['ended_at'],
+            elapsed_ms: entry.row['elapsed_ms'],
+            practised_ms: entry.row['practised_ms'],
+          })
           .eq('id', entry.row['id'])
 
         : await this.client

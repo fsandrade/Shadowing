@@ -111,8 +111,8 @@ describe('AppStartup level recovery', () => {
 
   it('does not strand the learner on a topic that belonged to the forgotten level', () => {
     // 'a' is a topic of A2, and C2 has been emptied out from under this learner.
-    const { practice } = setup('C2', 'a');
-    expect(practice.levelChosen()).toBe(false);
+    const { practice, profile } = setup('C2', 'a');
+    expect(profile.chosen()).toBe(false);
 
     const fixture = TestBed.createComponent(PickerHost);
     fixture.detectChanges();

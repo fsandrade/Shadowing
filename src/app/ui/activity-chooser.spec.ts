@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
+import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { INITIAL_USER } from '../platform/auth';
 import { RANDOM } from '../platform/rng';
@@ -20,12 +21,13 @@ import { ActivityChooser } from './activity-chooser';
 })
 class Host {}
 
-function render() {
+function render(extra: unknown[] = []) {
   const store = new Map<string, unknown>([['shadowing.profile', { levelId: TEST_LEVEL }]]);
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
+      ...(extra as never[]),
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: INITIAL_USER, useValue: null },
@@ -97,11 +99,12 @@ describe('ActivityChooser', () => {
     expect(start().disabled).toBe(false);
   });
 
-  it('offers three durations and defaults to ten minutes', () => {
+  it('offers four durations, unlimited last, and defaults to ten minutes', () => {
     const { fixture, cards, durations } = render();
     cards()[0].click();
     fixture.detectChanges();
-    expect(durations().map((b) => b.textContent?.trim())).toEqual(['5 min', '10 min', '15 min']);
+    expect(durations().map((b) => b.textContent?.trim()))
+      .toEqual(['5 min', '10 min', '15 min', 'Unlimited']);
     expect(durations()[1].getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -160,5 +163,107 @@ describe('ActivityChooser', () => {
     expect(root.querySelector('#decks')).toBeNull();
     expect(root.querySelector('.custom-topic')).not.toBeNull();
     expect(root.querySelector('.check-mode')).not.toBeNull();
+  });
+});
+
+describe('ActivityChooser unlimited sessions', () => {
+  it('starts an unlimited session with a zero duration', async () => {
+    const { fixture, cards, durations, root, start, settings } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#allTopics')!.click();
+    durations()[3].click();
+    fixture.detectChanges();
+
+    start().click();
+    await fixture.whenStable();
+
+    expect(settings.durationMin()).toBe(0);
+  });
+
+  it('says the session runs until the learner ends it', () => {
+    const { fixture, cards, durations } = render();
+    cards()[0].click();
+    fixture.detectChanges();
+    expect(durations()[3].title).toMatch(/until you finish/i);
+  });
+});
+
+describe('ActivityChooser practice panels', () => {
+  const FULL = {
+    currentStreak: 12,
+    longestStreak: 20,
+    daysStudied: 47,
+    practisedMs: 6 * 60 * 60_000 + 20 * 60_000,
+    sentencesPractised: 1312,
+    sentencesDistinct: 431,
+    averageStars: 3.8,
+    today: {
+      practisedMs: 14 * 60_000,
+      sentencesPractised: 38,
+      sentencesDistinct: 22,
+      averageStars: 4.1,
+    },
+  };
+
+  async function renderWith(totals: unknown) {
+    const r = render([{
+      provide: HistoryService,
+      useValue: { totals: () => Promise.resolve(totals) } as unknown as HistoryService,
+    }]);
+    r.fixture.detectChanges();
+    await r.fixture.whenStable();
+    r.fixture.detectChanges();
+    return r;
+  }
+
+  it('shows nothing at all when the totals cannot be read', async () => {
+    const { root } = await renderWith(null);
+    expect(root.querySelector('.panels')).toBeNull();
+  });
+
+  it('reports the all-time figures', async () => {
+    const { root } = await renderWith(FULL);
+    const panel = root.querySelector('[data-panel="all"]')!;
+
+    expect(panel.querySelector('[data-stat="streak"]')?.textContent).toMatch(/12/);
+    expect(panel.querySelector('[data-stat="streak"]')?.textContent).toMatch(/best 20/);
+    expect(panel.querySelector('[data-stat="days"]')?.textContent).toMatch(/47/);
+    expect(panel.querySelector('[data-stat="time"]')?.textContent).toMatch(/6h 20m/);
+    expect(panel.querySelector('[data-stat="sentences"]')?.textContent).toMatch(/1312/);
+    expect(panel.querySelector('[data-stat="sentences"]')?.textContent).toMatch(/431/);
+    expect(panel.querySelector('[data-stat="average"]')?.textContent).toMatch(/3\.8/);
+  });
+
+  it('reports today without the day counts, which make no sense for one day', async () => {
+    const { root } = await renderWith(FULL);
+    const panel = root.querySelector('[data-panel="today"]')!;
+
+    expect(panel.querySelector('[data-stat="time"]')?.textContent).toMatch(/14m/);
+    expect(panel.querySelector('[data-stat="sentences"]')?.textContent).toMatch(/38/);
+    expect(panel.querySelector('[data-stat="average"]')?.textContent).toMatch(/4\.1/);
+    expect(panel.querySelector('[data-stat="streak"]')).toBeNull();
+    expect(panel.querySelector('[data-stat="days"]')).toBeNull();
+  });
+
+  it('calls the sentence figures scored, so an unscored week does not read as broken', async () => {
+    const { root } = await renderWith(FULL);
+    expect(root.querySelector('.panels')?.textContent).toMatch(/scored/i);
+  });
+
+  it('omits the average when nothing has been scored, rather than showing zero', async () => {
+    const { root } = await renderWith({
+      ...FULL,
+      sentencesPractised: 0,
+      averageStars: null,
+      today: { ...FULL.today, sentencesPractised: 0, averageStars: null },
+    });
+
+    expect(root.querySelector('[data-panel="all"] [data-stat="average"]')).toBeNull();
+    expect(root.querySelector('[data-panel="today"] [data-stat="average"]')).toBeNull();
+    // Days and minutes still count, which is the whole point.
+    expect(root.querySelector('[data-panel="all"] [data-stat="days"]')?.textContent)
+      .toMatch(/47/);
   });
 });

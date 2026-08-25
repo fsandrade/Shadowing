@@ -6,6 +6,23 @@
 </div>
 
 <section class="drawer-section">
+  <h3>Profile</h3>
+  <div class="level-choices" id="profileLevels"
+    role="group" aria-label="Your English level">
+    @for (level of levels(); track level.id) {
+      <button type="button"
+        [attr.data-level-id]="level.id"
+        [attr.aria-pressed]="level.id === profile.levelId()"
+        [disabled]="!level.available"
+        [title]="level.available ? level.description : 'Not ready yet'"
+        (click)="pickLevel(level.id, level.available)"
+      >{{ level.id }}</button>
+    }
+  </div>
+  <p class="drawer-note">Applies to your next activity.</p>
+</section>
+
+<section class="drawer-section">
   <h3>Playback</h3>
   <div appSettingsSliders></div>
   <button type="button" class="drawer-link" id="resetPacing"
@@ -21,17 +38,5 @@
       [attr.aria-pressed]="settings.blur()"
       [title]="BLUR_TITLE"
       (click)="settings.setBlur(!settings.blur())">&#9682; blur text</button>
-
-    <button type="button" id="repeat"
-      [disabled]="!settings.sttEnabled()"
-      [attr.aria-pressed]="settings.repeatUntilFive()"
-      [title]="REPEAT_TITLE"
-      (click)="settings.setRepeatUntilFive(!settings.repeatUntilFive())"
-    >&#8635; retry until 5&#9733;</button>
-
-    <button type="button" id="shuffleSetting" class="mobile-only"
-      [disabled]="!practice.hasLines()"
-      title="Reshuffle the sentences"
-      (click)="shuffle()">&#8644; shuffle</button>
   </div>
 </section>

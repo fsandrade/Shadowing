@@ -156,23 +156,22 @@ describe('SessionSummary', () => {
           accumulated: () => Promise.resolve({
             currentStreak: 4,
             longestStreak: 11,
-            sentencesMastered: 30,
-            sentencesAttempted: 80,
-            sentencesTotal: 200,
           }),
         },
       },
     ]);
 
     expect(root.querySelector('.summary-progress')).not.toBeNull();
-    // Asserted in position, so swapping the streaks or the mastered/total pair
+    // Asserted in position, so swapping the streaks
     // fails here - the compiler is happy with either arrangement.
     const streak = root.querySelector('[data-stat="streak"]')!;
     expect(streak.querySelector('.summary-value')?.textContent?.trim()).toBe('4');
     expect(streak.querySelector('.summary-label')?.textContent).toMatch(/day streak · best 11/);
 
-    const mastered = root.querySelector('[data-stat="mastered"]')!;
-    expect(mastered.querySelector('.summary-value')?.textContent?.trim()).toBe('30 / 200');
+    // The level's mastered count was removed: it read 0 / 0 for anyone whose
+    // progress rows did not exist yet, and 0 forever for the unscored
+    // activities, which is discouraging rather than informative.
+    expect(root.querySelector('[data-stat="mastered"]')).toBeNull();
   });
 
   it('goes back to the chooser', async () => {

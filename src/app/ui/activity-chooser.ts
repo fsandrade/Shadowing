@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { type Activity, ACTIVITIES } from '../core/activity';
+import { formatStudied } from '../core/timing';
+import { HistoryService, type PracticeTotals } from '../data/history-service';
 import { SpeechRecognizer } from '../platform/speech-recognition';
 import { FlowStore } from '../state/flow-store';
 import { ValidationService } from '../validation/validation-service';
@@ -17,6 +19,9 @@ const DURATIONS: readonly DurationOption[] = [
   { min: 5, label: '5 min', title: 'Practise for 5 minutes' },
   { min: 10, label: '10 min', title: 'Practise for 10 minutes' },
   { min: 15, label: '15 min', title: 'Practise for 15 minutes' },
+  // Zero is the unlimited session: the clock counts up and nothing ends the
+  // activity but the Finish button.
+  { min: 0, label: 'Unlimited', title: 'Practise until you finish the activity' },
 ];
 
 @Component({
@@ -34,6 +39,12 @@ export class ActivityChooser {
   protected readonly ACTIVITIES = ACTIVITIES;
   protected readonly DURATIONS = DURATIONS;
 
+  private readonly history = inject(HistoryService);
+
+  protected readonly totals = signal<PracticeTotals | null>(null);
+
+  protected readonly studied = formatStudied;
+
   protected readonly chosen = signal<Activity | null>(null);
   protected readonly topicId = signal<string | null>(null);
   protected readonly minutes = signal(10);
@@ -41,6 +52,10 @@ export class ActivityChooser {
   protected readonly custom = computed(() => this.chosen()?.id === 'custom');
 
   protected readonly ready = computed(() => this.chosen() !== null);
+
+  constructor() {
+    void this.history.totals().then((value) => this.totals.set(value));
+  }
 
   protected unavailable(activity: Activity): boolean {
     return activity.needsMicrophone && !this.sttSupported;

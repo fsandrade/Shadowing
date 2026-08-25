@@ -186,19 +186,6 @@ describe('PlaybackService transport', () => {
     expect(speaker.spoken).toEqual([]);
   });
 
-  it('shuffle reorders, resets to the top and keeps playing', async () => {
-    const { playback, practice } = setup(1000);
-    playback.play();
-    await vi.advanceTimersByTimeAsync(2000);
-    expect(practice.index()).toBe(1);
-
-    playback.shuffle(() => 0);
-    expect(practice.index()).toBe(0);
-    expect(practice.playing()).toBe(true);
-    expect([...practice.lines()].sort())
-      .toEqual(DATA.sentences.map((s) => s.text).sort());
-  });
-
   it('playLine speaks one line without starting the loop', async () => {
     const { playback, practice, speaker } = setup(1000);
     playback.playLine(2);
@@ -798,5 +785,57 @@ describe('PlaybackService validation timing', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(aborted).toHaveBeenCalled();
+  });
+});
+
+describe('PlaybackService repeating a line for the typist', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('says the current line again', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    practice.goTo(1);
+
+    playback.repeatLine();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(speaker.spoken).toEqual(['second line is long enough to measure']);
+  });
+
+  it('does not move the learner off the line they are answering', () => {
+    const { playback, practice } = setup(1000);
+    practice.goTo(2);
+
+    playback.repeatLine();
+
+    expect(practice.index()).toBe(2);
+    expect(practice.spoken().has(2)).toBe(false);
+  });
+
+  it('leaves a running loop running, rather than cancelling the wait for an answer', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1500);
+    const midGap = speaker.spoken.length;
+
+    playback.repeatLine();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(speaker.spoken.length).toBe(midGap + 1);
+
+    // The loop owns the generation; a repeat must not bump it, or the gap
+    // resolves early and the typing promise is abandoned.
+    expect(practice.playing()).toBe(true);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(practice.index()).toBeGreaterThan(0);
+  });
+
+  it('strips markup, like every other reading of a catalogue line', async () => {
+    const { playback, practice, speaker } = setup(1000);
+    practice.goTo(0);
+
+    playback.repeatLine();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(speaker.spoken).toEqual(['first line is long enough to measure']);
   });
 });

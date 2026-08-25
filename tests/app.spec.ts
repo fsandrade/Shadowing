@@ -2,7 +2,7 @@ import {
   test, expect, gotoApp, startActivity, Page,
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
-import { breakSupabase } from './helpers/fake-supabase';
+import { breakSupabase, installFakeSupabase } from './helpers/fake-supabase';
 
 const APP_URL = '/';
 
@@ -77,7 +77,7 @@ test('a first visit asks for a level once, then never again', async ({ page }) =
   await gotoApp(page, { level: null });
   await expect(page.locator('#levels')).toBeVisible();
 
-  await page.locator('[data-level-id="B1"]').click();
+  await page.locator('#levels [data-level-id="B1"]').click();
   await expect(page.locator('#activities')).toBeVisible();
   await expect(page.locator('#levels')).toHaveCount(0);
 
@@ -98,7 +98,7 @@ test('the level survives a reload, and the app bar states it rather than changin
   await expect(page.locator('button#levelChip')).toHaveCount(0);
 });
 
-test('the chooser offers every activity, every topic and three durations', async ({ page }) => {
+test('the chooser offers every activity, every topic and four durations', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
 
@@ -110,9 +110,10 @@ test('the chooser offers every activity, every topic and three durations', async
 
   await expect(page.locator('#allTopics')).toBeVisible();
   await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
-  await expect(page.locator('.durations button')).toHaveCount(3);
+  await expect(page.locator('.durations button')).toHaveCount(4);
   await expect(page.locator('.durations button').first())
     .toHaveAttribute('title', /minute/i);
+  await expect(page.locator('.durations [data-min="0"]')).toHaveText('Unlimited');
   await expect(page.locator('#startActivity')).toBeEnabled();
 });
 
@@ -230,7 +231,6 @@ test('warns and disables the controls when no English voice is available', async
   await expect(page.locator('#banner')).toContainText(/no english voice/i);
   await expect(page.locator('#play')).toBeDisabled();
   await expect(page.locator('#next')).toBeDisabled();
-  await expect(page.locator('#shuffle')).toBeDisabled();
 });
 
 test('warns about the audio on the chooser, before an activity is picked', async ({ page }) => {
@@ -271,17 +271,157 @@ test('clicking a sentence highlights it, even when clicking the number', async (
   await expect(page.locator('.lines p.current .num')).toHaveText('3');
 });
 
-test('shuffle keeps the corpus and renumbers from one', async ({ page }) => {
+test('the level changes from the drawer, but not under a running activity', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page);
+  await gotoApp(page, { activity: 'shadowing', topic: null, minutes: 15 });
 
-  const before = await page.locator('.lines p').first().innerText();
-  await page.locator('#shuffle').click();
+  const opening = () => page.locator('.lines p .text').first().innerText();
+  const running = await opening();
+  await expect(page.locator('#levelChip')).toContainText('B1');
+
+  await openSettings(page);
+  await page.locator('#profileLevels [data-level-id="A2"]').click();
+
+  // The profile moved; the activity on screen did not.
+  await expect(page.locator('#levelChip')).toContainText('A2');
+  expect(await opening()).toBe(running);
+
+  // The next activity is the one that gets the new level.
+  await page.locator('#closeSettings').click();
+  await page.locator('#finish').click();
+  await page.locator('#backToChooser').click();
+  await startActivity(page, 'shadowing', null, 15);
+
+  expect(await opening()).not.toBe(running);
+});
+
+test('the up arrow replays the audio in spelling without disturbing the answer',
+  async ({ page }) => {
+    installFakeAudio(page);
+    await gotoApp(page, { activity: 'spelling', topic: null, minutes: 15 });
+
+    await page.locator('#play').click();
+    const field = page.locator('.typed-input');
+    await expect(field).toBeVisible();
+    await expect(field).toHaveAttribute('placeholder', /hear it again/i);
+
+    await field.fill('half a sentence');
+    const spokenCount = () => page.evaluate(
+      () => ((window as unknown as { __spokenText?: string[] }).__spokenText ?? []).length,
+    );
+    const before = await spokenCount();
+
+    await field.press('ArrowUp');
+
+    // The audio was asked for again, and the half-typed answer survived.
+    await expect(field).toHaveValue('half a sentence');
+    expect(await spokenCount()).toBeGreaterThan(before);
+  });
+
+test('the chooser shows both practice panels, and still fits on one screen',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    installFakeAudio(page);
+    // Registered after the fixture's routes, so these win: the panels only
+    // load for a signed-in learner, which the default harness is not.
+    await installFakeSupabase(page, {
+      signedIn: true,
+      totals: {
+        current_streak: 12,
+        longest_streak: 20,
+        days_studied: 47,
+        practised_ms: 6 * 60 * 60_000 + 20 * 60_000,
+        sentences_practised: 1312,
+        sentences_distinct: 431,
+        stars_earned: 4986,
+        today_practised_ms: 14 * 60_000,
+        today_sentences_practised: 38,
+        today_sentences_distinct: 22,
+        today_stars_earned: 156,
+      },
+    });
+    await gotoApp(page, { activity: null });
+
+    const all = page.locator('[data-panel="all"]');
+    await expect(all).toBeVisible();
+    await expect(all).toContainText('12');
+    await expect(all).toContainText('best 20');
+    await expect(all).toContainText('47');
+    await expect(all).toContainText('6h 20m');
+    await expect(all).toContainText('1312');
+    await expect(all).toContainText('431');
+    await expect(all).toContainText('3.8');
+
+    const today = page.locator('[data-panel="today"]');
+    await expect(today).toContainText('14m');
+    await expect(today).toContainText('38');
+    await expect(today).toContainText('4.1');
+    await expect(today.locator('[data-stat="days"]')).toHaveCount(0);
+
+    // Everything on the arrival screen has to be reachable without scrolling.
+    let below = await page.evaluate(() => ['#startActivity', '.panels']
+      .map((sel) => {
+        const el = document.querySelector(sel);
+        return el ? { sel, bottom: Math.round(el.getBoundingClientRect().bottom) } : null;
+      })
+      .filter((x): x is { sel: string; bottom: number } => x !== null)
+      .filter((x) => x.bottom > window.innerHeight));
+    expect(below).toEqual([]);
+
+    // Choosing an activity hands the space to the choices: the panels are what
+    // you read on arrival, and keeping them would push Start off a 720 screen.
+    await page.locator('[data-activity-id="listening"]').click();
+    await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+    await expect(page.locator('.panels')).toHaveCount(0);
+
+    below = await page.evaluate(() => ['#startActivity', '.durations']
+      .map((sel) => {
+        const el = document.querySelector(sel);
+        return el ? { sel, bottom: Math.round(el.getBoundingClientRect().bottom) } : null;
+      })
+      .filter((x): x is { sel: string; bottom: number } => x !== null)
+      .filter((x) => x.bottom > window.innerHeight));
+
+    expect(below).toEqual([]);
+  });
+
+test('an unlimited session counts up and ends only when the learner finishes', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'shadowing', topic: null, minutes: 0 });
+
+  // Counting up from zero, not down from a duration nobody chose.
+  await expect(page.locator('#clock')).toHaveText('00:00');
+  await expect(page.locator('#clock')).toHaveAttribute('title', /time spent/i);
+
+  await page.locator('#play').click();
+  await expect(page.locator('#clock')).not.toHaveText('00:00');
+
+  // Nothing but Finish gets the learner out of here.
+  await page.locator('#finish').click();
+  await expect(page.locator('.summary-title')).toContainText('Shadowing');
+  await expect(page.locator('[data-stat="minutes"]')).toContainText(/\d+ sec|\d+ min/);
+});
+
+test('every start reshuffles, keeping the corpus and renumbering from one', async ({ page }) => {
+  installFakeAudio(page);
+
+  // Five lines, not one: a single line collides by chance about once in 700
+  // runs, which is a flake. Five is one in 700^5.
+  const opening = () => page.evaluate(
+    () => [...document.querySelectorAll('.lines p .text')]
+      .slice(0, 5).map((el) => el.textContent).join('|'),
+  );
+
+  await gotoApp(page, { activity: 'shadowing', topic: null });
+  const before = await opening();
+
+  await page.locator('#finish').click();
+  await page.locator('#backToChooser').click();
+  await startActivity(page, 'shadowing', null, 15);
 
   expect(await loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
-  const after = await page.locator('.lines p').first().innerText();
-  expect(after).not.toBe(before);
+  expect(await opening()).not.toBe(before);
 });
 
 test('playback advances lines while the gap ring fills then disappears', async ({ page }) => {
@@ -452,8 +592,8 @@ test('mobile keeps every control on screen with the settings drawer open', async
   await openSettings(page);
 
   const offscreen = await page.evaluate(() => {
-    const controls = '#play, #next, #shuffle, #finish, #settings, #help'
-      + ', #blur, #repeat, #rate, #slack, #voice, #rateOut, #slackOut';
+    const controls = '#play, #next, #repeat, #finish, #settings, #help'
+      + ', #blur, #rate, #slack, #voice, #rateOut, #slackOut';
     return [...document.querySelectorAll(controls)]
       .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 0.5)
       .map((el) => el.id);

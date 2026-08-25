@@ -9,6 +9,7 @@
     [attr.aria-label]="result().transcript"
     [placeholder]="result().transcript"
     (keydown.enter)="answered.emit(field.value)"
+    (keydown.arrowUp)="onReplay($event)"
     #field
   >
 } @else {

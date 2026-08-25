@@ -34,6 +34,15 @@ export function formatPractised(ms: number): string {
   return `${Math.floor(seconds / 60)} min`;
 }
 
+// Accumulated study time, for the chooser's panels. Rounds down for the same
+// reason formatPractised does - the figure never claims more than was spent -
+// and drops to minutes below an hour, because "0h 14m" reads as a failure.
+export function formatStudied(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  if (minutes < 60) { return `${minutes}m`; }
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
 export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const mm = Math.floor(s / 60);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatClock, formatPractised, listenCeilingMs, nextIndex, pauseMs, safetyTimeoutMs,
+  formatClock, formatPractised, formatStudied, listenCeilingMs, nextIndex, pauseMs,
+  safetyTimeoutMs,
 } from './timing';
 
 describe('pauseMs', () => {
@@ -106,5 +107,27 @@ describe('formatPractised', () => {
   it('reports a session that never played as no seconds at all', () => {
     expect(formatPractised(0)).toBe('0 sec');
     expect(formatPractised(-5)).toBe('0 sec');
+  });
+});
+
+describe('formatStudied', () => {
+  it('reads in minutes below an hour', () => {
+    expect(formatStudied(0)).toBe('0m');
+    expect(formatStudied(59_000)).toBe('0m');
+    expect(formatStudied(14 * 60_000)).toBe('14m');
+  });
+
+  it('reads in hours and minutes above one', () => {
+    expect(formatStudied(60 * 60_000)).toBe('1h 0m');
+    expect(formatStudied(6 * 60 * 60_000 + 20 * 60_000)).toBe('6h 20m');
+  });
+
+  it('rounds down, so it never claims time that was not spent', () => {
+    expect(formatStudied(119_000)).toBe('1m');
+    expect(formatStudied(3_599_000)).toBe('59m');
+  });
+
+  it('treats nonsense as nothing rather than rendering NaN', () => {
+    expect(formatStudied(-1000)).toBe('0m');
   });
 });

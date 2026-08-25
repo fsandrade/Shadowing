@@ -5,13 +5,32 @@ import { SUPABASE } from '../platform/supabase-client';
 export interface AccumulatedProgress {
   readonly currentStreak: number;
   readonly longestStreak: number;
-  readonly sentencesMastered: number;
-  readonly sentencesAttempted: number;
-  readonly sentencesTotal: number;
+}
+
+export interface DayTotals {
+  readonly practisedMs: number;
+  readonly sentencesPractised: number;
+  readonly sentencesDistinct: number;
+  // Null, not zero, when nothing was scored: unscored practice earns no stars,
+  // and "0.0 per sentence" would read as a bad result rather than no result.
+  readonly averageStars: number | null;
+}
+
+export interface PracticeTotals extends DayTotals {
+  readonly currentStreak: number;
+  readonly longestStreak: number;
+  readonly daysStudied: number;
+  readonly today: DayTotals;
 }
 
 function count(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function average(stars: unknown, sentences: unknown): number | null {
+  const n = count(sentences);
+  if (n === 0) { return null; }
+  return Math.round((count(stars) / n) * 10) / 10;
 }
 
 // Progress that outlives one session. Read only where it is shown - the
@@ -23,33 +42,60 @@ export class HistoryService {
   private readonly client = inject(SUPABASE);
   private readonly auth = inject(AuthStore);
 
-  async accumulated(levelId: string | null): Promise<AccumulatedProgress | null> {
+  // Everything the chooser's two panels show, in one row. Days and minutes
+  // count every activity; sentence and star figures count only scored
+  // attempts, because unscored practice produces none.
+  async totals(): Promise<PracticeTotals | null> {
     const userId = this.auth.userId();
     if (!userId) { return null; }
 
     try {
-      const [streaks, level] = await Promise.all([
-        this.client
-          .from('user_streaks')
-          .select('current_streak, longest_streak')
-          .eq('user_id', userId)
-          .maybeSingle(),
-        this.client
-          .from('user_level_progress')
-          .select('sentences_mastered, sentences_attempted, sentences_total')
-          .eq('user_id', userId)
-          .eq('level_id', levelId ?? '')
-          .maybeSingle(),
-      ]);
+      const { data, error } = await this.client
+        .from('user_practice_totals')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (streaks.error || level.error) { return null; }
+      if (error) { return null; }
 
       return {
-        currentStreak: count(streaks.data?.['current_streak']),
-        longestStreak: count(streaks.data?.['longest_streak']),
-        sentencesMastered: count(level.data?.['sentences_mastered']),
-        sentencesAttempted: count(level.data?.['sentences_attempted']),
-        sentencesTotal: count(level.data?.['sentences_total']),
+        currentStreak: count(data?.['current_streak']),
+        longestStreak: count(data?.['longest_streak']),
+        daysStudied: count(data?.['days_studied']),
+        practisedMs: count(data?.['practised_ms']),
+        sentencesPractised: count(data?.['sentences_practised']),
+        sentencesDistinct: count(data?.['sentences_distinct']),
+        averageStars: average(data?.['stars_earned'], data?.['sentences_practised']),
+        today: {
+          practisedMs: count(data?.['today_practised_ms']),
+          sentencesPractised: count(data?.['today_sentences_practised']),
+          sentencesDistinct: count(data?.['today_sentences_distinct']),
+          averageStars: average(
+            data?.['today_stars_earned'], data?.['today_sentences_practised'],
+          ),
+        },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async accumulated(): Promise<AccumulatedProgress | null> {
+    const userId = this.auth.userId();
+    if (!userId) { return null; }
+
+    try {
+      const { data, error } = await this.client
+        .from('user_streaks')
+        .select('current_streak, longest_streak')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) { return null; }
+
+      return {
+        currentStreak: count(data?.['current_streak']),
+        longestStreak: count(data?.['longest_streak']),
       };
     } catch {
       return null;

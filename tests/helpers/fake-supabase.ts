@@ -52,13 +52,74 @@ export function topicCountAt(levelId: string): number {
   return new Set(rows().sentences.filter((s) => s.level_id === levelId).map((s) => s.deck_id)).size;
 }
 
-export async function installFakeSupabase(page: Page): Promise<void> {
+const FAKE_USER_ID = '11111111-1111-4111-8111-111111111111';
+
+/** Unsigned, but shaped like the real thing: supabase-js reads the payload. */
+function fakeJwt(): string {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const payload = {
+    sub: FAKE_USER_ID,
+    role: 'authenticated',
+    aud: 'authenticated',
+    is_anonymous: true,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+  };
+  return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}.fake-signature`;
+}
+
+export interface FakeSupabaseOptions {
+  /**
+   * Signs the learner in, so the progress reads happen at all. Without it the
+   * anonymous sign-in is refused and every progress path short-circuits, which
+   * is the right default for tests that are not about progress.
+   */
+  readonly signedIn?: boolean;
+  /** Row served from user_practice_totals when signed in. */
+  readonly totals?: Record<string, unknown>;
+}
+
+export async function installFakeSupabase(
+  page: Page,
+  opts: FakeSupabaseOptions = {},
+): Promise<void> {
   const { decks, sentences } = rows();
 
-  await page.route('**/auth/v1/**', (route) => route.fulfill({
-    status: 422,
-    json: { code: 422, error_code: 'anonymous_provider_disabled', msg: 'Anonymous sign-ins are disabled' },
-  }));
+  if (opts.signedIn) {
+    const token = fakeJwt();
+    await page.route('**/auth/v1/**', (route) => route.fulfill({
+      json: {
+        access_token: token,
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        refresh_token: 'fake-refresh',
+        user: {
+          id: FAKE_USER_ID,
+          aud: 'authenticated',
+          role: 'authenticated',
+          is_anonymous: true,
+          app_metadata: {},
+          user_metadata: {},
+          created_at: new Date().toISOString(),
+        },
+      },
+    }));
+
+    await page.route('**/rest/v1/user_practice_totals*', (route) => route.fulfill({
+      json: opts.totals ?? {},
+    }));
+    await page.route('**/rest/v1/user_streaks*', (route) => route.fulfill({ json: {} }));
+    // Writes are accepted and discarded: no test asserts on them yet.
+    await page.route('**/rest/v1/practice_sessions*', (route) => route.fulfill({ status: 201, json: [] }));
+    await page.route('**/rest/v1/sentence_attempts*', (route) => route.fulfill({ status: 201, json: [] }));
+    await page.route('**/rest/v1/user_settings*', (route) => route.fulfill({ json: {} }));
+  } else {
+    await page.route('**/auth/v1/**', (route) => route.fulfill({
+      status: 422,
+      json: { code: 422, error_code: 'anonymous_provider_disabled', msg: 'Anonymous sign-ins are disabled' },
+    }));
+  }
 
   await page.route('**/*hcaptcha.com/**', (route) => route.abort());
 

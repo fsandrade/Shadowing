@@ -65,3 +65,15 @@ describe('HeaderBar session clock', () => {
     expect(clock()).toBeNull();
   });
 });
+
+describe('HeaderBar clock with no time limit', () => {
+  it('counts up from zero and says so, rather than promising time left', async () => {
+    const { flow, draw, clock } = render();
+
+    await flow.start(activityById('listening')!, 'a', 0);
+    draw();
+
+    expect(clock()?.textContent).toBe('00:00');
+    expect(clock()?.getAttribute('title')).toBe('Time spent practising');
+  });
+});

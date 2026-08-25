@@ -46,6 +46,58 @@
   </section>
 }
 
+@if (!chosen() && totals(); as t) {
+  <div class="panels">
+    <section class="panel" data-panel="all">
+      <h3 class="panel-title">All time</h3>
+      <div class="panel-stats">
+        <div class="summary-stat" data-stat="streak">
+          <span class="summary-value">{{ t.currentStreak }}</span>
+          <span class="summary-label">day streak · best {{ t.longestStreak }}</span>
+        </div>
+        <div class="summary-stat" data-stat="days">
+          <span class="summary-value">{{ t.daysStudied }}</span>
+          <span class="summary-label">{{ t.daysStudied === 1 ? 'day' : 'days' }} studied</span>
+        </div>
+        <div class="summary-stat" data-stat="time">
+          <span class="summary-value">{{ studied(t.practisedMs) }}</span>
+          <span class="summary-label">practised</span>
+        </div>
+        <div class="summary-stat" data-stat="sentences">
+          <span class="summary-value">{{ t.sentencesPractised }}</span>
+          <span class="summary-label">sentences scored · {{ t.sentencesDistinct }} different</span>
+        </div>
+        @if (t.averageStars !== null) {
+          <div class="summary-stat" data-stat="average">
+            <span class="summary-value">{{ t.averageStars }}&#9733;</span>
+            <span class="summary-label">per sentence</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="panel" data-panel="today">
+      <h3 class="panel-title">Today</h3>
+      <div class="panel-stats">
+        <div class="summary-stat" data-stat="time">
+          <span class="summary-value">{{ studied(t.today.practisedMs) }}</span>
+          <span class="summary-label">practised</span>
+        </div>
+        <div class="summary-stat" data-stat="sentences">
+          <span class="summary-value">{{ t.today.sentencesPractised }}</span>
+          <span class="summary-label">sentences scored · {{ t.today.sentencesDistinct }} different</span>
+        </div>
+        @if (t.today.averageStars !== null) {
+          <div class="summary-stat" data-stat="average">
+            <span class="summary-value">{{ t.today.averageStars }}&#9733;</span>
+            <span class="summary-label">per sentence</span>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}
+
 <button type="button" id="startActivity" class="start-btn"
   [disabled]="!ready()"
   title="Start this activity"

@@ -17,6 +17,7 @@ import { BannerStore } from './banner-store';
 import { CATALOG } from './catalog-token';
 import { FlowStore } from './flow-store';
 import { MESSAGES } from './messages';
+import { PracticeStore } from './practice-store';
 import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
@@ -47,6 +48,11 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     },
   } as unknown as SpeechRecognizer;
 
+  // NO_SHUFFLE's value: every draw lands on the element already there, so the
+  // order comes out unchanged. Moving it makes the shuffle produce a different
+  // permutation, which is how a test tells one shuffle from another.
+  let seed = NO_SHUFFLE();
+
   let denied = opts.micDenied ?? false;
   const mic = {
     denied: () => denied,
@@ -61,7 +67,7 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
   TestBed.configureTestingModule({
     providers: [
       { provide: CATALOG, useValue: TEST_CATALOG },
-      { provide: RANDOM, useValue: NO_SHUFFLE },
+      { provide: RANDOM, useValue: () => seed },
       { provide: SUPABASE, useValue: fakeSupabase() },
       { provide: INITIAL_USER, useValue: null },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
@@ -84,8 +90,10 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     progress: TestBed.inject(ProgressService),
     banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
+    practice: TestBed.inject(PracticeStore),
     heard: (text: string) => recognition.onResult?.(text),
     setMicDenied: (value: boolean) => { denied = value; },
+    setSeed: (value: number) => { seed = value; },
   };
 }
 
@@ -295,5 +303,73 @@ describe('FlowStore finishing', () => {
     await flow.start(activityById('listening')!, 'a', 5);
     expect(flow.result()).toBeNull();
     expect(flow.screen()).toBe('practice');
+  });
+});
+
+describe('FlowStore reshuffles on every start', () => {
+  it('reorders the sentences when the same activity restarts on the same topic', async () => {
+    const { flow, practice, setSeed } = setup();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    const first = [...practice.lines()];
+    expect(first.length).toBeGreaterThan(1);
+
+    flow.finish();
+    setSeed(0);
+    await flow.start(activityById('shadowing')!, 'a', 10);
+
+    expect(practice.lines()).not.toEqual(first);
+  });
+
+  it('keeps the same sentences, only in a different order', async () => {
+    const { flow, practice, setSeed } = setup();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    const first = [...practice.lines()];
+
+    flow.finish();
+    setSeed(0);
+    await flow.start(activityById('shadowing')!, 'a', 10);
+
+    expect([...practice.lines()].sort()).toEqual([...first].sort());
+  });
+});
+
+describe('FlowStore freezes the level for the running session', () => {
+  it('leaves the sentences alone when the profile level changes mid-activity', async () => {
+    const { flow, practice, profile } = setup();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    const running = [...practice.lines()];
+    expect(running.length).toBeGreaterThan(0);
+
+    profile.setLevel('B1');
+
+    expect(practice.lines()).toEqual(running);
+    expect(practice.level()).toBe(TEST_LEVEL);
+  });
+
+  it('picks the new level up on the next activity', async () => {
+    const { flow, practice, profile } = setup();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    profile.setLevel('B1');
+    flow.finish();
+
+    await flow.start(activityById('shadowing')!, null, 10);
+
+    expect(practice.level()).toBe('B1');
+    expect([...practice.lines()].sort()).toEqual(['c1', 'c2']);
+  });
+
+  it('offers the profile level\'s topics for choosing, not the running one\'s', async () => {
+    const { flow, practice, profile } = setup();
+
+    await flow.start(activityById('shadowing')!, 'a', 10);
+    expect(practice.topics().map((t) => t.id)).toEqual(['a', 'b']);
+
+    profile.setLevel('B1');
+
+    expect(practice.topics().map((t) => t.id)).toEqual(['c']);
   });
 });

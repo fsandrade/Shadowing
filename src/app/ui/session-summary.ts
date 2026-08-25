@@ -5,7 +5,6 @@ import { formatPractised } from '../core/timing';
 import { type AccumulatedProgress, HistoryService } from '../data/history-service';
 import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
-import { ProfileStore } from '../state/profile-store';
 
 @Component({
   selector: 'main[appSessionSummary]',
@@ -16,7 +15,6 @@ import { ProfileStore } from '../state/profile-store';
 export class SessionSummary {
   private readonly history = inject(HistoryService);
   private readonly practice = inject(PracticeStore);
-  private readonly profile = inject(ProfileStore);
 
   protected readonly flow = inject(FlowStore);
 
@@ -47,8 +45,6 @@ export class SessionSummary {
   });
 
   constructor() {
-    void this.history
-      .accumulated(this.profile.levelId())
-      .then((value) => this.progress.set(value));
+    void this.history.accumulated().then((value) => this.progress.set(value));
   }
 }

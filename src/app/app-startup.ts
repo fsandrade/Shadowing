@@ -130,7 +130,9 @@ export class AppStartup {
     const release = () => {
       this.mic.release();
 
-      this.progress.endSession();
+      // Closing the tab mid-activity still practised whatever it practised, so
+      // read the timer live rather than letting the session default to zero.
+      this.progress.endSession(this.timer.consumedMs());
     };
     addEventListener('pagehide', release);
     addEventListener('beforeunload', release);

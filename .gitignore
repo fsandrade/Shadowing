@@ -15,3 +15,5 @@ dist/
 
 # Supabase CLI scratch
 supabase/.temp/
+
+.opencode/

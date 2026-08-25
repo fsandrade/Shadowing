@@ -1,12 +1,12 @@
 <h1>Shadowing</h1>
 
-@if (practice.levelChosen()) {
+@if (profile.chosen()) {
   <span
     class="level-chip"
     id="levelChip"
-    [title]="'Your level: ' + practice.level()"
+    [title]="'Your level: ' + profile.levelId()"
   >
-    <span class="level-chip-code">{{ practice.level() }}</span>
+    <span class="level-chip-code">{{ profile.levelId() }}</span>
   </span>
 }
 

@@ -243,3 +243,108 @@ describe('SessionTimerStore tally', () => {
     expect(timer.starsWon()).toBe(0);
   });
 });
+
+describe('SessionTimerStore with no time limit', () => {
+  it('counts up from zero instead of down', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(0);
+    timer.reset(0);
+    expect(timer.remainingMs()).toBe(0);
+    expect(timer.clockText()).toBe('00:00');
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(90_000);
+    timer.accrue();
+
+    expect(timer.remainingMs()).toBe(90_000);
+    expect(timer.clockText()).toBe('01:30');
+  });
+
+  it('never expires, however long it runs', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(0);
+    timer.reset(0);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(4 * 60 * 60_000);
+    timer.accrue();
+
+    expect(timer.expired()).toBe(false);
+  });
+
+  it('shows the running total live, before the slice is banked', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(0);
+    timer.reset(0);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(30_000);
+    timer.tick();
+
+    expect(timer.clockText()).toBe('00:30');
+  });
+
+  it('reports the time it accumulated as the time practised', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(0);
+    timer.reset(0);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(150_000);
+    timer.accrue();
+    practice.setPlaying(false);
+
+    expect(timer.finish().usedMs).toBe(150_000);
+  });
+});
+
+describe('SessionTimerStore reporting time spent', () => {
+  it('reports the countdown it has consumed, including the slice in flight', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(10);
+    timer.reset(10);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(90_000);
+
+    // Not banked yet: accrue() has not run, so this has to include the live
+    // slice or a session ended mid-play would report zero.
+    expect(timer.consumedMs()).toBe(90_000);
+  });
+
+  it('counts up the same way with no time limit', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(0);
+    timer.reset(0);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(45_000);
+
+    expect(timer.consumedMs()).toBe(45_000);
+  });
+
+  it('never reports more than the session was given', () => {
+    const { timer, settings, practice, advance } = setup();
+    settings.setDurationMin(5);
+    timer.reset(5);
+
+    practice.setPlaying(true);
+    timer.resume();
+    advance(10 * 60_000);
+
+    expect(timer.consumedMs()).toBe(300_000);
+  });
+
+  it('reports nothing for a session that never played', () => {
+    const { timer, settings } = setup();
+    settings.setDurationMin(10);
+    timer.reset(10);
+    expect(timer.consumedMs()).toBe(0);
+  });
+});

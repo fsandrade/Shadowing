@@ -5,6 +5,7 @@ import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
+import { ProfileStore } from '../state/profile-store';
 import { NO_SHUFFLE, signedOutBackend, TEST_CATALOG } from '../testing/catalog';
 import { LevelPicker } from './level-picker';
 
@@ -39,6 +40,7 @@ function render() {
     fixture,
     root,
     practice: TestBed.inject(PracticeStore),
+    profile: TestBed.inject(ProfileStore),
     cards: () => [...root.querySelectorAll<HTMLButtonElement>('.level-card')],
   };
 }
@@ -75,22 +77,22 @@ describe('LevelPicker', () => {
   });
 
   it('choosing a level starts practice at it', () => {
-    const { fixture, cards, practice } = render();
-    expect(practice.levelChosen()).toBe(false);
+    const { fixture, cards, practice, profile } = render();
+    expect(profile.chosen()).toBe(false);
 
     cards()[0].click();
     fixture.detectChanges();
 
     expect(practice.level()).toBe('A2');
-    expect(practice.levelChosen()).toBe(true);
+    expect(profile.chosen()).toBe(true);
     expect(practice.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
   });
 
   it('a disabled level cannot be chosen by clicking it', () => {
-    const { fixture, cards, practice } = render();
+    const { fixture, cards, practice, profile } = render();
     cards()[2].click();
     fixture.detectChanges();
-    expect(practice.levelChosen()).toBe(false);
+    expect(profile.chosen()).toBe(false);
   });
 
   it('marks the level already in use', () => {
@@ -102,7 +104,7 @@ describe('LevelPicker', () => {
   });
 
   it('choosing a level drops a leftover topic, opening the filter on everything', () => {
-    const { fixture, cards, practice } = render();
+    const { fixture, cards, practice, profile } = render();
     expect(practice.topicId()).toBe('b');
 
     cards()[0].click();

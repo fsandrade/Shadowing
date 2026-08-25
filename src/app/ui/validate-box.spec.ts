@@ -115,7 +115,8 @@ describe('ValidateBox independence', () => {
 describe('ValidateBox typing', () => {
   @Component({
     imports: [ValidateBox],
-    template: `<div appValidateBox [result]="result()" (answered)="submitted.push($event)"></div>`,
+    template: `<div appValidateBox [result]="result()"
+      (answered)="submitted.push($event)" (replay)="replays = replays + 1"></div>`,
   })
   class TypingHost {
     readonly result = signal<LineResult>({
@@ -125,6 +126,7 @@ describe('ValidateBox typing', () => {
     });
 
     readonly submitted: string[] = [];
+    replays = 0;
   }
 
   function renderTyping() {
@@ -224,5 +226,84 @@ describe('ValidateBox typing', () => {
     fixture.detectChanges();
 
     expect(box.querySelector('.missed')).toBeNull();
+  });
+});
+
+describe('ValidateBox replaying the audio while typing', () => {
+  @Component({
+    imports: [ValidateBox],
+    template: `<div appValidateBox [result]="result()"
+      (answered)="submitted.push($event)" (replay)="replays = replays + 1"></div>`,
+  })
+  class ReplayHost {
+    readonly result = signal<LineResult>({
+      transcript: 'Type the sentence, then press Enter',
+      stars: null,
+      status: 'typing',
+    });
+
+    readonly submitted: string[] = [];
+    replays = 0;
+  }
+
+  function renderTyping() {
+    TestBed.resetTestingModule();
+    const fixture = TestBed.createComponent(ReplayHost);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    return {
+      fixture,
+      host: fixture.componentInstance,
+      field: () => root.querySelector('input')!,
+    };
+  }
+
+  function arrowUp(): KeyboardEvent {
+    return new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true });
+  }
+
+  it('asks for the audio again when the up arrow is pressed', () => {
+    const { fixture, host, field } = renderTyping();
+
+    field().dispatchEvent(arrowUp());
+    fixture.detectChanges();
+
+    expect(host.replays).toBe(1);
+  });
+
+  it('stops the browser jumping the caret to the start of the field', () => {
+    // Up arrow in a single-line input moves the caret to position 0. Without
+    // preventDefault the next keystroke would land in the wrong place, which
+    // is worse than having no shortcut at all.
+    const { field } = renderTyping();
+    const event = arrowUp();
+
+    field().dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('does not submit the answer', () => {
+    const { fixture, host, field } = renderTyping();
+
+    field().value = 'half a sentence';
+    field().dispatchEvent(arrowUp());
+    fixture.detectChanges();
+
+    expect(host.submitted).toEqual([]);
+    expect(field().value).toBe('half a sentence');
+  });
+
+  it('says nothing about replaying when there is no field to type in', () => {
+    const { fixture, host } = renderTyping();
+    fixture.componentInstance.result.set({
+      transcript: 'hit the road', stars: 5, status: 'scored',
+    });
+    fixture.detectChanges();
+
+    document.dispatchEvent(arrowUp());
+    fixture.detectChanges();
+
+    expect(host.replays).toBe(0);
   });
 });
