@@ -215,8 +215,8 @@ test('renders a first page of lines and appends more as you scroll', async ({ pa
   await gotoApp(page);
 
   const rendered = () => page.locator('.lines p').count();
+  await expect.poll(rendered, { timeout: 5_000 }).toBeGreaterThan(0);
   const first = await rendered();
-  expect(first).toBeGreaterThan(0);
   expect(first).toBeLessThan(TOTAL_LINES);
 
   await page.locator('.lines').evaluate((el) => { el.scrollTop = el.scrollHeight; });

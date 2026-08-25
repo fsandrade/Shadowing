@@ -76,4 +76,12 @@ export async function startActivity(
     const bridge = (window as unknown as Record<string, { state: { screen: string } }>)['__shadowing'];
     return bridge?.state.screen === 'practice';
   });
+
+  // The debug bridge reads signals, which flip before Angular re-renders the
+  // switch. Interactions aimed at the practice screen must wait out that gap
+  // or they land on the still-mounted chooser and vanish.
+  await page.locator('#startActivity').waitFor({ state: 'detached' });
+  if (activity !== 'custom') {
+    await page.locator('.lines p').first().waitFor({ state: 'attached' });
+  }
 }
