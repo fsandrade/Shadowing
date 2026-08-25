@@ -1,0 +1,20 @@
+@for (line of practice.visibleLines(); track $index) {
+  <p
+    [class.current]="$index === practice.index()"
+    [class.spoken]="practice.spoken().has($index)"
+    (click)="playback.playLine($index)"
+  ><span class="num">{{ $index + 1 }}</span>@if (practice.customActive()) {<span
+      class="text"
+    >{{ line }}</span>} @else {<span
+      class="text"
+      [innerHTML]="line"
+    ></span>}@if ($index === practice.index() && playback.inGap()) {<svg
+      appProgressRing
+      [progress]="playback.progress()"
+    ></svg>}</p>
+  @if (validation.results().get($index); as result) {
+    <div appValidateBox [result]="result"
+      (answered)="validation.submitTyped($event)"
+      (replay)="playback.repeatLine()"></div>
+  }
+}

@@ -1,0 +1,37 @@
+<h1>Shadowing</h1>
+
+@if (profile.chosen()) {
+  <span
+    class="level-chip"
+    id="levelChip"
+    [title]="'Your level: ' + profile.levelId()"
+  >
+    <span class="level-chip-code">{{ profile.levelId() }}</span>
+  </span>
+}
+
+@if (practising()) {
+  <div class="clock" id="clock" [title]="clockTitle()">{{ timer.clockText() }}</div>
+}
+
+<button
+  type="button"
+  class="icon-btn"
+  id="settings"
+  aria-label="Settings"
+  aria-controls="settingsDrawer"
+  [attr.aria-expanded]="settingsOpen()"
+  title="Playback and practice options"
+  (click)="toggleSettings.emit()"
+>&#9881;</button>
+
+<div appAccountMenu (openSettings)="toggleSettings.emit()"></div>
+
+<button
+  type="button"
+  class="icon-btn"
+  id="help"
+  aria-label="How to use this app"
+  title="How to use this app"
+  (click)="help.emit()"
+>?</button>

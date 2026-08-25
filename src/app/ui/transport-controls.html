@@ -1,0 +1,16 @@
+<button type="button" id="play" [disabled]="!enabled()"
+  [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
+<button type="button" id="next" [disabled]="!enabled()"
+  title="Next (&rarr;)" (click)="playback.next()">&#9197;</button>
+@if (customActivity()) {
+  <div appCheckMode></div>
+}
+<button type="button" id="repeat" class="shuffle-btn"
+  [disabled]="!settings.sttEnabled()"
+  [attr.aria-pressed]="settings.repeatUntilFive()"
+  [title]="REPEAT_TITLE"
+  (click)="settings.setRepeatUntilFive(!settings.repeatUntilFive())"
+>&#8635; retry until 5&#9733;</button>
+<button type="button" id="finish" class="shuffle-btn"
+  title="End this activity and see your summary"
+  (click)="finish()">Finish</button>

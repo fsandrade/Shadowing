@@ -1,0 +1,42 @@
+<div class="drawer-head">
+  <h2>Settings</h2>
+  <button type="button" class="icon-btn" id="closeSettings"
+    aria-label="Close settings" title="Close settings"
+    (click)="close.emit()">&#10005;</button>
+</div>
+
+<section class="drawer-section">
+  <h3>Profile</h3>
+  <div class="level-choices" id="profileLevels"
+    role="group" aria-label="Your English level">
+    @for (level of levels(); track level.id) {
+      <button type="button"
+        [attr.data-level-id]="level.id"
+        [attr.aria-pressed]="level.id === profile.levelId()"
+        [disabled]="!level.available"
+        [title]="level.available ? level.description : 'Not ready yet'"
+        (click)="pickLevel(level.id, level.available)"
+      >{{ level.id }}</button>
+    }
+  </div>
+  <p class="drawer-note">Applies to your next activity.</p>
+</section>
+
+<section class="drawer-section">
+  <h3>Playback</h3>
+  <div appSettingsSliders></div>
+  <button type="button" class="drawer-link" id="resetPacing"
+    [disabled]="atLevelPacing()"
+    [title]="'Back to the speed and gap suggested for ' + (practice.level() ?? 'this level')"
+    (click)="resetPacing()">Reset to level default</button>
+</section>
+
+<section class="drawer-section">
+  <h3>Practice</h3>
+  <div class="drawer-toggles">
+    <button type="button" id="blur"
+      [attr.aria-pressed]="settings.blur()"
+      [title]="BLUR_TITLE"
+      (click)="settings.setBlur(!settings.blur())">&#9682; blur text</button>
+  </div>
+</section>

@@ -1,13 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * The app opens straight from disk (file://), so no webServer is needed.
- * Tests cover the browser UI; the node unit tests live next to these specs
- * but play under `node --test` only (see `testMatch` below).
- */
+const PORT = 4200;
+
 export default defineConfig({
   testDir: './tests',
-  /* Only our spec files - the node `*.test.js` unit tests stay outside Playwright. */
   testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -15,12 +11,18 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
+    baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
   },
+  webServer: {
+    // The e2e configuration points the app at an unreachable Supabase host;
+    // the suite intercepts those requests. See tests/helpers/fake-supabase.ts.
+    command: `npx ng serve --configuration e2e --port ${PORT}`,
+    url: `http://localhost:${PORT}`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+  },
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
 });

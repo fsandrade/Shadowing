@@ -1,0 +1,28 @@
+@if (open()) {
+  <label class="custom-label" for="customText">Paste or type your own text</label>
+  <textarea
+    id="customText"
+    class="custom-input"
+    rows="6"
+    spellcheck="false"
+    [attr.maxlength]="LIMIT"
+    placeholder="Paste a few paragraphs. The app splits them into sentences and reads them aloud."
+    [value]="draft()"
+    (input)="onInput($any($event.target).value)"
+  ></textarea>
+  <div class="custom-actions">
+    <button type="button" id="customSave" [disabled]="!draft().trim()" (click)="save()"
+      >Use this text</button>
+    @if (custom.hasText()) {
+      <button type="button" id="customCancel" (click)="cancel()">Cancel</button>
+    }
+    <span class="custom-count">{{ remaining() }} characters left</span>
+  </div>
+} @else {
+  <div class="custom-summary">
+    <span class="custom-count"
+      >Your text &middot; {{ practice.lines().length }} sentences</span>
+    <button type="button" id="customEdit" (click)="edit()">Edit text</button>
+    <button type="button" id="customClear" (click)="clear()">Clear</button>
+  </div>
+}

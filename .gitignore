@@ -1,5 +1,5 @@
 scripts/
-docs/
+docs/*
 
 # Playwright
 node_modules/
@@ -8,3 +8,12 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Angular
+dist/
+.angular/
+
+# Supabase CLI scratch
+supabase/.temp/
+
+.opencode/

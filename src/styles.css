@@ -1,0 +1,549 @@
+:root {
+  --bg: #14171a;
+  --panel: #1c2126;
+  --line: #2a3138;
+  --text: #e6e9ec;
+  --dim: #8d97a1;
+  --accent: #4cc38a;
+  --danger: #e5534b;
+  --warn: #e3b341;
+}
+
+* { box-sizing: border-box; }
+
+button { transition: background-color .12s ease, color .12s ease, border-color .12s ease; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
+  display: grid;
+  /* Header, banner, screen. The banner row is auto and the banner is
+     display:none until something is wrong, so it collapses to nothing. */
+  grid-template-rows: auto auto 1fr;
+}
+
+.booting { color: var(--dim); padding: 24px 20px; margin: 0; }
+
+.startup-error {
+  max-width: 520px;
+  margin: 15vh auto 0;
+  padding: 0 20px;
+  text-align: center;
+}
+.startup-error h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+.startup-error p { color: var(--dim); margin: 0 0 20px; }
+.startup-error button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 18px;
+  font: inherit;
+  cursor: pointer;
+}
+.startup-error button:hover { border-color: var(--accent); color: var(--accent); }
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+header h1 { font-size: 17px; font-weight: 600; margin: 0; }
+.clock {
+  font-variant-numeric: tabular-nums; font-size: 20px;
+  min-width: 68px; text-align: right;
+}
+
+/* Holds the right-hand icon group at the edge of the header even when the
+   clock is absent from the DOM (onboarding, chooser, summary). */
+#settings { margin-left: auto; }
+
+.level-chip {
+  display: inline-flex; align-items: baseline; gap: 7px;
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px; font: inherit; color: var(--text);
+}
+.level-chip-code { font-weight: 600; letter-spacing: .03em; }
+
+.icon-btn {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  background: transparent; color: var(--dim); border: 1px solid var(--line);
+  font-size: 15px; line-height: 1; cursor: pointer; padding: 0;
+}
+.icon-btn:hover, .icon-btn:focus-visible { color: var(--text); border-color: var(--dim); background: #232a33; }
+.icon-btn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+
+.app { grid-row: 3; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
+.app:has(main.full) { grid-template-columns: 1fr; }
+
+.decks { overflow-y: auto; padding: 4px 0 10px; }
+.decks-list { display: contents; }
+.decks button {
+  display: block; width: 100%; text-align: left;
+  background: none; border: 0; border-left: 3px solid transparent;
+  color: var(--dim); font: inherit; padding: 8px 16px; cursor: pointer;
+}
+.decks button:hover { color: var(--text); background: #232a31; }
+.decks button[aria-pressed="true"] { color: var(--text); border-left-color: var(--accent); background: #232a31; }
+
+main { display: grid; grid-template-rows: auto auto auto 1fr; min-height: 0; }
+main.full { grid-template-rows: 1fr; }
+/* Every screen fills the width now that the sidebar is gone, so .full can no
+   longer mean "a single stretched child" for the practice screen. */
+main[appPractice] { grid-template-rows: auto auto auto 1fr; }
+
+.controls { grid-row: 1; padding: 14px 24px; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.transport button,
+.custom-actions button, .custom-summary button {
+  white-space: nowrap;
+  background: var(--line); color: var(--text); border: 0; border-radius: 6px;
+  padding: 8px 18px; font: inherit; cursor: pointer;
+}
+.transport button:disabled,
+.custom-actions button:disabled { opacity: .4; cursor: not-allowed; }
+.transport button:not(#play):not(:disabled):hover,
+.custom-actions button:not(:disabled):hover,
+.custom-summary button:hover { background: #333b45; }
+#play { background: var(--accent); color: #10241a; font-weight: 600; min-width: 110px; }
+#play:not(:disabled):hover { background: #3fae7d; }
+#shuffle:not(:disabled):hover { background: var(--accent); color: #10241a; }
+
+.sliders { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; font-size: 14px; color: var(--dim); min-width: 0; }
+.sliders label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sliders label:hover { color: var(--text); }
+.sliders output { color: var(--text); font-variant-numeric: tabular-nums; min-width: 38px; }
+.sliders select { background: var(--line); color: var(--text); border: 0; border-radius: 6px; padding: 5px 8px; font: inherit; max-width: 260px; min-width: 0; }
+
+.transport button[aria-pressed="true"]:not(:disabled) {
+  background: var(--accent); color: #10241a;
+}
+
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); z-index: 20; }
+.settings-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 100%);
+  transform: translateX(100%); transition: transform .18s ease;
+  background: var(--panel); border-left: 1px solid var(--line);
+  padding: 16px 20px 24px; overflow-y: auto; z-index: 21;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.settings-drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; align-items: center; gap: 12px; }
+.drawer-head h2 { margin: 0; font-size: 17px; font-weight: 600; margin-right: auto; }
+.drawer-section { display: grid; gap: 10px; }
+.drawer-section h3 {
+  margin: 0; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--dim);
+}
+.drawer-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.drawer-toggles button {
+  white-space: nowrap; background: var(--line); color: var(--text);
+  border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer;
+}
+.drawer-toggles button:disabled { opacity: .4; cursor: not-allowed; }
+.drawer-toggles button:not(:disabled):hover { background: #333b45; }
+.drawer-toggles button[aria-pressed="true"]:not(:disabled) { background: var(--accent); color: #10241a; }
+/* The level chips in the drawer's Profile section. Same shape as the practice
+   toggles above, but square-ish because the label is a two-character code. */
+.level-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.level-choices button {
+  background: var(--line); color: var(--text); border: 0; border-radius: 6px;
+  padding: 8px 14px; font: inherit; font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.level-choices button:disabled { opacity: .4; cursor: not-allowed; }
+.level-choices button:not(:disabled):hover { background: #333b45; }
+.level-choices button[aria-pressed="true"]:not(:disabled) {
+  background: var(--accent); color: #10241a; font-weight: 600;
+}
+.drawer-note { margin: 0; font-size: 12px; color: var(--dim); }
+
+.settings-drawer .sliders {
+  flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 14px;
+}
+
+.settings-drawer .sliders label { flex-wrap: wrap; gap: 8px; }
+.settings-drawer .sliders input[type="range"] { flex: 1 1 100px; min-width: 0; }
+.settings-drawer .sliders select { flex: 1 1 100%; min-width: 0; max-width: none; }
+.durations { display: flex; flex-wrap: wrap; gap: 6px; }
+.durations button {
+  background: transparent; color: var(--dim);
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 14px; cursor: pointer; font: inherit; font-size: 14px;
+}
+.durations button:hover { color: var(--text); background: #232a33; border-color: var(--dim); }
+.durations button[aria-pressed="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+.level-picker { padding: 8vh 24px 24px; overflow-y: auto; }
+.level-title { margin: 0 0 6px; font-size: 26px; font-weight: 600; text-align: center; }
+.level-lede { margin: 0 0 32px; color: var(--dim); text-align: center; }
+.level-grid {
+  display: grid; gap: 14px; max-width: 760px; margin: 0 auto;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.level-card {
+  display: grid; gap: 4px; justify-items: start; text-align: left;
+  background: var(--line); color: var(--text); border: 1px solid transparent;
+  border-radius: 10px; padding: 18px 20px; font: inherit; cursor: pointer;
+}
+.level-card:not(:disabled):hover, .level-card:focus-visible {
+  border-color: var(--accent); background: #262f39;
+}
+.level-card:disabled { opacity: .4; cursor: not-allowed; }
+.level-card[aria-current="true"] { border-color: var(--accent); }
+.level-code { font-size: 24px; font-weight: 700; letter-spacing: .02em; }
+.level-name { font-size: 15px; }
+.level-blurb { font-size: 13px; color: var(--dim); line-height: 1.35; }
+
+/* A column, not a block: the chooser must be "one screen, three choices, one
+   button", and the topic list is the only part of it that can give ground.
+   Everything else keeps its height and the topic list absorbs what is left,
+   down to a floor of about three rows, so the duration control and Start stay
+   on screen at any viewport. */
+.chooser {
+  display: flex; flex-direction: column;
+  padding: 3vh 24px 24px; overflow-y: auto;
+}
+.chooser > * { flex: 0 0 auto; }
+.chooser-title { margin: 0 0 6px; font-size: 26px; font-weight: 600; text-align: center; }
+.chooser-lede { margin: 0 0 16px; color: var(--dim); text-align: center; }
+.chooser-section { max-width: 760px; width: 100%; margin: 0 auto 20px; }
+/* The topic section is the one that flexes, so it has to pass the height down
+   to the list rather than let it grow to its content. */
+.chooser-section:has(.decks) {
+  display: flex; flex-direction: column;
+  /* The floor is on the section, not the list: a list that refused to shrink
+     inside a section that did would simply overflow it and sit on top of the
+     duration control. Below this the whole chooser scrolls instead. */
+  flex: 1 1 auto; min-height: 140px;
+}
+.chooser .decks {
+  flex: 1 1 auto; min-height: 0;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.chooser-heading { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.activity-grid {
+  display: grid; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto 16px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.activity-card {
+  display: grid; gap: 6px; justify-items: start; text-align: left;
+  background: var(--line); color: var(--text); border: 1px solid transparent;
+  border-radius: 10px; padding: 18px 20px; font: inherit; cursor: pointer;
+}
+.activity-card:not(:disabled):hover, .activity-card:focus-visible {
+  border-color: var(--accent); background: #262f39;
+}
+.activity-card:disabled { opacity: .4; cursor: not-allowed; }
+.activity-card[aria-pressed="true"] { border-color: var(--accent); }
+.activity-name { font-size: 18px; font-weight: 600; }
+.activity-blurb { font-size: 13px; color: var(--dim); line-height: 1.35; }
+/* The two totals panels under the activity cards. Side by side where there is
+   room, stacked when there is not; the chooser is a flex column, so they take
+   their natural height and never steal the topic list's slack. */
+.panels {
+  display: grid; gap: 14px; max-width: 760px; margin: 0 auto 24px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+.panel {
+  background: var(--line); border-radius: 10px; padding: 14px 18px;
+}
+.panel-title {
+  margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--dim);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.panel-stats { display: flex; flex-wrap: wrap; gap: 18px; }
+.panel-stats .summary-value { font-size: 20px; }
+
+.start-btn {
+  display: block; margin: 8px auto 0; padding: 12px 40px; border: 0; border-radius: 8px;
+  background: var(--accent); color: var(--bg); font: inherit; font-weight: 600; cursor: pointer;
+}
+.start-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* display: block for the same reason as .chooser: the summary is the <main>
+   itself, and the inherited grid would stretch its rows apart. */
+.summary { display: block; padding: 10vh 24px 32px; overflow-y: auto; text-align: center; }
+.summary-title { margin: 0 0 32px; font-size: 26px; font-weight: 600; }
+.summary-stats, .summary-progress {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 28px;
+  max-width: 640px; margin: 0 auto 28px;
+}
+.summary-progress { padding-top: 24px; border-top: 1px solid var(--line); }
+.summary-stat { display: grid; gap: 4px; }
+.summary-value { font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 13px; color: var(--dim); }
+
+.check-mode {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 6px 3px 10px; border: 1px solid var(--line); border-radius: 8px;
+}
+.check-mode-label {
+  font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em;
+}
+.check-mode button {
+  background: transparent; color: var(--dim); border: 0; border-radius: 6px;
+  padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer;
+  white-space: nowrap;
+}
+.check-mode button:not(:disabled):hover { color: var(--text); background: #2a323c; }
+.check-mode button:disabled { opacity: .4; cursor: not-allowed; }
+.check-mode button[aria-pressed="true"] { background: var(--accent); color: #10241a; font-weight: 600; }
+
+.drawer-link {
+  justify-self: start; background: none; border: 0; padding: 0;
+  color: var(--dim); font: inherit; font-size: 13px;
+  text-decoration: underline; cursor: pointer;
+}
+.drawer-link:not(:disabled):hover { color: var(--accent); }
+.drawer-link:disabled { opacity: .4; cursor: default; text-decoration: none; }
+
+.mobile-only { display: none; }
+
+.account { position: relative; display: inline-flex; }
+.signin-btn {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 14px; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.signin-btn:hover, .signin-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
+.avatar-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: #10241a; border: 0;
+  font: inherit; font-weight: 700; font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+}
+.avatar-btn:hover, .avatar-btn:focus-visible { filter: brightness(1.1); }
+.account-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+  min-width: 200px; display: grid;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+.account-who { margin: 0; padding: 8px 10px 10px; display: grid; gap: 2px; border-bottom: 1px solid var(--line); }
+.account-name { font-size: 14px; }
+.account-email { font-size: 12px; color: var(--dim); overflow-wrap: anywhere; }
+.account-menu button {
+  text-align: left; background: none; border: 0; border-radius: 6px;
+  color: var(--text); font: inherit; padding: 8px 10px; cursor: pointer;
+}
+.account-menu button:hover { background: #2a323c; }
+
+.edge-tip { display: none; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
+.edge-tip.show { display: inline-flex; }
+.edge-tip-close {
+  background: none; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--dim); width: 20px; height: 20px; line-height: 1;
+  cursor: pointer; padding: 0; font-size: 13px;
+}
+.edge-tip-close:hover, .edge-tip-close:focus-visible { color: var(--text); border-color: var(--dim); }
+
+/* Bottom right, not bottom centre: the chooser's Start button is centred at
+   the foot of the screen now that the whole chooser fits on one, and an
+   eight-second tip must not sit on top of the button it is tipping about. */
+.snackbar {
+  position: fixed; right: 24px; bottom: 24px; z-index: 10;
+  transform: translateY(12px);
+  display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  color: var(--dim); font-size: 14px;
+  opacity: 0; pointer-events: none; visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s;
+}
+.snackbar.show {
+  opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+}
+.snackbar-close {
+  flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--dim); width: 20px; height: 20px; line-height: 1;
+  cursor: pointer; padding: 0; font-size: 13px;
+}
+.snackbar a { color: var(--accent); text-decoration: underline; }
+.snackbar a:hover { color: var(--text); }
+
+.modal {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,.55);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .18s ease, visibility .18s;
+}
+.modal.show { opacity: 1; visibility: visible; pointer-events: auto; }
+.modal-panel {
+  width: min(600px, 100%);
+  max-height: min(80vh, 720px); overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  transform: translateY(8px);
+  transition: transform .18s ease;
+}
+.modal.show .modal-panel { transform: translateY(0); }
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.modal-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.modal-close {
+  background: none; border: 1px solid var(--line); border-radius: 50%;
+  color: var(--dim); width: 26px; height: 26px; line-height: 1;
+  font-size: 18px; cursor: pointer; padding: 0;
+}
+.modal-close:hover, .modal-close:focus-visible { color: var(--text); border-color: var(--dim); }
+.modal-body { padding: 16px 18px 20px; color: var(--dim); font-size: 15px; }
+.modal-body p { margin: 0 0 12px; }
+.modal-body ol, .modal-body ul { margin: 8px 0 14px; padding-left: 20px; display: grid; gap: 6px; }
+.modal-body b { color: var(--text); }
+.modal-body h3 { margin: 6px 0 6px; font-size: 14px; font-weight: 600; color: var(--text); }
+.snackbar-close:hover, .snackbar-close:focus-visible { color: var(--text); border-color: var(--dim); }
+
+.custom-topic { grid-row: 3; margin: 16px 24px 0; display: grid; gap: 8px; }
+.custom-label { color: var(--dim); font-size: 13px; }
+.custom-input {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px;
+  background: #12161a; color: var(--text);
+  font: inherit; font-size: 15px; line-height: 1.5;
+}
+.custom-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.custom-actions, .custom-summary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.custom-count { color: var(--dim); font-size: 12px; }
+
+.lines { grid-row: 4; overflow-y: auto; padding: 24px 0 50vh; }
+.lines p {
+  margin: 0; padding: 10px 24px; cursor: pointer;
+  color: var(--dim); font-size: 18px; border-left: 3px solid transparent;
+}
+.lines p:hover { color: var(--text); background: #1a1f24; }
+.lines p b { color: inherit; font-weight: 600; }
+.lines .num {
+  display: inline-block; min-width: 34px; margin-right: 12px;
+  text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--dim); font-size: 0.72em;
+}
+.lines p.current .num { color: var(--accent); }
+.lines p.current .ring {
+  display: inline-block; width: 18px; height: 18px;
+  margin-left: 8px; vertical-align: middle;
+  transform: rotate(-90deg);
+}
+.lines p.current .ring .ring-track { stroke: rgba(255,255,255,.28); }
+.lines p.current .ring .ring-fill { stroke: var(--accent); stroke-linecap: round; }
+.lines p.current {
+  color: var(--text); font-size: 26px; line-height: 1.4;
+  border-left-color: var(--accent); background: #1a1f24;
+  padding-top: 18px; padding-bottom: 18px;
+}
+.lines p.current b { color: var(--accent); }
+
+.lines.blurred .text { filter: blur(6px); transition: filter .18s ease; }
+.lines.blurred p:hover .text,
+.lines.blurred p.spoken .text { filter: none; }
+
+.validate-box {
+  display: flex; align-items: center; gap: 12px;
+  margin: 6px 24px 0; padding: 10px 16px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: #16202a; font-size: 16px;
+}
+.validate-box .mic-dot {
+  flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--dim);
+}
+.validate-box.listening .mic-dot {
+  background: var(--danger);
+  animation: mic-pulse 1.2s infinite;
+}
+.validate-box.scored .mic-dot { background: var(--accent); }
+.validate-box.failed .mic-dot { background: var(--warn); }
+@keyframes mic-pulse {
+  0% { opacity: 1; box-shadow: 0 0 0 0 rgba(229, 83, 75, .5); }
+  70% { opacity: .3; box-shadow: 0 0 0 8px rgba(229, 83, 75, 0); }
+  100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229, 83, 75, 0); }
+}
+.validate-box .transcript { flex: 0 1 auto; min-width: 0; color: var(--text); font-style: italic; }
+.validate-box .stars { flex: 0 0 auto; color: var(--accent); font-size: 20px; letter-spacing: 2px; }
+
+.validate-box.typing .mic-dot { background: var(--accent); }
+.validate-box .typed-input {
+  flex: 1 1 auto; min-width: 0;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: #12161a; color: var(--text); font: inherit;
+}
+.validate-box .typed-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.validate-box .transcript .wrong {
+  color: var(--danger); text-decoration: underline wavy currentColor; text-underline-offset: 3px;
+}
+.validate-box .missed { color: var(--warn); font-style: normal; font-size: 13px; }
+
+.banner { grid-row: 2; display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 6px; background: #40251f; color: #ffb4a2; }
+.banner.show { display: flex; align-items: flex-start; gap: 12px; }
+.banner-text { flex: 1; min-width: 0; }
+.banner-close {
+  flex: 0 0 auto; background: none; border: 1px solid rgba(255, 180, 162, .4);
+  border-radius: 4px; color: inherit; width: 20px; height: 20px; line-height: 1;
+  cursor: pointer; padding: 0; font-size: 13px;
+}
+.banner-close:hover, .banner-close:focus-visible {
+  border-color: currentColor; background: rgba(255, 180, 162, .12);
+}
+.banner code { background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 3px; }
+
+@media (max-width: 640px) {
+  button { touch-action: manipulation; }
+
+  header { flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; }
+  header h1 { font-size: 15px; }
+  .clock { font-size: 16px; }
+
+  .app { grid-template-columns: 1fr; }
+
+  .decks {
+    display: flex; overflow-x: auto; gap: 8px;
+    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line);
+    -webkit-overflow-scrolling: touch;
+  }
+  .decks button {
+    flex: 0 0 auto; width: auto;
+    border: 1px solid var(--line); border-radius: 999px;
+    border-left-width: 1px; padding: 6px 12px; white-space: nowrap;
+  }
+  .decks button[aria-pressed="true"] { border-color: var(--accent); }
+
+  /* On a phone the topic list is a single scrolling row of pills, so it is
+     already as short as it can be - it must not flex or claim a floor. */
+  .chooser-section:has(.decks) { flex: 0 0 auto; }
+  .chooser .decks { flex: 0 0 auto; min-height: 0; border: 0; border-radius: 0; }
+
+  .check-mode { padding: 3px 4px 3px 8px; gap: 4px; order: 3; flex: 1 1 100%; justify-content: space-between; }
+  .check-mode button { padding: 6px 10px; }
+  .transport #shuffle { display: none; }
+  .mobile-only { display: inline-block; }
+  .controls { padding: 12px 14px; }
+  .transport button { padding: 8px 12px; }
+  #play { flex: 1; }
+
+  .sliders { gap: 12px; }
+  .sliders label { flex: 1 1 100%; justify-content: space-between; }
+  .sliders select { max-width: none; flex: 1; }
+
+  .lines { padding: 12px 0 45vh; }
+  .lines p { padding: 10px 12px; font-size: 16px; }
+  .lines p.current { font-size: 21px; line-height: 1.35; padding-top: 12px; padding-bottom: 12px; }
+  .lines .num { min-width: 26px; margin-right: 10px; }
+
+  .banner { margin: 12px 14px; }
+
+  .validate-box { margin: 6px 14px 0; }
+}
+
+app-root { display: contents; }

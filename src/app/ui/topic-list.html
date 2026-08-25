@@ -1,0 +1,19 @@
+<div class="decks-list">
+  <button
+    type="button"
+    id="allTopics"
+    [attr.aria-pressed]="selected() === null"
+    title="Practise every topic at your level"
+    (click)="pick.emit(null)"
+  >All topics</button>
+
+  @for (topic of practice.topics(); track topic.id) {
+    <button
+      type="button"
+      [attr.data-deck-id]="topic.id"
+      [attr.aria-pressed]="topic.id === selected()"
+      [title]="'Practise only ' + topic.name"
+      (click)="pick.emit(topic.id)"
+    >{{ topic.name }}</button>
+  }
+</div>

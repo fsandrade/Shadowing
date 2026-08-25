@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest';
+import {
+  formatClock, formatPractised, formatStudied, listenCeilingMs, nextIndex, pauseMs,
+  safetyTimeoutMs,
+} from './timing';
+
+describe('pauseMs', () => {
+  it('is the speech duration times the slack', () => {
+    expect(pauseMs(1000, 1.5)).toBe(1500);
+  });
+
+  it('rounds to whole milliseconds', () => {
+    expect(pauseMs(1000, 1.0005)).toBe(1001);
+  });
+
+  it('never returns a negative wait', () => {
+    expect(pauseMs(1000, -2)).toBe(0);
+  });
+});
+
+describe('safetyTimeoutMs', () => {
+  it('allows the sentence plus a five second margin', () => {
+    expect(safetyTimeoutMs('123456789012', 1)).toBe(6000);
+  });
+
+  it('grows as the rate slows down', () => {
+    expect(safetyTimeoutMs('123456789012', 0.5)).toBeGreaterThan(
+      safetyTimeoutMs('123456789012', 1),
+    );
+  });
+
+  it('still gives an empty string the margin', () => {
+    expect(safetyTimeoutMs('', 1)).toBe(5000);
+  });
+});
+
+describe('listenCeilingMs', () => {
+  it('gives a short sentence the floor rather than a tiny window', () => {
+    expect(listenCeilingMs('hi')).toBe(10_000);
+  });
+
+  it('grows with the sentence so a long line gets more room', () => {
+    const short = listenCeilingMs('a'.repeat(60));
+    const long = listenCeilingMs('a'.repeat(200));
+    expect(long).toBeGreaterThan(short);
+  });
+
+  it('allows roughly three times a normal speaking pace', () => {
+    expect(listenCeilingMs('a'.repeat(120))).toBe(30_000);
+  });
+
+  it('caps very long sentences so nothing can hang', () => {
+    expect(listenCeilingMs('a'.repeat(5000))).toBe(45_000);
+  });
+
+  it('still gives an empty string the floor', () => {
+    expect(listenCeilingMs('')).toBe(10_000);
+  });
+});
+
+describe('nextIndex', () => {
+  it('wraps at the end of the list', () => {
+    expect(nextIndex(0, 3)).toBe(1);
+    expect(nextIndex(2, 3)).toBe(0);
+  });
+
+  it('returns 0 for an empty list', () => {
+    expect(nextIndex(0, 0)).toBe(0);
+  });
+});
+
+describe('formatClock', () => {
+  it('renders MM:SS', () => {
+    expect(formatClock(0)).toBe('00:00');
+    expect(formatClock(65)).toBe('01:05');
+  });
+
+  it('clamps negatives to zero', () => {
+    expect(formatClock(-30)).toBe('00:00');
+  });
+
+  it('keeps counting in minutes past an hour', () => {
+    expect(formatClock(3661)).toBe('61:01');
+  });
+});
+
+describe('formatPractised', () => {
+  it('renders whole minutes, rounded down so it never over-claims', () => {
+    expect(formatPractised(600_000)).toBe('10 min');
+    expect(formatPractised(899_000)).toBe('14 min');
+  });
+
+  it('renders a session that ran its full length as that length', () => {
+    expect(formatPractised(900_000)).toBe('15 min');
+  });
+
+  it('renders under a minute in seconds rather than as zero minutes', () => {
+    expect(formatPractised(45_000)).toBe('45 sec');
+    expect(formatPractised(1_400)).toBe('1 sec');
+  });
+
+  it('crosses into minutes only once a whole one is there', () => {
+    expect(formatPractised(59_400)).toBe('59 sec');
+    expect(formatPractised(59_600)).toBe('1 min');
+  });
+
+  it('reports a session that never played as no seconds at all', () => {
+    expect(formatPractised(0)).toBe('0 sec');
+    expect(formatPractised(-5)).toBe('0 sec');
+  });
+});
+
+describe('formatStudied', () => {
+  it('reads in minutes below an hour', () => {
+    expect(formatStudied(0)).toBe('0m');
+    expect(formatStudied(59_000)).toBe('0m');
+    expect(formatStudied(14 * 60_000)).toBe('14m');
+  });
+
+  it('reads in hours and minutes above one', () => {
+    expect(formatStudied(60 * 60_000)).toBe('1h 0m');
+    expect(formatStudied(6 * 60 * 60_000 + 20 * 60_000)).toBe('6h 20m');
+  });
+
+  it('rounds down, so it never claims time that was not spent', () => {
+    expect(formatStudied(119_000)).toBe('1m');
+    expect(formatStudied(3_599_000)).toBe('59m');
+  });
+
+  it('treats nonsense as nothing rather than rendering NaN', () => {
+    expect(formatStudied(-1000)).toBe('0m');
+  });
+});

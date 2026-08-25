@@ -1,0 +1,39 @@
+@if (flow.result(); as result) {
+  <h2 class="summary-title">{{ title() }}</h2>
+
+  <div class="summary-stats">
+    <div class="summary-stat" data-stat="minutes">
+      <span class="summary-value">{{ practised() }}</span>
+      <span class="summary-label">practised</span>
+    </div>
+    <div class="summary-stat" data-stat="sentences">
+      <span class="summary-value">{{ result.spoken }}</span>
+      <span class="summary-label">{{ result.spoken === 1 ? 'sentence' : 'sentences' }}</span>
+    </div>
+    @if (result.stars !== null) {
+      <div class="summary-stat" data-stat="stars">
+        <span class="summary-value">{{ result.stars }}&#9733;</span>
+        <span class="summary-label">earned</span>
+      </div>
+    }
+    @if (average(); as avg) {
+      <div class="summary-stat" data-stat="average">
+        <span class="summary-value">{{ avg }}&#9733;</span>
+        <span class="summary-label">per sentence</span>
+      </div>
+    }
+  </div>
+
+  @if (progress(); as total) {
+    <div class="summary-progress">
+      <div class="summary-stat" data-stat="streak">
+        <span class="summary-value">{{ total.currentStreak }}</span>
+        <span class="summary-label">day streak · best {{ total.longestStreak }}</span>
+      </div>
+    </div>
+  }
+}
+
+<button type="button" id="backToChooser" class="start-btn"
+  title="Choose another activity"
+  (click)="flow.backToChooser()">Back</button>

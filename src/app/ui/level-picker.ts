@@ -1,0 +1,42 @@
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { countAt } from '../core/catalog';
+import { CATALOG } from '../state/catalog-token';
+import { PracticeStore } from '../state/practice-store';
+import { ProfileStore } from '../state/profile-store';
+
+const BLURBS: Readonly<Record<string, string>> = {
+  A1: 'You can follow very short, simple sentences',
+  A2: 'You can handle everyday phrases and routine exchanges',
+  B1: 'You can cope with familiar subjects and give opinions',
+  B2: 'You can follow longer, more complex sentences',
+  C1: 'You can handle demanding language and implied meaning',
+  C2: 'You can follow virtually anything with ease',
+};
+@Component({
+  selector: 'div[appLevelPicker]',
+  host: { class: 'level-picker' },
+  templateUrl: './level-picker.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class LevelPicker {
+  private readonly catalog = inject(CATALOG);
+  private readonly practice = inject(PracticeStore);
+  protected readonly profile = inject(ProfileStore);
+
+  protected readonly choices = computed(() => this.catalog.levels.map((level) => ({
+    ...level,
+    blurb: BLURBS[level.id] ?? '',
+    available: countAt(this.catalog, level.id) > 0,
+  })));
+
+  protected readonly current = computed(() => this.profile.levelId());
+
+  protected pick(id: string, available: boolean): void {
+    if (!available) { return; }
+    this.profile.setLevel(id);
+    // A topic only exists inside a level, so it cannot outlive the one it was
+    // picked at: keep it and the learner lands on an empty deck with no button
+    // to un-press, because the topic bar only lists topics at the new level.
+    this.practice.selectTopic(null);
+  }
+}

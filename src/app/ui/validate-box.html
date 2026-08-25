@@ -1,0 +1,27 @@
+@if (result().status === 'typing') {
+  <span class="mic-dot"></span>
+  <input
+    type="text"
+    class="typed-input"
+    autocomplete="off"
+    autocapitalize="off"
+    spellcheck="false"
+    [attr.aria-label]="result().transcript"
+    [placeholder]="result().transcript"
+    (keydown.enter)="answered.emit(field.value)"
+    (keydown.arrowUp)="onReplay($event)"
+    #field
+  >
+} @else {
+  <span class="mic-dot"></span>
+  @if (result().words; as words) {
+    <span class="transcript">@for (word of words; track $index) {<span
+        [class.wrong]="!word.ok"
+      >{{ word.text }}</span>{{ ' ' }}}@if (result().missed?.length) {<span
+        class="missed"
+      >{{ missedText() }}</span>}</span>
+  } @else {
+    <span class="transcript">{{ result().transcript }}</span>
+  }
+  <span class="stars">{{ starText() }}</span>
+}
