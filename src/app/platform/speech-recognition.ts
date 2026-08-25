@@ -78,16 +78,41 @@ export class SpeechRecognizer {
     rec.maxAlternatives = 1;
 
     let ended = false;
-    let finalText = '';
+    let committed = '';
+    let lastSegment = '';
+    const seenFinals = new Map<number, string>();
 
     rec.onresult = (event) => {
+      let changed = false;
       let live = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      const cursor = event.resultIndex ?? 0;
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result[0]?.transcript ?? '';
-        if (result.isFinal) { finalText += transcript; } else { live += transcript; }
+        if (!transcript) { continue; }
+        if (result.isFinal) {
+          if (seenFinals.get(i) === transcript) { continue; }
+          seenFinals.set(i, transcript);
+          if (
+            lastSegment &&
+            transcript.startsWith(lastSegment) &&
+            transcript.length > lastSegment.length
+          ) {
+            committed = committed.slice(0, committed.length - lastSegment.length) + transcript;
+          } else if (transcript !== lastSegment) {
+            committed += transcript;
+          }
+          lastSegment = transcript;
+          changed = true;
+        } else if (i >= cursor) {
+          let pending = transcript;
+          if (lastSegment && pending.startsWith(lastSegment) && pending.length > lastSegment.length) {
+            pending = pending.slice(lastSegment.length);
+          }
+          live += pending;
+        }
       }
-      if (live) { opts.onInterim?.(finalText + live); }
+      if (changed || live) { opts.onInterim?.(committed + live); }
     };
 
     rec.onerror = (event) => {
@@ -98,7 +123,7 @@ export class SpeechRecognizer {
     rec.onend = () => {
       if (ended) { return; }
       ended = true;
-      opts.onResult?.(finalText);
+      opts.onResult?.(committed);
     };
 
     return {

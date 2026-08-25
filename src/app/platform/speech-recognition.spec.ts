@@ -31,6 +31,13 @@ function fireResult(rec: FakeRecognition, transcript: string, isFinal: boolean) 
   });
 }
 
+function fireEvent(rec: FakeRecognition, resultIndex: number, results: Array<{ transcript: string; isFinal: boolean }>) {
+  rec.onresult?.({
+    resultIndex,
+    results: results.map((r) => ({ 0: { transcript: r.transcript }, isFinal: r.isFinal, length: 1 })),
+  });
+}
+
 function recognizer(ctor: SpeechRecognitionCtor | null) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -90,8 +97,8 @@ describe('SpeechRecognizer', () => {
     recognizer(Ctor).recognize({ onResult: (t) => results.push(t) }).start();
     const rec = FakeRecognition.last!;
 
-    fireResult(rec, 'hit the ', true);
-    fireResult(rec, 'road', true);
+    fireEvent(rec, 0, [{ transcript: 'hit the ', isFinal: true }]);
+    fireEvent(rec, 1, [{ transcript: 'hit the ', isFinal: true }, { transcript: 'road', isFinal: true }]);
     rec.onend?.();
     rec.onend?.();
 
@@ -103,6 +110,88 @@ describe('SpeechRecognizer', () => {
     recognizer(Ctor).recognize({ onResult: (t) => results.push(t) }).start();
     FakeRecognition.last!.onend?.();
     expect(results).toEqual(['']);
+  });
+
+  it('collapses cumulative final snapshots into what was said once', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'can', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I', isFinal: true },
+    ]);
+    fireEvent(rec, 2, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I get', isFinal: true },
+    ]);
+    fireEvent(rec, 3, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I get a large fries to go', isFinal: true },
+    ]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['can I get a large fries to go']);
+  });
+
+  it('counts each finalized index once when the browser resends history every event', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'hit the ', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'hit the ', isFinal: true },
+      { transcript: 'road', isFinal: true },
+    ]);
+    fireEvent(rec, 1, [
+      { transcript: 'hit the ', isFinal: true },
+      { transcript: 'road', isFinal: true },
+    ]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['hit the road']);
+  });
+
+  it('keeps separate utterances that do not build on each other', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'hit the ', isFinal: true }]);
+    fireEvent(rec, 1, [{ transcript: 'road', isFinal: true }]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['hit the road']);
+  });
+
+  it('interim text never echoes the growing snapshot chain', () => {
+    const interims: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onInterim: (t) => interims.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'can', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I', isFinal: false },
+    ]);
+    fireEvent(rec, 1, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I get a', isFinal: false },
+    ]);
+    fireEvent(rec, 2, [
+      { transcript: 'can', isFinal: true },
+      { transcript: 'can I get a large fries to go', isFinal: true },
+    ]);
+    rec.onend?.();
+
+    expect(interims).toEqual([
+      'can',
+      'can I',
+      'can I get a',
+      'can I get a large fries to go',
+    ]);
   });
 
   it('onError forwards the API error code', () => {
