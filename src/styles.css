@@ -208,12 +208,15 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
    on screen at any viewport. */
 .chooser {
   display: flex; flex-direction: column;
-  padding: 3vh 24px 24px; overflow-y: auto;
+  /* Fixed chrome stays well under one screen so a card description wrapping
+     to a second line under a platform's fallback fonts (no Segoe UI on Linux)
+     cannot push Start below the fold; the slack goes to the topic list. */
+  padding: 12px 24px 24px; overflow-y: auto;
 }
 .chooser > * { flex: 0 0 auto; }
 .chooser-title { margin: 0 0 6px; font-size: 26px; font-weight: 600; text-align: center; }
 .chooser-lede { margin: 0 0 16px; color: var(--dim); text-align: center; }
-.chooser-section { max-width: 760px; width: 100%; margin: 0 auto 20px; }
+.chooser-section { max-width: 760px; width: 100%; margin: 0 auto 14px; }
 /* The topic section is the one that flexes, so it has to pass the height down
    to the list rather than let it grow to its content. */
 .chooser-section:has(.decks) {
