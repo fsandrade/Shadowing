@@ -29,7 +29,17 @@ describe('MicrophoneService', () => {
     expect(mic.denied()).toBe(false);
   });
 
-  it('prompts only once and reuses the held stream', async () => {
+  it('stops every granted track so the recognizer can own the mic', async () => {
+    const track = fakeTrack();
+    const getUserMedia = vi.fn().mockResolvedValue(fakeStream([track]));
+    const mic = setup(getUserMedia as never);
+
+    await mic.ensure();
+
+    expect(track.stop).toHaveBeenCalledOnce();
+  });
+
+  it('prompts only once for repeated calls', async () => {
     const stream = fakeStream([fakeTrack()]);
     const getUserMedia = vi.fn().mockResolvedValue(stream);
     const mic = setup(getUserMedia as never);
@@ -70,14 +80,12 @@ describe('MicrophoneService', () => {
     await expect(setup(null).ensure()).resolves.toBeNull();
   });
 
-  it('release stops every track and allows a later prompt', async () => {
-    const track = fakeTrack();
-    const getUserMedia = vi.fn().mockResolvedValue(fakeStream([track]));
+  it('release allows a later prompt', async () => {
+    const getUserMedia = vi.fn().mockResolvedValue(fakeStream([fakeTrack()]));
     const mic = setup(getUserMedia as never);
 
     await mic.ensure();
     mic.release();
-    expect(track.stop).toHaveBeenCalledOnce();
 
     await mic.ensure();
     expect(getUserMedia).toHaveBeenCalledTimes(2);

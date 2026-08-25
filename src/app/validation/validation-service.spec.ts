@@ -84,6 +84,13 @@ describe('ValidationService session', () => {
     expect(rec.opts().lang).toBe('en-US');
   });
 
+  it('frees the microphone before listening starts', () => {
+    const { validation, mic } = setup();
+    validation.begin(0, 'hit the road');
+
+    expect(mic.release).toHaveBeenCalledOnce();
+  });
+
   it('shows interim text as it arrives', () => {
     const { validation, rec, resultAt } = setup();
     validation.begin(0, 'hit the road');

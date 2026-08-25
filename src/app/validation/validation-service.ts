@@ -106,6 +106,9 @@ export class ValidationService {
         this.finish();
       },
     });
+    // Belt and braces for the same Android quirk: recognition must never
+    // start while some other capture still holds the microphone.
+    this.mic.release();
     this.session.start();
 
     this.stopWatch = this.clock.every(WATCH_MS, () => {

@@ -28,6 +28,11 @@ export class MicrophoneService {
     this.pending = this.devices.getUserMedia({ audio: true }).then(
       (stream) => {
         this.pending = null;
+        // Android Chrome hands the microphone exclusively to a live capture:
+        // while this stream stayed open, SpeechRecognition heard nothing.
+        // The grant is all we need, so stop the tracks right away and leave
+        // the mic free for the recognizer.
+        stream.getTracks().forEach((t) => t.stop());
         this.stream = stream;
         return stream;
       },
