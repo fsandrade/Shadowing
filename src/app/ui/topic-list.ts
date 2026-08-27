@@ -3,7 +3,7 @@ import { PracticeStore } from '../state/practice-store';
 
 @Component({
   selector: 'nav[appTopicList]',
-  host: { class: 'decks', id: 'decks', 'aria-label': 'Choose a topic' },
+  host: { class: 'decks', id: 'decks', 'aria-label': 'Choose a topic', tabindex: '-1' },
   templateUrl: './topic-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

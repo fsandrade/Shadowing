@@ -573,6 +573,9 @@ test('mobile shows every topic in a two-column grid, nothing to swipe', async ({
   await gotoApp(page, { activity: null });
   await page.locator('[data-activity-id="shadowing"]').click();
 
+  // The tap must land the learner in the topic grid, not leave focus on the card.
+  await expect(page.locator('#decks')).toBeFocused();
+
   await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
 
   // Two-column grid tiles: every topic at the level shows at once, no

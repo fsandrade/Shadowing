@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  afterEveryRender, ChangeDetectionStrategy, Component, computed, ElementRef,
+  inject, signal, ViewChild,
+} from '@angular/core';
 import { type Activity, ACTIVITIES } from '../core/activity';
 import { formatStudied } from '../core/timing';
 import { HistoryService, type PracticeTotals } from '../data/history-service';
@@ -53,8 +56,17 @@ export class ActivityChooser {
 
   protected readonly ready = computed(() => this.chosen() !== null);
 
+  @ViewChild(TopicList, { read: ElementRef }) private readonly topics?: ElementRef<HTMLElement>;
+
+  private focusTopics = false;
+
   constructor() {
     void this.history.totals().then((value) => this.totals.set(value));
+    afterEveryRender(() => {
+      if (!this.focusTopics) { return; }
+      this.focusTopics = false;
+      if (this.onPhone()) { this.topics?.nativeElement.focus(); }
+    });
   }
 
   protected unavailable(activity: Activity): boolean {
@@ -64,6 +76,9 @@ export class ActivityChooser {
   protected choose(activity: Activity): void {
     if (this.unavailable(activity)) { return; }
     this.chosen.set(activity);
+    // On a phone the activity cards stack in one column, so the topic grid
+    // renders below the fold and the learner must be dropped into it.
+    this.focusTopics = true;
   }
 
   protected pickTopic(id: string | null): void {
@@ -72,6 +87,10 @@ export class ActivityChooser {
 
   protected pickDuration(min: number): void {
     this.minutes.set(min);
+  }
+
+  private onPhone(): boolean {
+    return window.matchMedia('(max-width: 640px)').matches;
   }
 
   protected async begin(): Promise<void> {
