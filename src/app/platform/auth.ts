@@ -1,34 +1,15 @@
 import { computed, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { captchaConfigured, solveCaptcha } from './captcha';
 import { SUPABASE } from './supabase-client';
 
 export const INITIAL_USER = new InjectionToken<User | null>('INITIAL_USER');
 
-export interface Captcha {
-  configured(): boolean;
-  solve(): Promise<string | null>;
-}
-
-const DEFAULT_CAPTCHA: Captcha = {
-  configured: captchaConfigured,
-  solve: solveCaptcha,
-};
-
-export async function ensureUser(
-  client: SupabaseClient,
-  captcha: Captcha = DEFAULT_CAPTCHA,
-): Promise<User | null> {
+export async function ensureUser(client: SupabaseClient): Promise<User | null> {
   try {
     const { data: { session } } = await client.auth.getSession();
     if (session?.user) { return session.user; }
 
-    const captchaToken = await captcha.solve();
-    if (captcha.configured() && !captchaToken) { return null; }
-
-    const { data, error } = await client.auth.signInAnonymously(
-      captchaToken ? { options: { captchaToken } } : undefined,
-    );
+    const { data, error } = await client.auth.signInAnonymously();
     if (error) {
       console.warn(`Progress will not be saved: ${error.message}`);
       return null;

@@ -121,8 +121,6 @@ export async function installFakeSupabase(
     }));
   }
 
-  await page.route('**/*hcaptcha.com/**', (route) => route.abort());
-
   await page.route('**/rest/v1/levels*', (route) => route.fulfill({ json: LEVELS }));
   await page.route('**/rest/v1/decks*', (route) => route.fulfill({ json: decks }));
 

@@ -48,10 +48,6 @@ export function countAt(catalog: Catalog, levelId: string): number {
   return n;
 }
 
-export function levelChoices(catalog: Catalog): Array<Level & { count: number }> {
-  return catalog.levels.map((level) => ({ ...level, count: countAt(catalog, level.id) }));
-}
-
 export function isKnownLevel(catalog: Catalog, levelId: string): boolean {
   return catalog.levels.some((l) => l.id === levelId) && countAt(catalog, levelId) > 0;
 }

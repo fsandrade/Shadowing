@@ -16,7 +16,7 @@ export class Clock {
     return performance.now();
   }
 
-  wait(ms: number, until?: Promise<void>): PendingWait {
+  wait(ms?: number, until?: Promise<void>): PendingWait {
     let settle!: () => void;
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -30,7 +30,7 @@ export class Clock {
       };
     });
 
-    timer = setTimeout(settle, ms);
+    if (ms !== undefined) { timer = setTimeout(settle, ms); }
     void until?.then(settle);
 
     return { done, resolveNow: settle };
@@ -39,22 +39,5 @@ export class Clock {
   every(ms: number, fn: () => void): () => void {
     const id = setInterval(fn, ms);
     return () => clearInterval(id);
-  }
-
-  waitFor(until: Promise<void>): PendingWait {
-    let settle!: () => void;
-    let settled = false;
-
-    const done = new Promise<void>((resolve) => {
-      settle = () => {
-        if (settled) { return; }
-        settled = true;
-        resolve();
-      };
-    });
-
-    void until.then(settle);
-
-    return { done, resolveNow: settle };
   }
 }

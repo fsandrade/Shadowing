@@ -90,10 +90,10 @@ describe('Clock', () => {
     expect(() => stop()).not.toThrow();
   });
 
-  it('waitFor settles only when the promise resolves, with no timer', async () => {
+  it('without a delay, settles only when the promise resolves', async () => {
     let release!: () => void;
     const until = new Promise<void>((r) => { release = r; });
-    const pending = clock.waitFor(until);
+    const pending = clock.wait(undefined, until);
     let settled = false;
     void pending.done.then(() => { settled = true; });
 
@@ -106,8 +106,8 @@ describe('Clock', () => {
     expect(settled).toBe(true);
   });
 
-  it('waitFor can be ended early by resolveNow', async () => {
-    const pending = clock.waitFor(new Promise<void>(() => {}));
+  it('without a delay, can be ended early by resolveNow', async () => {
+    const pending = clock.wait(undefined, new Promise<void>(() => {}));
     let settled = false;
     void pending.done.then(() => { settled = true; });
 
@@ -116,10 +116,10 @@ describe('Clock', () => {
     expect(settled).toBe(true);
   });
 
-  it('waitFor settles exactly once', async () => {
+  it('without a delay, settles exactly once', async () => {
     let release!: () => void;
     const until = new Promise<void>((r) => { release = r; });
-    const pending = clock.waitFor(until);
+    const pending = clock.wait(undefined, until);
     let count = 0;
     void pending.done.then(() => { count++; });
 

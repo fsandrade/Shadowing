@@ -17,7 +17,7 @@ export class GapRunner {
     this.progress.set(0);
     this.active.set(true);
 
-    this.pending = until ? this.clock.waitFor(until) : this.clock.wait(paceMs);
+    this.pending = until ? this.clock.wait(undefined, until) : this.clock.wait(paceMs);
 
     const sampler = setInterval(() => {
       const p = (this.clock.ticks() - startedAt) / paceMs;

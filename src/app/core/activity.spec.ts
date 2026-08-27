@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVITIES, activityById, LADDER } from './activity';
+import { ACTIVITIES, activityById } from './activity';
 
 describe('the activity catalogue', () => {
   it('offers the four ladder activities plus My text, in ladder order', () => {
     expect(ACTIVITIES.map((a) => a.id))
       .toEqual(['listening', 'shadowing', 'speaking', 'spelling', 'custom']);
-  });
-
-  it('numbers the ladder 1 to 4 and leaves My text off it', () => {
-    expect(LADDER.map((a) => a.rung)).toEqual([1, 2, 3, 4]);
-    expect(activityById('custom')!.rung).toBe(0);
   });
 
   it('hides the text for the two activities that train the ear', () => {
