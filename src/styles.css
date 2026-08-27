@@ -511,19 +511,17 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
   .app { grid-template-columns: 1fr; }
 
   .decks {
-    display: flex; overflow-x: auto; gap: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
     padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line);
-    -webkit-overflow-scrolling: touch;
   }
   .decks button {
-    flex: 0 0 auto; width: auto;
-    border: 1px solid var(--line); border-radius: 999px;
-    border-left-width: 1px; padding: 6px 12px; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 10px; text-align: left;
+    padding: 12px 10px; min-height: 40px;
   }
   .decks button[aria-pressed="true"] { border-color: var(--accent); }
 
-  /* On a phone the topic list is a single scrolling row of pills, so it is
-     already as short as it can be - it must not flex or claim a floor. */
+  /* On a phone the topics are a two-column tile grid that shows every topic
+     at once, so it must not flex or claim a floor. */
   .chooser-section:has(.decks) { flex: 0 0 auto; }
   .chooser .decks { flex: 0 0 auto; min-height: 0; border: 0; border-radius: 0; }
 

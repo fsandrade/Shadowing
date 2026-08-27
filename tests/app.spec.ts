@@ -567,18 +567,22 @@ test('the chooser fits one screen once an activity is picked', async ({ page }) 
   expect(overlaps).toBe(false);
 });
 
-test('mobile keeps the chooser topics bar as a single compact row', async ({ page }) => {
+test('mobile shows every topic in a two-column grid, nothing to swipe', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
   await page.locator('[data-activity-id="shadowing"]').click();
 
-  // An empty topic bar is also under 120px. Every topic at the level plus the
-  // All topics entry must be in it for the height to mean anything.
   await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
 
-  const height = await page.locator('.decks').evaluate((el) => el.getBoundingClientRect().height);
-  expect(height).toBeLessThan(120);
+  // Two-column grid tiles: every topic at the level shows at once, no
+  // sideways swiping, and both columns are actually laid out.
+  const layout = await page.locator('.decks').evaluate((el) => ({
+    tracks: getComputedStyle(el).gridTemplateColumns.split(' ').filter((t) => t.trim()).length,
+    scrolls: el.scrollWidth > el.clientWidth + 1,
+  }));
+  expect(layout.tracks).toBe(2);
+  expect(layout.scrolls).toBe(false);
 
   await page.locator('.durations [data-min="15"]').click();
   await page.locator('#startActivity').click();
