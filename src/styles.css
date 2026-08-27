@@ -216,7 +216,15 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
 .chooser > * { flex: 0 0 auto; }
 .chooser-title { margin: 0 0 6px; font-size: 26px; font-weight: 600; text-align: center; }
 .chooser-lede { margin: 0 0 16px; color: var(--dim); text-align: center; }
-.chooser-section { max-width: 760px; width: 100%; margin: 0 auto 14px; }
+.chooser-section {
+  max-width: 760px; width: 100%; margin: 0 auto 14px;
+  /* The topic and duration sections enter with the chosen() branch, so a keyframe
+     on the freshly-inserted node is all the transition needs. */
+  animation: chooser-in .25s ease;
+}
+@keyframes chooser-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
 /* The topic section is the one that flexes, so it has to pass the height down
    to the list rather than let it grow to its content. */
 .chooser-section:has(.decks) {
@@ -230,6 +238,10 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
   flex: 1 1 auto; min-height: 0;
   border: 1px solid var(--line); border-radius: 8px;
 }
+/* The chooser drops focus here to land the learner in the topic grid, but the
+   grid shows every topic at once, so a full-strength focus ring reads as a
+   heavy box around all of them. Keep an indicator without the weight. */
+.chooser .decks:focus { outline: 1px solid var(--dim); outline-offset: 2px; }
 .chooser-heading { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
 .activity-grid {
   display: grid; gap: 14px; max-width: 760px; width: 100%; margin: 0 auto 16px;
