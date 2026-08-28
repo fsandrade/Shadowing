@@ -26,6 +26,8 @@ const fail = (message: string): Result => ({ data: null, error: { message } });
 
 const LEVELS = [{ id: 'A2', description: 'Elementary' }];
 
+const SEED = 'test-seed';
+
 const DECKS = [
   { id: 'daily-life', description: 'Daily Life' },
   { id: 'travel', description: 'Travel' },
@@ -41,7 +43,7 @@ describe('loadContent', () => {
         { id: 'id-second', level_id: 'A2', deck_id: 'daily-life', content: 'second' },
         { id: 'id-third', level_id: 'A2', deck_id: 'travel', content: 'third' },
       ]),
-    }));
+    }), SEED);
 
     expect(catalog.topics.map((d) => d.id)).toEqual(['daily-life', 'travel']);
 
@@ -69,7 +71,7 @@ describe('loadContent', () => {
           content: `line ${from + i}`,
         })));
       },
-    }));
+    }), SEED);
 
     expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
     expect(catalog.sentences).toHaveLength(2500);
@@ -85,7 +87,7 @@ describe('loadContent', () => {
         calls++;
         return ok([{ id: 'id-only-one', level_id: 'A2', deck_id: 'daily-life', content: 'only one' }]);
       },
-    }));
+    }), SEED);
 
     expect(calls).toBe(1);
   });
@@ -95,7 +97,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => fail('permission denied for table decks'),
       sentences: () => ok([]),
-    }))).rejects.toThrow(/Could not load topics: permission denied/);
+    }), SEED)).rejects.toThrow(/Could not load topics: permission denied/);
   });
 
   it('rejects when sentences cannot be read', async () => {
@@ -103,7 +105,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => ok(DECKS),
       sentences: () => fail('network error'),
-    }))).rejects.toThrow(/Could not load sentences: network error/);
+    }), SEED)).rejects.toThrow(/Could not load sentences: network error/);
   });
 
   it('rejects an empty database rather than starting with nothing to practise', async () => {
@@ -111,7 +113,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => ok([]),
       sentences: () => ok([]),
-    }))).rejects.toThrow(/no sentences/i);
+    }), SEED)).rejects.toThrow(/no sentences/i);
   });
 
   it('rejects decks that came back with no sentences at all', async () => {
@@ -119,7 +121,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => ok(DECKS),
       sentences: () => ok([]),
-    }))).rejects.toThrow(/no sentences/i);
+    }), SEED)).rejects.toThrow(/no sentences/i);
   });
 
   it('keeps a topic that has no sentences of its own', async () => {
@@ -127,7 +129,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => ok(DECKS),
       sentences: () => ok([{ id: 'id-only-travel', level_id: 'A2', deck_id: 'travel', content: 'only travel' }]),
-    }));
+    }), SEED);
 
     expect(catalog.topics.map((t) => t.id)).toEqual(['daily-life', 'travel']);
     expect(catalog.sentences.map((s) => s.text)).toEqual(['only travel']);
@@ -141,7 +143,7 @@ describe('loadContent', () => {
         { id: 'id-first', level_id: 'A2', deck_id: 'daily-life', content: 'first' },
         { id: 'id-third', level_id: 'A2', deck_id: 'travel', content: 'third' },
       ]),
-    }));
+    }), SEED);
 
     expect(sentenceIds.get('first')).toBe('id-first');
     expect(sentenceIds.get('third')).toBe('id-third');
@@ -158,7 +160,7 @@ describe('loadContent', () => {
         { id: 'id-a', level_id: 'A2', deck_id: 'daily-life', content: 'same words' },
         { id: 'id-b', level_id: 'A2', deck_id: 'travel', content: 'same words' },
       ]),
-    }));
+    }), SEED);
 
     expect(sentenceIds.get('same words')).toBe('id-a');
     expect(warn).toHaveBeenCalledOnce();
@@ -170,7 +172,7 @@ describe('loadContent', () => {
       levels: () => ok(LEVELS),
       decks: () => ok(DECKS),
       sentences: () => ok([{ id: 'id-x', level_id: 'A2', deck_id: 'travel', content: 'x' }]),
-    }));
+    }), SEED);
 
     expect(catalog.loadedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   });

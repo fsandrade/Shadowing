@@ -10,9 +10,12 @@ import { showStartupError } from './startup-error';
 
 async function start(): Promise<void> {
   const client = createSupabaseClient();
+  // Fresh seed per app load: sentences are ordered by md5(id || seed), so every
+  // session gets a different random order while paging stays consistent.
+  const seed = crypto.randomUUID();
 
   const [content, user] = await Promise.all([
-    loadContent(client),
+    loadContent(client, seed),
     ensureUser(client),
   ]);
 

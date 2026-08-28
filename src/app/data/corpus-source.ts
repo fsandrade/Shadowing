@@ -37,21 +37,27 @@ async function fetchTopics(client: SupabaseClient): Promise<DeckRow[]> {
   const { data, error } = await client
     .from('decks')
     .select('id, description')
-    .order('position');
+    .order('description');
 
   if (error) { throw new Error(`Could not load topics: ${error.message}`); }
   return (data ?? []) as DeckRow[];
 }
 
-async function fetchSentences(client: SupabaseClient): Promise<SentenceRow[]> {
+async function fetchSentences(
+  client: SupabaseClient,
+  seed: string,
+): Promise<SentenceRow[]> {
   const rows: SentenceRow[] = [];
+
+  // Stable-per-session random order: md5(id || seed) re-orders every session
+  // but is constant across pages, so paging returns a complete set.
+  const randomOrder = `(md5(id::text || '${seed.replace(/'/g, "''")}'))`;
 
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await client
       .from('sentences')
       .select('id, deck_id, level_id, content')
-      .order('deck_id')
-      .order('position')
+      .order(randomOrder)
       .range(from, from + PAGE - 1);
 
     if (error) { throw new Error(`Could not load sentences: ${error.message}`); }
@@ -62,11 +68,14 @@ async function fetchSentences(client: SupabaseClient): Promise<SentenceRow[]> {
   }
 }
 
-export async function loadContent(client: SupabaseClient): Promise<Content> {
+export async function loadContent(
+  client: SupabaseClient,
+  seed: string,
+): Promise<Content> {
   const [levelRows, topicRows, sentenceRows] = await Promise.all([
     fetchLevels(client),
     fetchTopics(client),
-    fetchSentences(client),
+    fetchSentences(client, seed),
   ]);
 
   if (!levelRows.length) {
