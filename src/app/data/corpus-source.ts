@@ -43,29 +43,40 @@ async function fetchTopics(client: SupabaseClient): Promise<DeckRow[]> {
   return (data ?? []) as DeckRow[];
 }
 
+function hashOrder(id: string, seed: string): number {
+  let h = 0x811c9dc5;
+  const s = `${id}${seed}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 async function fetchSentences(
   client: SupabaseClient,
   seed: string,
 ): Promise<SentenceRow[]> {
   const rows: SentenceRow[] = [];
 
-  // Stable-per-session random order: md5(id || seed) re-orders every session
-  // but is constant across pages, so paging returns a complete set.
-  const randomOrder = `(md5(id::text || '${seed.replace(/'/g, "''")}'))`;
-
+  // PostgREST can't order by an expression, so fetch all rows and sort
+  // client-side. Stable-per-session random order: hash(id || seed) re-orders
+  // every session but is constant for a given seed.
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await client
       .from('sentences')
       .select('id, deck_id, level_id, content')
-      .order(randomOrder)
       .range(from, from + PAGE - 1);
 
     if (error) { throw new Error(`Could not load sentences: ${error.message}`); }
 
     const page = (data ?? []) as SentenceRow[];
     rows.push(...page);
-    if (page.length < PAGE) { return rows; }
+    if (page.length < PAGE) { break; }
   }
+
+  rows.sort((a, b) => hashOrder(a.id, seed) - hashOrder(b.id, seed));
+  return rows;
 }
 
 export async function loadContent(
