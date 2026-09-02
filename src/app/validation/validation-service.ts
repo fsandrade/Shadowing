@@ -97,6 +97,10 @@ export class ValidationService {
           this.onDenied(lineIndex);
           return;
         }
+        if (this.heardText) {
+          this.score(lineIndex, baseText, this.heardText);
+          return;
+        }
         this.put(lineIndex, {
           transcript: MESSAGES.couldNotListen,
           stars: null,
@@ -209,9 +213,6 @@ export class ValidationService {
       },
       () => {
         this.enabling = null;
-        // Say so, rather than leaving whatever the last activity set. Spelling
-        // turns the flag on without the microphone, so a denied Speaking that
-        // followed it would otherwise still report itself as enabled.
         this.settings.setSttEnabled(false);
         return false;
       },
@@ -229,9 +230,11 @@ export class ValidationService {
     this.stopping = true;
     this.session?.stop();
 
+  
+    const turn = this.settle;
     const pending = this.clock.wait(FORCE_FINISH_MS);
     void pending.done.then(() => {
-      if (!this.settle) { return; }
+      if (this.settle !== turn) { return; }
       const line = this.activeLine();
       if (line === null) { return; }
       this.score(line, this.baseText, this.heardText);

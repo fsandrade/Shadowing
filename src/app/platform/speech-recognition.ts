@@ -58,6 +58,32 @@ export const SPEECH_RECOGNITION_CTOR =
     },
   });
 
+
+function words(transcript: string): string {
+  return transcript
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function fold(segments: string[], transcript: string): void {
+  const spoken = words(transcript);
+  if (!spoken) { return; }
+
+  const tail = segments.length - 1;
+  if (tail >= 0) {
+    const held = words(segments[tail]);
+    if (held && (spoken === held || spoken.startsWith(`${held} `))) {
+      segments[tail] = transcript;
+      return;
+    }
+  }
+  if (segments.some((segment) => words(segment) === spoken)) { return; }
+  segments.push(transcript);
+}
+
 @Injectable({ providedIn: 'root' })
 export class SpeechRecognizer {
   private readonly ctor = inject(SPEECH_RECOGNITION_CTOR);
@@ -78,13 +104,12 @@ export class SpeechRecognizer {
     rec.maxAlternatives = 1;
 
     let ended = false;
-    let committed = '';
-    let lastSegment = '';
+    const segments: string[] = [];
     const seenFinals = new Map<number, string>();
 
     rec.onresult = (event) => {
       let changed = false;
-      let live = '';
+      const live: string[] = [];
       const cursor = event.resultIndex ?? 0;
       for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
@@ -93,26 +118,16 @@ export class SpeechRecognizer {
         if (result.isFinal) {
           if (seenFinals.get(i) === transcript) { continue; }
           seenFinals.set(i, transcript);
-          if (
-            lastSegment &&
-            transcript.startsWith(lastSegment) &&
-            transcript.length > lastSegment.length
-          ) {
-            committed = committed.slice(0, committed.length - lastSegment.length) + transcript;
-          } else if (transcript !== lastSegment) {
-            committed += transcript;
-          }
-          lastSegment = transcript;
+          fold(segments, transcript);
           changed = true;
         } else if (i >= cursor) {
-          let pending = transcript;
-          if (lastSegment && pending.startsWith(lastSegment) && pending.length > lastSegment.length) {
-            pending = pending.slice(lastSegment.length);
-          }
-          live += pending;
+          live.push(transcript);
         }
       }
-      if (changed || live) { opts.onInterim?.(committed + live); }
+      if (!changed && !live.length) { return; }
+      const view = segments.slice();
+      for (const pending of live) { fold(view, pending); }
+      opts.onInterim?.(view.join(''));
     };
 
     rec.onerror = (event) => {
@@ -123,7 +138,7 @@ export class SpeechRecognizer {
     rec.onend = () => {
       if (ended) { return; }
       ended = true;
-      opts.onResult?.(committed);
+      opts.onResult?.(segments.join(''));
     };
 
     return {

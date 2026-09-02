@@ -202,6 +202,42 @@ describe('ValidationService error handling', () => {
     expect(mic.markDenied).toHaveBeenCalledOnce();
   });
 
+  it('scores what it already heard when a late error ends the session', async () => {
+    const { validation, rec, resultAt } = setup();
+    let settled = false;
+    void validation.begin(0, 'hit the road')!.then(() => { settled = true; });
+
+    rec.opts().onInterim?.('hit the road');
+    rec.opts().onError?.('no-speech');
+    await Promise.resolve();
+
+    expect(resultAt(0)).toEqual({ transcript: 'hit the road', stars: 5, status: 'scored' });
+    expect(settled).toBe(true);
+  });
+
+  it('scores a partial attempt rather than discarding it on a network error', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, 'hit the road jack and never come back')!;
+
+    rec.opts().onInterim?.('hit the road');
+    rec.opts().onError?.('network');
+    await Promise.resolve();
+
+    expect(resultAt(0)?.transcript).toBe('hit the road');
+    expect(resultAt(0)?.status).toBe('scored');
+  });
+
+  it('still reports denial when the microphone is refused mid-utterance', () => {
+    const { validation, rec, mic, resultAt } = setup();
+    validation.begin(0, 'hit the road');
+
+    rec.opts().onInterim?.('hit the road');
+    rec.opts().onError?.('not-allowed');
+
+    expect(mic.markDenied).toHaveBeenCalledOnce();
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.micDeniedInline);
+  });
+
   it('skips validation on any other error and resolves the wait', async () => {
     const { validation, rec, resultAt } = setup();
     let settled = false;
@@ -359,6 +395,25 @@ describe('ValidationService end of speech', () => {
     expect(settled).toBe(true);
     expect(resultAt(0)?.transcript).toBe('I must have hit the snooze button');
     expect(resultAt(0)?.status).toBe('scored');
+  });
+
+  it('does not let a finished line force-finish the line that follows it', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, TARGET);
+
+    // Completing the sentence arms the force-finish fallback, then the browser
+    // reports its final result well inside that window.
+    rec.speak(TARGET);
+    expect(rec.latest().stopped).toBe(true);
+    rec.endWithFinalText(TARGET);
+    await Promise.resolve();
+    expect(resultAt(0)?.status).toBe('scored');
+
+    void validation.begin(1, 'she sells sea shells');
+    await vi.advanceTimersByTimeAsync(1600);
+
+    expect(resultAt(1)?.transcript).toBe(MESSAGES.listening);
+    expect(resultAt(1)?.status).toBe('listening');
   });
 
   it('stops watching once a line is settled', async () => {

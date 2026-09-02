@@ -166,6 +166,81 @@ describe('SpeechRecognizer', () => {
     expect(finals).toEqual(['hit the road']);
   });
 
+  it('collapses a final the refine pass recapitalised and punctuated', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'i saw the man', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'i saw the man', isFinal: true },
+      { transcript: 'I saw the man with the telescope.', isFinal: true },
+    ]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['I saw the man with the telescope.']);
+  });
+
+  it('takes the refined wording when a final only gains case and punctuation', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'where are you going', isFinal: true }]);
+    fireEvent(rec, 0, [{ transcript: 'Where are you going?', isFinal: true }]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['Where are you going?']);
+  });
+
+  it('ignores a finalised segment the browser re-emits at another index', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'good morning', isFinal: true }]);
+    fireEvent(rec, 1, [{ transcript: ' to you', isFinal: true }]);
+    fireEvent(rec, 2, [{ transcript: 'good morning', isFinal: true }]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['good morning to you']);
+  });
+
+  it('ignores resent history that arrives shifted by an empty slot', () => {
+    const finals: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onResult: (t) => finals.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'hit the road', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'hit the road', isFinal: true },
+      { transcript: ' jack', isFinal: true },
+    ]);
+    fireEvent(rec, 1, [
+      { transcript: '', isFinal: true },
+      { transcript: 'hit the road', isFinal: true },
+      { transcript: ' jack', isFinal: true },
+    ]);
+    rec.onend?.();
+
+    expect(finals).toEqual(['hit the road jack']);
+  });
+
+  it('interim text does not echo a segment the refine pass rewrote', () => {
+    const interims: string[] = [];
+    recognizer(Ctor).recognize({ continuous: true, onInterim: (t) => interims.push(t) }).start();
+    const rec = FakeRecognition.last!;
+
+    fireEvent(rec, 0, [{ transcript: 'can', isFinal: true }]);
+    fireEvent(rec, 0, [{ transcript: 'Can,', isFinal: true }]);
+    fireEvent(rec, 1, [
+      { transcript: 'Can,', isFinal: true },
+      { transcript: 'can i get a', isFinal: false },
+    ]);
+
+    expect(interims).toEqual(['can', 'Can,', 'can i get a']);
+  });
+
   it('interim text never echoes the growing snapshot chain', () => {
     const interims: string[] = [];
     recognizer(Ctor).recognize({ continuous: true, onInterim: (t) => interims.push(t) }).start();
