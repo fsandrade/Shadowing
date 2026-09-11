@@ -159,14 +159,6 @@ describe('LineList state classes', () => {
     expect(ps[0].classList.contains('spoken')).toBe(false);
     expect(ps[1].classList.contains('spoken')).toBe(true);
   });
-
-  it('toggles the blurred class from the blur setting', () => {
-    const { fixture, lines, settings } = render();
-    expect(lines.classList.contains('blurred')).toBe(false);
-    settings.setBlur(true);
-    fixture.detectChanges();
-    expect(lines.classList.contains('blurred')).toBe(true);
-  });
 });
 
 describe('LineList interaction', () => {

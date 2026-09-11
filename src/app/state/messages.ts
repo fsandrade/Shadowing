@@ -13,9 +13,6 @@ export const MESSAGES = {
     'Microphone access was denied — the validator is off for this session. ' +
     'Allow the microphone and reload to use it.',
   listening: 'Listening…',
-  typePrompt: 'Type the sentence, then press Enter · ↑ to hear it again',
-  nothingTyped: 'Nothing typed',
-  missedWords: (words: readonly string[]): string => `missed: ${words.join(', ')}`,
   noSpeechDetected: 'No speech detected',
   micDeniedInline: 'Microphone denied',
   couldNotListen: 'Could not listen — validation skipped',
