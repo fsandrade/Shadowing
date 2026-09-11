@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { starsFor } from './scoring';
-import { missedWords, normalizeTyping, typedWords, typingStars } from './typing';
+import { isTypingCorrect, maskedWords, missedWords, normalizeTyping, typedWords, typingStars } from './typing';
 
 describe('normalizeTyping', () => {
   it('lowercases and drops sentence punctuation', () => {
@@ -153,5 +153,42 @@ describe('missedWords names what was left out', () => {
 
   it('keeps the original spelling of the missed word', () => {
     expect(missedWords('Check the roadmap today', 'Check the today')).toEqual(['roadmap']);
+  });
+});
+
+describe('isTypingCorrect', () => {
+  it('is true only for an exact normalized match', () => {
+    expect(isTypingCorrect('Once upon a time, in a kingdom very far away,', 'Once upon a time in a kingdom very far away')).toBe(true);
+    expect(isTypingCorrect("it's a dog's life", "It's a dogs life")).toBe(false);
+    expect(isTypingCorrect('First, second.', 'First second')).toBe(true);
+  });
+
+  it('is false for an empty or wrong-length answer', () => {
+    expect(isTypingCorrect('hit the road', '')).toBe(false);
+    expect(isTypingCorrect('hit the road', 'hit the')).toBe(false);
+    expect(isTypingCorrect('hit the road', 'hit the road buddy')).toBe(false);
+  });
+
+  it('apostrophes and case matter inside words', () => {
+    expect(isTypingCorrect("don't", "don t")).toBe(false);
+    expect(isTypingCorrect('Hello', 'hello')).toBe(true);
+  });
+});
+
+describe('maskedWords', () => {
+  it('marks correct target words and drops nothing', () => {
+    const words = maskedWords('a quick brown fox', 'a quick brown fox');
+    expect(words.map((w) => w.text)).toEqual(['a', 'quick', 'brown', 'fox']);
+    expect(words.every((w) => w.ok)).toBe(true);
+  });
+
+  it('masks (ok=false) every target word the learner missed or mistyped', () => {
+    const words = maskedWords('a kingdom far away', 'the kingdom');
+    expect(words.map((w) => w.text)).toEqual(['a', 'kingdom', 'far', 'away']);
+    expect(words.map((w) => w.ok)).toEqual([false, true, false, false]);
+  });
+
+  it('keeps the raw casing of the target', () => {
+    expect(maskedWords('Once upon', 'once upon').map((w) => w.text)).toEqual(['Once', 'upon']);
   });
 });

@@ -78,3 +78,21 @@ export function typingStars(base: string, typed: string): number | null {
   const { targetLength, attemptLength, matched } = typingCounts(base, typed);
   return starsFromCounts(targetLength, attemptLength, matched);
 }
+
+export function isTypingCorrect(base: string, typed: string): boolean {
+  const target = normalizeTyping(base);
+  const words = normalizeTyping(typed);
+  return target.length > 0
+    && words.length === target.length
+    && words.every((word, i) => word === target[i]);
+}
+
+export function maskedWords(
+  base: string,
+  typed: string,
+): readonly { text: string; ok: boolean }[] {
+  const target = tokenize(base);
+  const typedKeys = tokenize(typed).map((token) => token.key);
+  const flags = matchFlags(typedKeys, target.map((token) => token.key));
+  return target.map((token, i) => ({ text: token.raw, ok: flags[i] }));
+}
