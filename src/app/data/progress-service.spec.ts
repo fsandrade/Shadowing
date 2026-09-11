@@ -318,11 +318,11 @@ describe('ProgressService session lifecycle', () => {
   it('opens a session for an unscored activity, with no attempt in sight', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', 'travel', 10);
+    progress.startSession('speaking', 'travel', 10);
     await vi.waitFor(() => expect(sent).toHaveLength(1));
 
     expect(sent[0].table).toBe('practice_sessions');
-    expect(sent[0].row['activity']).toBe('listening');
+    expect(sent[0].row['activity']).toBe('speaking');
     expect(sent[0].row['deck_id']).toBe('travel');
     expect(sent[0].row['planned_duration_min']).toBe(10);
     expect(sent[0].row).not.toHaveProperty('mode');
@@ -351,20 +351,20 @@ describe('ProgressService session lifecycle', () => {
   it('starting a second activity closes the first session', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', 'travel', 10);
-    progress.startSession('shadowing', 'travel', 5);
+    progress.startSession('speaking', 'travel', 10);
+    progress.startSession('dictation', 'travel', 5);
     await vi.waitFor(() => expect(sent).toHaveLength(3));
 
     expect(sent.map((s) => s.op)).toEqual(['insert', 'update', 'insert']);
-    expect(sent[0].row['activity']).toBe('listening');
+    expect(sent[0].row['activity']).toBe('speaking');
     expect(sent[1].row).toHaveProperty('ended_at');
-    expect(sent[2].row['activity']).toBe('shadowing');
+    expect(sent[2].row['activity']).toBe('dictation');
   });
 
   it('records the topic as null when the learner picked every topic', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', null, 15);
+    progress.startSession('speaking', null, 15);
     await vi.waitFor(() => expect(sent).toHaveLength(1));
 
     expect(sent[0].row['deck_id']).toBeNull();
@@ -417,7 +417,7 @@ describe('ProgressService recording practice time', () => {
   it('sends the time actually practised alongside the wall clock', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', null, 10);
+    progress.startSession('speaking', null, 10);
     progress.endSession(90_000);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -432,7 +432,7 @@ describe('ProgressService recording practice time', () => {
   it('records no practice time for a session that never played', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', null, 10);
+    progress.startSession('speaking', null, 10);
     progress.endSession();
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
@@ -442,7 +442,7 @@ describe('ProgressService recording practice time', () => {
   it('never sends a negative practice time', async () => {
     const { progress, sent } = setup();
 
-    progress.startSession('listening', null, 10);
+    progress.startSession('speaking', null, 10);
     progress.endSession(-5000);
     await vi.waitFor(() => expect(sent).toHaveLength(2));
 
