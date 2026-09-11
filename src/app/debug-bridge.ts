@@ -20,7 +20,7 @@ export class DebugBridge {
     (window as unknown as Record<string, unknown>)['__shadowing'] = {
       state: {
         get screen() { return flow.screen(); },
-        get activity() { return flow.activity()?.id ?? null; },
+        get activity() { return flow.kind() ?? null; },
         get index() { return practice.index(); },
         get playing() { return practice.playing(); },
         get lines() { return practice.lines(); },

@@ -1,9 +1,10 @@
+import type { PracticeSource } from '../core/activity';
 import { effect, inject, Injectable, signal } from '@angular/core';
 import { SafeStorage } from '../platform/storage';
 
 export const SETTINGS_KEY = 'shadowing.settings';
 
-export type PracticeSource = 'catalog' | 'custom';
+export type { PracticeSource };
 
 interface StoredSettings {
   topicId?: unknown;

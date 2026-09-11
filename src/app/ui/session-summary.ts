@@ -25,15 +25,14 @@ export class SessionSummary {
     return result ? formatPractised(result.practisedMs) : '';
   });
 
-  // Which topic, not just which activity - two Speaking sessions in a row are
-  // otherwise indistinguishable here. My text has no topic to name.
+  // Which topic, not just which kind - two Speaking sessions in a row are
+  // otherwise indistinguishable here. My text and YouTube carry their own name.
   protected readonly title = computed(() => {
     const result = this.flow.result();
     if (!result) { return ''; }
-    if (result.activity.id === 'custom') { return result.activity.name; }
-
+    if (result.source !== 'catalog') { return result.name; }
     const topic = this.practice.topics().find((t) => t.id === result.topicId);
-    return `${result.activity.name} · ${topic?.name ?? 'All topics'}`;
+    return `${result.name} · ${topic?.name ?? 'All topics'}`;
   });
 
   // Stars per sentence, so a long session and a short one can be compared.

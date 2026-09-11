@@ -1,6 +1,6 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ActivityId } from '../core/activity';
+import type { PracticeKind } from '../core/activity';
 import {
   type AttemptCounts, similarityFromCounts, speechCounts,
 } from '../core/scoring';
@@ -49,7 +49,7 @@ export class ProgressService {
   private queuedWhileDraining = false;
 
   startSession(
-    activity: Exclude<ActivityId, 'custom'>,
+    activity: PracticeKind,
     topicId: string | null,
     minutes: number,
   ): void {

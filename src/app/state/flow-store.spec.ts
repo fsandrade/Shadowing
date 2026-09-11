@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
-import { activityById } from '../core/activity';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
 import { INITIAL_USER } from '../platform/auth';
 import { MicrophoneService } from '../platform/microphone';
@@ -117,7 +116,7 @@ describe('FlowStore screens', () => {
   it('goes to practice on start, to the summary on finish, and back to the chooser', async () => {
     const { flow } = setup();
 
-    await flow.start(activityById('listening')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(flow.screen()).toBe('practice');
 
     flow.finish();
@@ -133,32 +132,37 @@ describe('FlowStore screens', () => {
     expect(flow.screen()).toBe('chooser');
     expect(flow.result()).toBeNull();
   });
+
+  it('a dictation session lands on the dictation screen', async () => {
+    const { flow } = setup();
+    await flow.start('dictation', 'catalog', null, 5);
+    expect(flow.screen()).toBe('dictation');
+    expect(flow.kind()).toBe('dictation');
+  });
 });
 
-describe('FlowStore starting an activity', () => {
-  it('applies the activity preset', async () => {
+describe('FlowStore starting a session', () => {
+  it('applies the validation the kind needs', async () => {
     const { flow, settings } = setup();
 
-    await flow.start(activityById('listening')!, 'a', 10);
-    expect(settings.blur()).toBe(true);
-    expect(settings.sttEnabled()).toBe(false);
-
-    await flow.start(activityById('spelling')!, 'a', 10);
-    expect(settings.blur()).toBe(true);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(settings.sttEnabled()).toBe(true);
+    expect(settings.typingMode()).toBe(false);
+
+    await flow.start('dictation', 'catalog', 'a', 10);
     expect(settings.typingMode()).toBe(true);
   });
 
   it('applies the pacing the level suggests', async () => {
     const { flow, settings } = setup();
-    await flow.start(activityById('listening')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(settings.rate()).toBe(0.8);
     expect(settings.slack()).toBe(2);
   });
 
   it('sets the chosen topic and duration', async () => {
     const { flow, settings } = setup();
-    await flow.start(activityById('shadowing')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
     expect(settings.topicId()).toBe('a');
     expect(settings.durationMin()).toBe(15);
     expect(settings.source()).toBe('catalog');
@@ -166,47 +170,46 @@ describe('FlowStore starting an activity', () => {
 
   it('takes null to mean every topic at the level', async () => {
     const { flow, settings } = setup();
-    await flow.start(activityById('shadowing')!, null, 10);
+    await flow.start('speaking', 'catalog', null, 10);
     expect(settings.topicId()).toBeNull();
   });
 
-  it('switches to the learner\'s own text for My text, and honours the check mode they picked', async () => {
+  it('switches to the learner\'s own text for My text', async () => {
     const { flow, settings } = setup();
-    await flow.start(activityById('custom')!, null, 10, 'spelling');
+    await flow.start('dictation', 'custom', null, 10);
     expect(settings.source()).toBe('custom');
     expect(settings.typingMode()).toBe(true);
-    expect(settings.sttEnabled()).toBe(true);
   });
 
-  it('remembers which activity is running', async () => {
+  it('remembers which kind is running', async () => {
     const { flow } = setup();
-    await flow.start(activityById('speaking')!, 'a', 10);
-    expect(flow.activity()?.id).toBe('speaking');
+    await flow.start('speaking', 'catalog', 'a', 10);
+    expect(flow.kind()).toBe('speaking');
   });
 
-  it('opens a progress session for a ladder activity with the chosen topic and minutes', async () => {
+  it('opens a progress session for a catalog kind with the chosen topic and minutes', async () => {
     const { flow, progress } = setup();
     const startSession = vi.spyOn(progress, 'startSession');
 
-    await flow.start(activityById('shadowing')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
 
     expect(startSession).toHaveBeenCalledOnce();
-    expect(startSession).toHaveBeenCalledWith('shadowing', 'a', 15);
+    expect(startSession).toHaveBeenCalledWith('speaking', 'a', 15);
   });
 
-  it('starts the scored screen empty when the same activity restarts on the same topic', async () => {
+  it('starts the scored screen empty when the same kind restarts on the same topic', async () => {
     const { flow, validation, heard } = setup();
 
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     void validation.begin(0, 'a1');
     heard('a1');
     await Promise.resolve();
     expect(validation.results().size).toBe(1);
 
     flow.finish();
-    // Same activity, same topic: no signal the validator watches changes, so
+    // Same kind, same topic: no signal the validator watches changes, so
     // nothing else clears the last session's transcripts and stars.
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
 
     expect(validation.results().size).toBe(0);
     expect(validation.activeLine()).toBeNull();
@@ -215,45 +218,44 @@ describe('FlowStore starting an activity', () => {
   it('says so when Speaking degrades to unscored because the mic was refused', async () => {
     const { flow, settings, banner } = setup({ micDenied: true });
 
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
 
     // Silently, this is Shadowing under another name - and the session row
-    // still says activity = 'speaking'.
+    // still says kind = 'speaking'.
     expect(settings.sttEnabled()).toBe(false);
     expect(banner.html()).toBe(MESSAGES.micDenied);
   });
 
-  it('raises no warning when the activity got the mode it asked for', async () => {
+  it('raises no warning when the session got the validation it asked for', async () => {
     const { flow, banner } = setup();
 
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(banner.html()).toBeNull();
 
-    await flow.start(activityById('listening')!, 'a', 10);
+    await flow.start('dictation', 'catalog', 'a', 10);
     expect(banner.html()).toBeNull();
   });
 
-  it('retracts the denied-mic warning once an activity that needs no microphone starts', async () => {
+  it('retracts the denied-mic warning once a session that needs no microphone starts', async () => {
     const { flow, banner } = setup({ micDenied: true });
 
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(banner.html()).toBe(MESSAGES.micDenied);
 
-    // Listening asks for 'nothing', which a denied mic can always deliver -
-    // the warning is about a session that never happened, and must not
-    // survive on screen for it.
-    await flow.start(activityById('listening')!, 'a', 10);
+    // Dictation asks for nothing - the warning is about a session that never
+    // happened, and must not survive on screen for it.
+    await flow.start('dictation', 'catalog', 'a', 10);
     expect(banner.html()).toBeNull();
   });
 
   it('retracts the denied-mic warning once the microphone is granted and Speaking restarts', async () => {
     const { flow, banner, setMicDenied } = setup({ micDenied: true });
 
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(banner.html()).toBe(MESSAGES.micDenied);
 
     setMicDenied(false);
-    await flow.start(activityById('speaking')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(banner.html()).toBeNull();
   });
 
@@ -261,21 +263,36 @@ describe('FlowStore starting an activity', () => {
     const { flow, progress } = setup();
     const startSession = vi.spyOn(progress, 'startSession');
 
-    await flow.start(activityById('custom')!, null, 10);
+    await flow.start('dictation', 'custom', null, 10);
 
     expect(startSession).not.toHaveBeenCalled();
+  });
+
+  it('custom and youtube sources never open a database session', async () => {
+    const { flow, progress } = setup();
+    const startSession = vi.spyOn(progress, 'startSession');
+
+    // startSession is only reached for source === 'catalog'
+    await flow.start('dictation', 'custom', null, 15);
+    await flow.start('speaking', 'youtube', null, 15);
+
+    expect(startSession).not.toHaveBeenCalled();
+    expect(flow.kind()).toBe('speaking'); // the last start won
+    expect(flow.screen()).toBe('practice');
   });
 });
 
 describe('FlowStore finishing', () => {
   it('reports what the session was and what came of it', async () => {
     const { flow } = setup();
-    await flow.start(activityById('shadowing')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
 
     flow.finish();
 
     const result = flow.result()!;
-    expect(result.activity.id).toBe('shadowing');
+    expect(result.kind).toBe('speaking');
+    expect(result.source).toBe('catalog');
+    expect(result.name).toBe('Speaking');
     expect(result.topicId).toBe('a');
     // Nothing was ever played, so nothing was practised - the summary reports
     // the time consumed, not the 15 minutes that were planned.
@@ -284,9 +301,21 @@ describe('FlowStore finishing', () => {
     expect(result.stars).toBeNull();
   });
 
+  it('names a My text session by its source, not a kind', async () => {
+    const { flow } = setup();
+    await flow.start('dictation', 'custom', null, 10);
+
+    flow.finish();
+
+    const result = flow.result()!;
+    expect(result.kind).toBe('dictation');
+    expect(result.source).toBe('custom');
+    expect(result.name).toBe('My text');
+  });
+
   it('closes the progress session it opened', async () => {
     const { flow, progress } = setup();
-    await flow.start(activityById('shadowing')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
     const endSession = vi.spyOn(progress, 'endSession');
 
     flow.finish();
@@ -294,29 +323,29 @@ describe('FlowStore finishing', () => {
     expect(endSession).toHaveBeenCalledOnce();
   });
 
-  it('clears the last result when the next activity starts', async () => {
+  it('clears the last result when the next session starts', async () => {
     const { flow } = setup();
-    await flow.start(activityById('shadowing')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
     flow.finish();
     expect(flow.result()).not.toBeNull();
 
-    await flow.start(activityById('listening')!, 'a', 5);
+    await flow.start('dictation', 'catalog', 'a', 5);
     expect(flow.result()).toBeNull();
-    expect(flow.screen()).toBe('practice');
+    expect(flow.screen()).toBe('dictation');
   });
 });
 
 describe('FlowStore reshuffles on every start', () => {
-  it('reorders the sentences when the same activity restarts on the same topic', async () => {
+  it('reorders the sentences when the same session restarts on the same topic', async () => {
     const { flow, practice, setSeed } = setup();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     const first = [...practice.lines()];
     expect(first.length).toBeGreaterThan(1);
 
     flow.finish();
     setSeed(0);
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
 
     expect(practice.lines()).not.toEqual(first);
   });
@@ -324,22 +353,22 @@ describe('FlowStore reshuffles on every start', () => {
   it('keeps the same sentences, only in a different order', async () => {
     const { flow, practice, setSeed } = setup();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     const first = [...practice.lines()];
 
     flow.finish();
     setSeed(0);
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
 
     expect([...practice.lines()].sort()).toEqual([...first].sort());
   });
 });
 
 describe('FlowStore freezes the level for the running session', () => {
-  it('leaves the sentences alone when the profile level changes mid-activity', async () => {
+  it('leaves the sentences alone when the profile level changes mid-session', async () => {
     const { flow, practice, profile } = setup();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     const running = [...practice.lines()];
     expect(running.length).toBeGreaterThan(0);
 
@@ -349,14 +378,14 @@ describe('FlowStore freezes the level for the running session', () => {
     expect(practice.level()).toBe(TEST_LEVEL);
   });
 
-  it('picks the new level up on the next activity', async () => {
+  it('picks the new level up on the next session', async () => {
     const { flow, practice, profile } = setup();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     profile.setLevel('B1');
     flow.finish();
 
-    await flow.start(activityById('shadowing')!, null, 10);
+    await flow.start('speaking', 'catalog', null, 10);
 
     expect(practice.level()).toBe('B1');
     expect([...practice.lines()].sort()).toEqual(['c1', 'c2']);
@@ -365,7 +394,7 @@ describe('FlowStore freezes the level for the running session', () => {
   it('offers the profile level\'s topics for choosing, not the running one\'s', async () => {
     const { flow, practice, profile } = setup();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     expect(practice.topics().map((t) => t.id)).toEqual(['a', 'b']);
 
     profile.setLevel('B1');
