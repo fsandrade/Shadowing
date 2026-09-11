@@ -7,6 +7,7 @@ import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
+import { YoutubeTopicStore } from './youtube-topic-store';
 
 const FIRST_PAGE = 60;
 const PAGE = 60;
@@ -17,6 +18,7 @@ export class PracticeStore {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
+  private readonly youtube = inject(YoutubeTopicStore);
   private readonly profile = inject(ProfileStore);
   private readonly random = inject(RANDOM);
 
@@ -42,6 +44,8 @@ export class PracticeStore {
 
   readonly customActive = computed(() => this.settings.source() === 'custom');
 
+  readonly youtubeActive = computed(() => this.settings.source() === 'youtube');
+
   // The profile level, not the running one: this list is what the chooser
   // offers for the *next* activity.
   readonly topics = computed<readonly Topic[]>(() => {
@@ -58,6 +62,7 @@ export class PracticeStore {
 
   readonly lines = computed<readonly string[]>(() => {
     if (this.customActive()) { return this.custom.lines(); }
+    if (this.youtubeActive()) { return this.youtube.lines(); }
     this.reshuffle();
     return shuffle(this.sentences().map((s) => s.text), this.rng() ?? this.random);
   });
@@ -84,6 +89,11 @@ export class PracticeStore {
 
   useCustomText(): void {
     this.settings.setSource('custom');
+    this.resetProgress();
+  }
+
+  useYoutube(): void {
+    this.settings.setSource('youtube');
     this.resetProgress();
   }
 

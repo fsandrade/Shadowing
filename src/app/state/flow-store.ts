@@ -81,10 +81,7 @@ export class FlowStore {
     if (source === 'custom') {
       this.practice.useCustomText();
     } else if (source === 'youtube') {
-      // Task 9 adds PracticeStore.useYoutube(); until then a youtube session
-      // loads through the same path as a catalog one.
-      this.practice.selectTopic(topicId);
-      this.practice.shuffleLines();
+      this.practice.useYoutube();
     } else {
       this.practice.selectTopic(topicId);
       // Every session starts on a fresh order, so there is no shuffle button

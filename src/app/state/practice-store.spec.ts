@@ -5,6 +5,7 @@ import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
+import { YoutubeTopicStore } from './youtube-topic-store';
 import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
@@ -28,6 +29,7 @@ function setup() {
     store: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
     custom: TestBed.inject(CustomTopicStore),
+    youtube: TestBed.inject(YoutubeTopicStore),
   };
 }
 
@@ -72,6 +74,29 @@ describe('PracticeStore custom topic', () => {
     store.useCustomText();
 
     expect(store.lines()).toEqual(['Only this one.']);
+    expect(store.index()).toBe(0);
+    expect(store.spoken().size).toBe(0);
+  });
+
+  it('is not youtube-active by default', () => {
+    expect(setup().store.youtubeActive()).toBe(false);
+  });
+
+  it('becomes youtube-active and serves the saved transcript lines', () => {
+    const { store, youtube } = setup();
+    youtube.set('abc', ['Caption one', 'Caption two.']);
+    store.useYoutube();
+    expect(store.youtubeActive()).toBe(true);
+    expect(store.lines()).toEqual(['Caption one', 'Caption two.']);
+  });
+
+  it('useYoutube resets index and spoken', () => {
+    const { store, youtube } = setup();
+    youtube.set('abc', ['Caption one', 'Caption two.']);
+    store.useYoutube();
+    store.goTo(1);
+    store.markSpoken(1);
+    store.useYoutube();
     expect(store.index()).toBe(0);
     expect(store.spoken().size).toBe(0);
   });
