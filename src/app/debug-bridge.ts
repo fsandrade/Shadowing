@@ -27,7 +27,6 @@ export class DebugBridge {
         get levelId() { return profile.levelId(); },
         get topicId() { return settings.topicId(); },
         get source() { return settings.source(); },
-        get blur() { return settings.blur(); },
         get sttEnabled() { return settings.sttEnabled(); },
         get progress() { return playback.progress(); },
       },

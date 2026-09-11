@@ -12,9 +12,7 @@ interface StoredSettings {
   slack?: unknown;
   voiceName?: unknown;
   durationMin?: unknown;
-  blur?: unknown;
   stt?: unknown;
-  repeat?: unknown;
   typing?: unknown;
 }
 
@@ -49,9 +47,7 @@ export class SettingsStore {
   // Zero means no time limit: the clock counts up and only the Finish button
   // ends the activity. Every other value is a countdown that ends it for you.
   readonly durationMin = signal(storedDuration(this.saved.durationMin));
-  readonly blur = signal(this.saved.blur === true);
   readonly sttEnabled = signal(this.saved.stt === true);
-  readonly repeatUntilFive = signal(this.saved.repeat === true);
   readonly typingMode = signal(this.saved.typing === true);
 
   constructor() {
@@ -63,9 +59,7 @@ export class SettingsStore {
         slack: this.slack(),
         voiceName: this.voiceName(),
         durationMin: this.durationMin(),
-        blur: this.blur(),
         stt: this.sttEnabled(),
-        repeat: this.repeatUntilFive(),
         typing: this.typingMode(),
       });
     });
@@ -77,8 +71,6 @@ export class SettingsStore {
   setSlack(v: number): void { this.slack.set(v); }
   setVoiceName(name: string): void { this.voiceName.set(name); }
   setDurationMin(min: number): void { this.durationMin.set(min); }
-  setBlur(on: boolean): void { this.blur.set(on); }
   setSttEnabled(on: boolean): void { this.sttEnabled.set(on); }
-  setRepeatUntilFive(on: boolean): void { this.repeatUntilFive.set(on); }
   setTypingMode(on: boolean): void { this.typingMode.set(on); }
 }

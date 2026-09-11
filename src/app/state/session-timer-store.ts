@@ -54,7 +54,7 @@ export class SessionTimerStore {
   }
 
   accrue(): void {
-    if (!this.practice.playing()) { return; }
+    if (!this.practice.playing() && !this.settings.typingMode()) { return; }
     const used = this.clock.now() - this.resumedAt;
     this.remainingMs.update((ms) => (this.unlimited() ? ms + used : ms - used));
     this.resumedAt = this.clock.now();
@@ -123,6 +123,7 @@ export class SessionTimerStore {
   }
 
   private elapsed(): number {
-    return this.practice.playing() ? this.clock.now() - this.resumedAt : 0;
+    const running = this.practice.playing() || this.settings.typingMode();
+    return running ? this.clock.now() - this.resumedAt : 0;
   }
 }

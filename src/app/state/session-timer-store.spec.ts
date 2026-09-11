@@ -69,6 +69,18 @@ describe('SessionTimerStore always counts down', () => {
 
     expect(timer.expired()).toBe(true);
   });
+
+  it('a dictation session counts down without playback', () => {
+    const { timer, settings, advance } = setup();
+    settings.setTypingMode(true);
+    timer.reset(5);
+    advance(2 * 60_000);
+    timer.accrue();
+    expect(timer.expired()).toBe(false);
+    advance(4 * 60_000);
+    timer.accrue();
+    expect(timer.expired()).toBe(true);
+  });
 });
 
 describe('SessionTimerStore in countdown mode', () => {

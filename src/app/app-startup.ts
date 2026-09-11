@@ -19,8 +19,6 @@ import { type LineResult, ValidationService } from './validation/validation-serv
 const CLOCK_TICK_MS = 250;
 
 const KEEPALIVE_MS = 10_000;
-const MAX_REPEATS = 5;
-const MAX_STARS = 5;
 
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
@@ -86,17 +84,7 @@ export class AppStartup {
       }) ?? null;
     });
 
-    this.playback.setValidationTiming(() => this.settings.typingMode());
     this.playback.setValidationAbort(() => this.validation.dispose());
-
-    this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {
-      if (!this.settings.sttEnabled() || !this.settings.repeatUntilFive()) { return false; }
-      if (repeatsDone >= MAX_REPEATS) { return false; }
-      if (this.mic.denied() && !this.settings.typingMode()) { return false; }
-      const result = this.validation.results().get(lineIndex);
-      if (!result) { return false; }
-      return result.stars === null || result.stars < MAX_STARS;
-    });
   }
 
   private forgetLevelThatNoLongerExists(): void {

@@ -23,7 +23,6 @@ describe('SettingsStore defaults', () => {
     expect(store.rate()).toBe(1);
     expect(store.slack()).toBe(1);
     expect(store.voiceName()).toBe('');
-    expect(store.blur()).toBe(false);
     expect(store.sttEnabled()).toBe(false);
   });
 
@@ -38,14 +37,13 @@ describe('SettingsStore defaults', () => {
   it('restores stored values', () => {
     const { store } = setup({
       topicId: 'meetings', rate: 1.4, slack: 2, voiceName: 'David',
-      durationMin: 10, blur: true, stt: true,
+      durationMin: 10, stt: true,
     });
     expect(store.topicId()).toBe('meetings');
     expect(store.rate()).toBe(1.4);
     expect(store.slack()).toBe(2);
     expect(store.voiceName()).toBe('David');
     expect(store.durationMin()).toBe(10);
-    expect(store.blur()).toBe(true);
     expect(store.sttEnabled()).toBe(true);
   });
 
@@ -55,9 +53,8 @@ describe('SettingsStore defaults', () => {
     expect(setup({ slack: 0 }).store.slack()).toBe(1);
   });
 
-  it('treats blur and stt as strictly true, not truthy', () => {
-    expect(setup({ blur: 'yes', stt: 1 }).store.blur()).toBe(false);
-    expect(setup({ blur: 'yes', stt: 1 }).store.sttEnabled()).toBe(false);
+  it('treats stt as strictly true, not truthy', () => {
+    expect(setup({ stt: 1 }).store.sttEnabled()).toBe(false);
   });
 
   it('coerces an unparseable or negative duration to ten minutes', () => {
@@ -78,8 +75,18 @@ describe('SettingsStore persistence', () => {
     expect(key).toBe(SETTINGS_KEY);
     expect(payload).toEqual({
       topicId: 'travel', source: 'catalog', rate: 1.6, slack: 1, voiceName: '',
-      durationMin: 10, blur: false, stt: true, repeat: false, typing: false,
+      durationMin: 10, stt: true, typing: false,
     });
+  });
+
+  it('persists typingMode (dictation) as a request-scoped flag', () => {
+    const { store, write } = setup(null);
+    store.setTypingMode(true);
+    store.setTypingMode(false);
+    TestBed.tick();
+
+    const [, payload] = write.mock.lastCall as [string, Record<string, unknown>];
+    expect(payload).toMatchObject({ typing: false });
   });
 
   it('exposes the storage key the vanilla app used', () => {
