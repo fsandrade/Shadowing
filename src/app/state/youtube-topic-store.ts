@@ -10,7 +10,9 @@ interface Stored {
 }
 
 function clean(raw: unknown, sanitizer: TextSanitizer): Stored {
-  const json = sanitizer.toPlainText(raw);
+  const json = sanitizer.toPlainText(
+    typeof raw === 'string' ? raw : JSON.stringify(raw),
+  );
   try {
     const parsed = JSON.parse(json) as Partial<Stored> | null;
     if (parsed && typeof parsed.videoId === 'string' && parsed.videoId) {

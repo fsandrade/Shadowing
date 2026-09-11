@@ -18,7 +18,7 @@ function setup() {
       },
       {
         provide: TextSanitizer,
-        useValue: { toPlainText: (v: unknown) => JSON.stringify(v ?? '') } as TextSanitizer,
+        useValue: { toPlainText: (v: unknown) => (typeof v === 'string' ? v : '') } as TextSanitizer,
       },
     ],
   });
@@ -47,6 +47,15 @@ describe('YoutubeTopicStore', () => {
     const fresh = TestBed.inject(YoutubeTopicStore);
     expect(fresh.videoId()).toBe('abc');
     expect(fresh.lines()).toEqual(['hello world']);
+  });
+
+  it('ignores malformed stored values', () => {
+    const { backing } = setup();
+    backing.set('shadowing.youtubeTopic', { videoId: '', lines: [1, 'ok'] });
+    const fresh = TestBed.inject(YoutubeTopicStore);
+    expect(fresh.videoId()).toBeNull();
+    expect(fresh.lines()).toEqual([]);
+    expect(fresh.hasLines()).toBe(false);
   });
 
   it('clear() empties the store', () => {
