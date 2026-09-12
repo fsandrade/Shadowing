@@ -23,7 +23,11 @@
       <main appSessionSummary class="full"></main>
     }
     @default {
-      <main appPractice class="full"></main>
+      @if (flow.kind() === 'dictation') {
+        <main appDictation class="full"></main>
+      } @else {
+        <main appPractice class="full"></main>
+      }
     }
   }
 </div>

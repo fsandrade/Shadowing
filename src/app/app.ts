@@ -7,6 +7,7 @@ import { VoiceStore } from './state/voice-store';
 import { ActivityChooser } from './ui/activity-chooser';
 import { BannerView } from './ui/banner-view';
 import { EdgeTip } from './ui/edge-tip';
+import { Dictation } from './ui/dictation';
 import { HeaderBar } from './ui/header-bar';
 import { HelpModal } from './ui/help-modal';
 import { LevelPicker } from './ui/level-picker';
@@ -18,8 +19,8 @@ import { Shortcuts } from './ui/shortcuts';
 @Component({
   selector: 'app-root',
   imports: [
-    HeaderBar, BannerView, LevelPicker, ActivityChooser, Practice, SessionSummary, Shortcuts,
-    EdgeTip, HelpModal, SettingsDrawer,
+    HeaderBar, BannerView, LevelPicker, ActivityChooser, Practice, Dictation, SessionSummary,
+    Shortcuts, EdgeTip, HelpModal, SettingsDrawer,
   ],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,7 +35,7 @@ export class App {
   protected readonly settingsOpen = signal(false);
 
   protected readonly enabled = computed(
-    () => this.flow.screen() === 'practice'
+    () => (this.flow.screen() === 'practice' || this.flow.screen() === 'dictation')
       && this.practice.hasLines()
       && this.speaker.supported
       && this.voices.hasEnglish(),
