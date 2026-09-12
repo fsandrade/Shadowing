@@ -138,3 +138,20 @@ export async function breakSupabase(page: Page): Promise<void> {
     json: { message: 'backend is down' },
   }));
 }
+
+/**
+ * Routes the youtube-transcript edge-function call to a fake caption track.
+ * The function is the only network hop the YouTube source makes; with this in
+ * place a video loads like a topic and never touches the wire.
+ */
+export async function installFakeYoutube(page: Page, lines: string[]): Promise<void> {
+  await page.route('**/functions/v1/youtube-transcript*', (route) => {
+    const tracks: Array<{ start: number; text: string }> = [];
+    let t = 0;
+    for (const part of lines.flatMap((l) => l.split(' '))) {
+      tracks.push({ start: t, text: part });
+      t += 0.7;
+    }
+    return route.fulfill({ json: { segments: tracks } });
+  });
+}

@@ -24,6 +24,7 @@ export class DebugBridge {
         get index() { return practice.index(); },
         get playing() { return practice.playing(); },
         get lines() { return practice.lines(); },
+        get currentText() { return practice.lines()[practice.index()] ?? ''; },
         get levelId() { return profile.levelId(); },
         get topicId() { return settings.topicId(); },
         get source() { return settings.source(); },
