@@ -27,13 +27,15 @@ export class YoutubeSourceService {
   private readonly store = inject(YoutubeTopicStore);
   private readonly fetchSegments = inject(YOUTUBE_TRANSCRIPT_FN);
 
-  async load(url: string): Promise<{ videoId: string; lines: readonly string[] }> {
+  async load(url: string): Promise<{ videoId: string; lines: readonly string[]; starts: readonly number[] }> {
     const videoId = videoIdFromUrl(url);
     if (!videoId) { throw new Error('Paste a full YouTube watch link, like https://www.youtube.com/watch?v=abc123'); }
     const segments = await this.fetchSegments(videoId);
     if (!segments.length) { throw new Error('That video has no subtitles to practise with.'); }
-    const lines = mergeSegmentsToLines(segments).map((l) => l.text);
-    this.store.set(videoId, lines);
-    return { videoId, lines };
+    const merged = mergeSegmentsToLines(segments);
+    const lines = merged.map((l) => l.text);
+    const starts = merged.map((l) => l.start);
+    this.store.set(videoId, lines, starts);
+    return { videoId, lines, starts };
   }
 }

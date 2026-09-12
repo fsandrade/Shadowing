@@ -3,6 +3,7 @@ import { stripTags } from '../core/text';
 import { pauseMs } from '../core/timing';
 import { Clock } from '../platform/clock';
 import { Speaker } from '../platform/speaker';
+import { YoutubePlayerService } from '../platform/youtube-player';
 import { BannerStore } from '../state/banner-store';
 import { FlowStore } from '../state/flow-store';
 import { MESSAGES } from '../state/messages';
@@ -37,6 +38,7 @@ export class PlaybackService {
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
   private readonly flow = inject(FlowStore);
+  private readonly youtubePlayer = inject(YoutubePlayerService);
 
   private generation = 0;
   private silentStreak = 0;
@@ -134,6 +136,16 @@ export class PlaybackService {
   }
 
   private speak(index: number): Promise<void> {
+    if (this.practice.youtubeActive()) {
+      return this.youtubePlayer.playSegment(index).then((played) => (
+        played
+          ? Promise.resolve()
+          : this.speaker.speak(this.textAt(index), {
+              rate: this.settings.rate(),
+              voice: this.voices.selected(),
+            })
+      ));
+    }
     return this.speaker.speak(this.textAt(index), {
       rate: this.settings.rate(),
       voice: this.voices.selected(),

@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activityById } from '../core/activity';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
+import { YoutubePlayerService } from '../platform/youtube-player';
 import { BannerStore } from '../state/banner-store';
 import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
@@ -11,6 +11,7 @@ import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
+import { YoutubeTopicStore } from '../state/youtube-topic-store';
 import { PlaybackService } from './playback-service';
 import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
@@ -44,7 +45,11 @@ function fakeSpeaker(speakMs: number) {
   return { spoken, impl, setSpeakMs: (next: number) => { ms = next; } };
 }
 
-function setup(speakMs = 1000, corpus: Catalog = DATA) {
+function fakeYoutubePlayer(playSegment: ReturnType<typeof vi.fn>) {
+  return { playSegment, stop: vi.fn() } as unknown as YoutubePlayerService;
+}
+
+function setup(speakMs = 1000, corpus: Catalog = DATA, video?: { playSegment: ReturnType<typeof vi.fn> }) {
   const speaker = fakeSpeaker(speakMs);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -57,6 +62,7 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
       { provide: CATALOG, useValue: corpus },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: Speaker, useValue: speaker.impl },
+      ...(video ? [{ provide: YoutubePlayerService, useValue: fakeYoutubePlayer(video.playSegment) }] : []),
     ],
   });
   const settings = TestBed.inject(SettingsStore);
@@ -362,11 +368,9 @@ describe('PlaybackService session expiry', () => {
     t: { flow: FlowStore; settings: SettingsStore },
     minutes: number,
   ): Promise<void> {
-    await t.flow.start(activityById('shadowing')!, 'a', minutes);
+    await t.flow.start('speaking', 'catalog', 'a', minutes);
     t.settings.setSlack(1);
   }
-
-  const SHADOWING = activityById('shadowing')!;
 
   it('finishes and reports the session once a timed session runs out', async () => {
     const t = setup(1000);
@@ -378,7 +382,7 @@ describe('PlaybackService session expiry', () => {
     expect(t.practice.playing()).toBe(false);
     expect(t.flow.screen()).toBe('summary');
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: null, name: 'Speaking',
     });
     expect(t.timer.spokenCount()).toBe(0);
   });
@@ -395,7 +399,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 12,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 12, name: 'Speaking',
     });
   });
 
@@ -415,7 +419,7 @@ describe('PlaybackService session expiry', () => {
 
     expect(scored).toBeGreaterThan(3);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 15,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 15, name: 'Speaking',
     });
   });
 
@@ -440,7 +444,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null, name: 'Speaking',
     });
     expect(t.playback.inGap()).toBe(false);
     expect(t.practice.playing()).toBe(false);
@@ -459,7 +463,7 @@ describe('PlaybackService session expiry', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null, name: 'Speaking',
     });
     expect(t.practice.playing()).toBe(false);
     expect(t.practice.index()).toBe(0);
@@ -837,5 +841,37 @@ describe('PlaybackService repeating a line for the typist', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(speaker.spoken).toEqual(['first line is long enough to measure']);
+  });
+});
+
+describe('PlaybackService youtube source', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('seeks the player instead of speaking when youtube is active', async () => {
+    const playSegment = vi.fn().mockResolvedValue(true);
+    const { playback, practice, speaker } = setup(1000, DATA, { playSegment });
+    TestBed.inject(YoutubeTopicStore).set('abc', ['short one', 'short two'], [0, 4]);
+    practice.useYoutube();
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(playSegment).toHaveBeenCalledWith(0);
+    expect(speaker.spoken).toEqual([]);
+  });
+
+  it('falls back to the speaker when the player cannot play the segment', async () => {
+    const playSegment = vi.fn().mockResolvedValue(false);
+    const { playback, practice, speaker } = setup(1000, DATA, { playSegment });
+    TestBed.inject(YoutubeTopicStore).set('abc', ['short one', 'short two'], [0, 4]);
+    practice.useYoutube();
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(playSegment).toHaveBeenCalledWith(0);
+    expect(speaker.spoken[0]).toBe('short one');
+    expect(practice.playing()).toBe(true);
   });
 });

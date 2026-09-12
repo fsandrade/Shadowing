@@ -77,6 +77,18 @@ describe('YoutubeSourceService', () => {
     expect(result.lines.length).toBeGreaterThan(0);
   });
 
+  it('round-trips each merged line start through the store', async () => {
+    const segments = [
+      { start: 0, text: 'First sentence.' },
+      { start: 10, text: 'Second sentence.' },
+    ];
+    const { service, store } = setup(vi.fn().mockResolvedValue(segments));
+    const result = await service.load('https://www.youtube.com/watch?v=abcdefg');
+    expect(result.lines).toEqual(['First sentence.', 'Second sentence.']);
+    expect(result.starts).toEqual([0, 10]);
+    expect(store.starts()).toEqual([0, 10]);
+  });
+
   it('throws when there are no segments', async () => {
     const { service } = setup(vi.fn().mockResolvedValue([]));
     await expect(

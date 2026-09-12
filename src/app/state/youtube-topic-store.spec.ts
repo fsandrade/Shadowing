@@ -33,11 +33,12 @@ describe('YoutubeTopicStore', () => {
     expect(store.hasLines()).toBe(false);
   });
 
-  it('stores a video and its lines', () => {
+  it('stores a video, its lines and their start times', () => {
     const { store } = setup();
-    store.set('wtMUy_3NGl4', ['Once upon a time', 'In a kingdom far away']);
+    store.set('wtMUy_3NGl4', ['Once upon a time', 'In a kingdom far away'], [0, 12.5]);
     expect(store.videoId()).toBe('wtMUy_3NGl4');
     expect(store.lines()).toEqual(['Once upon a time', 'In a kingdom far away']);
+    expect(store.starts()).toEqual([0, 12.5]);
     expect(store.hasLines()).toBe(true);
   });
 
@@ -49,20 +50,41 @@ describe('YoutubeTopicStore', () => {
     expect(fresh.lines()).toEqual(['hello world']);
   });
 
+  it('restores start times alongside the lines', () => {
+    const { backing } = setup();
+    backing.set('shadowing.youtubeTopic', {
+      videoId: 'abc',
+      lines: ['hello world', 'goodbye world'],
+      starts: [3.5, 9],
+    });
+    const fresh = TestBed.inject(YoutubeTopicStore);
+    expect(fresh.lines()).toEqual(['hello world', 'goodbye world']);
+    expect(fresh.starts()).toEqual([3.5, 9]);
+  });
+
+  it('falls back to empty start times when a stored value has none', () => {
+    const { backing } = setup();
+    backing.set('shadowing.youtubeTopic', { videoId: 'abc', lines: ['hello world'] });
+    const fresh = TestBed.inject(YoutubeTopicStore);
+    expect(fresh.starts()).toEqual([]);
+  });
+
   it('ignores malformed stored values', () => {
     const { backing } = setup();
     backing.set('shadowing.youtubeTopic', { videoId: '', lines: [1, 'ok'] });
     const fresh = TestBed.inject(YoutubeTopicStore);
     expect(fresh.videoId()).toBeNull();
     expect(fresh.lines()).toEqual([]);
+    expect(fresh.starts()).toEqual([]);
     expect(fresh.hasLines()).toBe(false);
   });
 
   it('clear() empties the store', () => {
     const { store } = setup();
-    store.set('abc', ['x']);
+    store.set('abc', ['x'], [4]);
     store.clear();
     expect(store.hasLines()).toBe(false);
     expect(store.videoId()).toBeNull();
+    expect(store.starts()).toEqual([]);
   });
 });
