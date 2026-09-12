@@ -26,6 +26,10 @@ function misspellOneWord(sentence: string): string {
     .join('');
 }
 
+function stripTags(sentence: string): string {
+  return sentence.replace(/<[^>]*>/g, '');
+}
+
 async function currentLineText(page: Page): Promise<string> {
   return page.evaluate(() => (window as any).__shadowing.state.currentText as string);
 }
@@ -36,7 +40,7 @@ async function currentLineText(page: Page): Promise<string> {
  * Comparing on words makes the assertion robust to either spacing.
  */
 function asPlain(sentence: string): string {
-  return sentence.replace(/<[^>]*>/g, '').replace(/[^\p{L}\p{N}']/gu, '');
+  return stripTags(sentence).replace(/[^\p{L}\p{N}']/gu, '');
 }
 
 async function answerText(page: Page): Promise<string> {
@@ -70,10 +74,11 @@ test('typing the sentence exactly shows Correct and then advances', async ({ pag
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null });
   const sentence = await currentLineText(page);
-  await page.locator('#dictInput').fill(sentence);
+  const typed = stripTags(sentence);
+  await page.locator('#dictInput').fill(typed);
   await page.locator('#dictCheck').click();
-  await expect(page.locator('.dict-verdict')).toHaveText(/Correct/i);
-  expect(await answerText(page)).toBe(asPlain(sentence));
+  await expect(page.locator('.dict-verdict')).toHaveText('Correct');
+  expect(await answerText(page)).toBe(asPlain(typed));
   await page.locator('#dictNext').click();
   await expect(page.locator('#dictationCount')).toContainText('2 /');
 });
@@ -81,7 +86,7 @@ test('typing the sentence exactly shows Correct and then advances', async ({ pag
 test('a misspelled word shows Incorrect with a masked answer', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null });
-  const sentence = await currentLineText(page);
+  const sentence = stripTags(await currentLineText(page));
   const broken = misspellOneWord(sentence);
   await page.locator('#dictInput').fill(broken);
   await page.locator('#dictCheck').click();
@@ -102,7 +107,7 @@ test('Skip leaves the challenge unanswered and moves on', async ({ page }) => {
 test('Show full answer reveals the whole sentence on an incorrect check', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null });
-  const sentence = await currentLineText(page);
+  const sentence = stripTags(await currentLineText(page));
   await page.locator('#dictInput').fill(misspellOneWord(sentence));
   await page.locator('#dictCheck').click();
   await page.locator('#dictShowFull').check();
