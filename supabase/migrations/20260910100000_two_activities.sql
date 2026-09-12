@@ -12,7 +12,9 @@ update public.practice_sessions
    end;
 
 alter table public.practice_sessions
-  drop column activity,
+  drop column activity;
+
+alter table public.practice_sessions
   rename column activity_new to activity;
 
 alter table public.practice_sessions
