@@ -35,7 +35,7 @@ export class App {
   protected readonly settingsOpen = signal(false);
 
   protected readonly enabled = computed(
-    () => (this.flow.screen() === 'practice' || this.flow.screen() === 'dictation')
+    () => this.flow.screen() === 'practice'
       && this.practice.hasLines()
       && this.speaker.supported
       && this.voices.hasEnglish(),

@@ -2,6 +2,7 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { stripTags } from '../core/text';
 import { isTypingCorrect } from '../core/typing';
 import { ProgressService } from '../data/progress-service';
+import { FlowStore } from './flow-store';
 import { PracticeStore } from './practice-store';
 import { SessionTimerStore } from './session-timer-store';
 
@@ -12,6 +13,7 @@ export class DictationStore {
   private readonly practice = inject(PracticeStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly progress = inject(ProgressService);
+  private readonly flow = inject(FlowStore);
 
   readonly lines = this.practice.lines;
   readonly index = this.practice.index;
@@ -27,7 +29,13 @@ export class DictationStore {
     // A fresh session reshuffles or swaps the source, which recomputes lines():
     // the per-index verdicts from the previous run must not leak onto a session
     // that never answered them.
+    // A fresh session reshuffles or swaps the source, which recomputes lines():
+    // the per-index verdicts from the previous run must not leak onto a session
+    // that never answered them. Restarting the SAME My text or YouTube source
+    // leaves lines() cached (useCustomText/useYoutube write the same source), so
+    // kind() - null -> 'dictation' on every start - is the dependable stamp.
     effect(() => {
+      this.flow.kind();
       this.lines();
       this.reset();
     });

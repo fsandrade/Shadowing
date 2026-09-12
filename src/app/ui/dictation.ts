@@ -40,6 +40,9 @@ export class Dictation {
   constructor() {
     afterRenderEffect(() => {
       this.store.index();
+      // The input keeps its DOM value via [value]="typed()"; on a new
+      // challenge the old answer must not survive to be scored against it.
+      this.typed.set('');
       untracked(() => void this.playCurrent());
     });
   }
