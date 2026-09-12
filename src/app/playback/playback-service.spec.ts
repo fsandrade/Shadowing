@@ -714,7 +714,7 @@ describe('PlaybackService validation timing', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('opens validation only after the audio when spelling is off', async () => {
+  it('opens validation only after the audio when the timing hook is off', async () => {
     const { playback, speaker } = setup(1000);
     const openedAfter: number[] = [];
     playback.setValidationHook(() => {
@@ -730,7 +730,7 @@ describe('PlaybackService validation timing', () => {
     expect(openedAfter).toEqual([1]);
   });
 
-  it('opens validation as the audio starts when spelling is on', async () => {
+  it('opens validation as the audio starts when the timing hook is on', async () => {
     const { playback, speaker } = setup(1000);
     const openedAfter: number[] = [];
     playback.setValidationTiming(() => true);

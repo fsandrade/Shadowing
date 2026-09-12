@@ -145,8 +145,8 @@ export class FlowStore {
       ? session.kind === 'speaking' ? 'Speaking' : 'Dictation'
       : names[session.source];
     this.finished.set({
-      kind: this.running()!.kind,
-      source: this.running()!.source,
+      kind: session.kind,
+      source: session.source,
       topicId: this.topic(),
       practisedMs: tally.usedMs,
       spoken: tally.spoken,

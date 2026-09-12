@@ -452,7 +452,7 @@ test('help modal opens, describes features, and closes', async ({ page }) => {
   await page.locator('#help').click();
   await expect(page.locator('#helpModal')).toBeVisible();
   await expect(page.locator('#helpModal')).toContainText(/How to use this app/i);
-  await expect(page.locator('#helpModal')).toContainText(/Blur/i);
+  await expect(page.locator('#helpModal')).toContainText(/Dictation/i);
   await expect(page.locator('#helpModal')).toContainText(/gap/i);
 
   await page.keyboard.press('Escape');
