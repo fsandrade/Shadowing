@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { activityById } from '../core/activity';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
@@ -89,7 +88,7 @@ describe('SettingsDrawer profile section', () => {
   it('leaves a running activity on the level it started with', async () => {
     const { levels, draw, flow, practice } = render();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     draw();
     const running = [...practice.lines()];
 

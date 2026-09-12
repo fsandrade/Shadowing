@@ -6,13 +6,16 @@ import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { INITIAL_USER } from '../platform/auth';
 import { RANDOM } from '../platform/rng';
+import {
+  SPEECH_RECOGNITION_CTOR, type SpeechRecognitionCtor,
+} from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
 import { SUPABASE } from '../platform/supabase-client';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
+import { YoutubeTopicStore } from '../state/youtube-topic-store';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
-import { ValidationService } from '../validation/validation-service';
 import { ActivityChooser } from './activity-chooser';
 
 @Component({
@@ -20,6 +23,21 @@ import { ActivityChooser } from './activity-chooser';
   template: `<main appActivityChooser></main>`,
 })
 class Host {}
+
+// The chooser gates the Speaking card on speech recognition being available,
+// so the specs that drive it provide a fake ctor to keep the card enabled.
+class FakeRecognition {
+  lang = '';
+  continuous = false;
+  interimResults = false;
+  maxAlternatives = 1;
+  onresult: unknown = null;
+  onerror: unknown = null;
+  onend: unknown = null;
+  start(): void {}
+  stop(): void {}
+  abort(): void {}
+}
 
 function render(extra: unknown[] = []) {
   const store = new Map<string, unknown>([['shadowing.profile', { levelId: TEST_LEVEL }]]);
@@ -32,6 +50,7 @@ function render(extra: unknown[] = []) {
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: INITIAL_USER, useValue: null },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
+      { provide: SPEECH_RECOGNITION_CTOR, useValue: FakeRecognition as unknown as SpeechRecognitionCtor },
       {
         provide: SUPABASE,
         useValue: {
@@ -65,7 +84,7 @@ function render(extra: unknown[] = []) {
     q,
     flow: TestBed.inject(FlowStore),
     settings: TestBed.inject(SettingsStore),
-    validation: TestBed.inject(ValidationService),
+    youtube: TestBed.inject(YoutubeTopicStore),
     cards: () => [...root.querySelectorAll<HTMLButtonElement>('.activity-card')],
     durations: () => [...root.querySelectorAll<HTMLButtonElement>('.durations button')],
     start: () => q<HTMLButtonElement>('#startActivity'),
@@ -73,54 +92,116 @@ function render(extra: unknown[] = []) {
 }
 
 describe('ActivityChooser', () => {
-  it('offers every activity, My text included', () => {
+  it('offers exactly the two practice kinds', () => {
     const { cards } = render();
-    expect(cards().map((c) => c.dataset['activityId']))
-      .toEqual(['listening', 'shadowing', 'speaking', 'spelling', 'custom']);
+    expect(cards().map((c) => c.dataset['kindId'])).toEqual(['speaking', 'dictation']);
   });
 
-  it('explains each activity in one line', () => {
+  it('explains each kind in one line', () => {
     const { cards } = render();
-    expect(cards()[0].textContent).toMatch(/Train your ear/i);
-    expect(cards()[4].textContent).toMatch(/never counts|Nothing here counts/i);
+    expect(cards()[0].textContent).toMatch(/Say each sentence out loud/i);
+    expect(cards()[1].textContent).toMatch(/Listen, type what you hear/i);
   });
 
-  it('does not suggest anything yet, and cannot start until an activity is picked', () => {
+  it('does not suggest anything yet, and cannot start until a kind is picked', () => {
     const { cards, start } = render();
     expect(cards().some((c) => c.getAttribute('aria-pressed') === 'true')).toBe(false);
     expect(start().disabled).toBe(true);
   });
 
-  it('picking an activity marks it and enables Start', () => {
-    const { fixture, cards, start } = render();
+  it('picking a kind marks it, shows the topic source, and Start still needs a topic', () => {
+    const { fixture, cards, root, start } = render();
+
     cards()[0].click();
     fixture.detectChanges();
+
     expect(cards()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(root.querySelector('#decks')).not.toBeNull();
+    expect(start().disabled).toBe(true);
+
+    root.querySelector<HTMLButtonElement>('[data-deck-id="b"]')!.click();
+    fixture.detectChanges();
     expect(start().disabled).toBe(false);
   });
 
-  it('offers four durations, unlimited last, and defaults to ten minutes', () => {
-    const { fixture, cards, durations } = render();
+  it('counts All topics as a topic pick', () => {
+    const { fixture, cards, root, start } = render();
+
     cards()[0].click();
     fixture.detectChanges();
-    expect(durations().map((b) => b.textContent?.trim()))
-      .toEqual(['5 min', '10 min', '15 min', 'Unlimited']);
-    expect(durations()[1].getAttribute('aria-pressed')).toBe('true');
+    root.querySelector<HTMLButtonElement>('#allTopics')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(false);
   });
 
-  it('shows the topics at the learner\'s level, with All topics first', () => {
+  it('keeps both cards enabled here, since the browser can transcribe speech', () => {
+    const { cards } = render();
+    expect(cards().some((c) => c.disabled)).toBe(false);
+  });
+
+  it('swaps the pane as the source tab changes', () => {
     const { fixture, cards, root } = render();
     cards()[0].click();
     fixture.detectChanges();
-    const topics = [...root.querySelectorAll<HTMLButtonElement>('#decks button')];
-    expect(topics[0].textContent?.trim()).toBe('All topics');
-    expect(topics.slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b']);
+
+    expect([...root.querySelectorAll('.source-tabs button')].map((b) => b.textContent?.trim()))
+      .toEqual(['Topic', 'My text', 'YouTube']);
+    expect(root.querySelector('#decks')).not.toBeNull();
+
+    root.querySelector<HTMLButtonElement>('#srcCustom')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('#decks')).toBeNull();
+    expect(root.querySelector('.custom-topic')).not.toBeNull();
+
+    root.querySelector<HTMLButtonElement>('#srcYoutube')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('.youtube-link')).not.toBeNull();
+
+    root.querySelector<HTMLButtonElement>('#srcCatalog')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('#decks')).not.toBeNull();
   });
 
-  it('starting hands the flow store the activity, topic and duration', async () => {
+  it('needs custom text before Start on the My text source', () => {
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#srcCustom')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(true);
+
+    const area = root.querySelector<HTMLTextAreaElement>('#customText')!;
+    area.value = 'A sentence to practise.';
+    area.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#customSave')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(false);
+  });
+
+  it('needs a stored transcript before Start on the YouTube source', () => {
+    const { fixture, cards, root, start, youtube } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#srcYoutube')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(true);
+
+    youtube.set('abc', ['Once upon a time', 'In a kingdom far away']);
+    fixture.detectChanges();
+    expect(start().disabled).toBe(false);
+  });
+
+  it('starting hands the flow store the kind, source, topic and duration', async () => {
     const { fixture, cards, durations, root, start, flow, settings } = render();
 
-    cards()[1].click();
+    cards()[0].click();
     fixture.detectChanges();
     root.querySelector<HTMLButtonElement>('[data-deck-id="b"]')!.click();
     durations()[2].click();
@@ -130,39 +211,25 @@ describe('ActivityChooser', () => {
     await fixture.whenStable();
 
     expect(flow.screen()).toBe('practice');
-    expect(flow.activity()?.id).toBe('shadowing');
+    expect(flow.kind()).toBe('speaking');
     expect(settings.topicId()).toBe('b');
     expect(settings.durationMin()).toBe(15);
   });
 
-  it('carries the check mode chosen for My text into the session', async () => {
-    // The control below the editor applies the mode as it is clicked, so begin()
-    // has to hand it to start(). Dropping that argument would fall back to the
-    // custom preset, 'nothing', and silently undo the learner.
-    const { fixture, cards, root, flow, validation } = render();
+  it('a dictation session lands on the dictation screen with no topic', async () => {
+    const { fixture, cards, root, start, flow, settings } = render();
 
-    cards()[4].click();
+    cards()[1].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#allTopics')!.click();
     fixture.detectChanges();
 
-    root.querySelector<HTMLButtonElement>('#check-spelling')!.click();
-    await fixture.whenStable();
-    expect(validation.mode()).toBe('spelling');
-
-    root.querySelector<HTMLButtonElement>('#startActivity')!.click();
+    start().click();
     await fixture.whenStable();
 
-    expect(flow.screen()).toBe('practice');
-    expect(validation.mode()).toBe('spelling');
-  });
-
-  it('swaps the topic list for the editor and a check-mode choice on My text', () => {
-    const { fixture, cards, root } = render();
-    cards()[4].click();
-    fixture.detectChanges();
-
-    expect(root.querySelector('#decks')).toBeNull();
-    expect(root.querySelector('.custom-topic')).not.toBeNull();
-    expect(root.querySelector('.check-mode')).not.toBeNull();
+    expect(flow.screen()).toBe('dictation');
+    expect(flow.kind()).toBe('dictation');
+    expect(settings.topicId()).toBeNull();
   });
 });
 

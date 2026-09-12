@@ -1,0 +1,12 @@
+<label class="youtube-link-field">
+  <span>YouTube link</span>
+  <input id="youtubeLink" type="url" [value]="link()" (input)="link.set($any($event.target).value)"
+    placeholder="https://www.youtube.com/watch?v=...">
+  <button type="button" id="youtubeLoad" [disabled]="busy() || !link()" (click)="load()">Load</button>
+</label>
+@if (store.hasLines()) {
+  <p class="youtube-ready">{{ store.lines().length }} sentences ready from that video.</p>
+}
+@if (error()) {
+  <p class="youtube-error">{{ error() }}</p>
+}

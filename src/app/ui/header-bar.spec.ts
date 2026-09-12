@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { activityById } from '../core/activity';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
@@ -45,7 +44,7 @@ describe('HeaderBar session clock', () => {
   it('appears while an activity is running, counting its duration down', async () => {
     const { flow, draw, clock } = render();
 
-    await flow.start(activityById('listening')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
     draw();
 
     expect(clock()?.textContent).toBe('15:00');
@@ -55,7 +54,7 @@ describe('HeaderBar session clock', () => {
   it('is gone again on the summary, rather than offering a fresh 15:00', async () => {
     const { flow, draw, clock } = render();
 
-    await flow.start(activityById('listening')!, 'a', 15);
+    await flow.start('speaking', 'catalog', 'a', 15);
     flow.finish();
     draw();
 
@@ -70,7 +69,7 @@ describe('HeaderBar clock with no time limit', () => {
   it('counts up from zero and says so, rather than promising time left', async () => {
     const { flow, draw, clock } = render();
 
-    await flow.start(activityById('listening')!, 'a', 0);
+    await flow.start('speaking', 'catalog', 'a', 0);
     draw();
 
     expect(clock()?.textContent).toBe('00:00');

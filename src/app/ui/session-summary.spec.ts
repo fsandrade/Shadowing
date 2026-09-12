@@ -1,7 +1,6 @@
 import { Component, type Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { activityById } from '../core/activity';
 import { HistoryService } from '../data/history-service';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
@@ -34,19 +33,20 @@ function configureTestBed(extra: Provider[] = []): void {
 }
 
 async function renderAfterSession(
-  activityId: string,
+  kind: 'speaking' | 'dictation',
   minutes: number,
   extra: Provider[] = [],
   // Stands in for the practising itself: the countdown is the only record of
   // how much of the session was spent by the time Finish is pressed.
   spend: (timer: SessionTimerStore) => void = () => {},
   topic: string | null = 'a',
+  source: 'catalog' | 'custom' = 'catalog',
 ) {
   configureTestBed(extra);
   const flow = TestBed.inject(FlowStore);
 
-  await flow.start(activityById(activityId)!, topic, minutes);
-  if (activityId === 'speaking') {
+  await flow.start(kind, source, source === 'catalog' ? topic : null, minutes);
+  if (kind === 'speaking') {
     // Give the scored case something to report, so the stars stat has a value.
     TestBed.inject(SessionTimerStore).countSpoken(0);
     TestBed.inject(SessionTimerStore).recordStars(0, 4);
@@ -65,17 +65,17 @@ async function renderAfterSession(
 
 describe('SessionSummary', () => {
   it('reports what the session was', async () => {
-    const { root, flow } = await renderAfterSession('shadowing', 10, [], (timer) => {
+    const { root, flow } = await renderAfterSession('speaking', 10, [], (timer) => {
       timer.remainingMs.set(4 * 60_000);
     });
-    expect(root.querySelector('.summary-title')?.textContent).toMatch(/Shadowing/);
+    expect(root.querySelector('.summary-title')?.textContent).toMatch(/Speaking/);
     expect(root.textContent).toMatch(/6 min/);
     expect(flow.screen()).toBe('summary');
   });
 
   it('reports the time practised, not the duration that was picked', async () => {
     // 15 minutes chosen, 90 seconds of it spent before Finish.
-    const { root } = await renderAfterSession('shadowing', 15, [], (timer) => {
+    const { root } = await renderAfterSession('speaking', 15, [], (timer) => {
       timer.remainingMs.set(15 * 60_000 - 90_000);
     });
 
@@ -85,7 +85,7 @@ describe('SessionSummary', () => {
   });
 
   it('reports a session under a minute in seconds instead of claiming zero', async () => {
-    const { root } = await renderAfterSession('shadowing', 5, [], (timer) => {
+    const { root } = await renderAfterSession('speaking', 5, [], (timer) => {
       timer.remainingMs.set(5 * 60_000 - 20_000);
     });
 
@@ -106,17 +106,17 @@ describe('SessionSummary', () => {
   });
 
   it('names the topic that was practised, not just the activity', async () => {
-    const { root } = await renderAfterSession('shadowing', 10);
-    expect(root.querySelector('.summary-title')?.textContent).toBe('Shadowing · A');
+    const { root } = await renderAfterSession('speaking', 10);
+    expect(root.querySelector('.summary-title')?.textContent).toBe('Speaking · A');
   });
 
   it('says All topics when the session was never narrowed to one', async () => {
-    const { root } = await renderAfterSession('shadowing', 10, [], () => {}, null);
-    expect(root.querySelector('.summary-title')?.textContent).toBe('Shadowing · All topics');
+    const { root } = await renderAfterSession('speaking', 10, [], () => {}, null);
+    expect(root.querySelector('.summary-title')?.textContent).toBe('Speaking · All topics');
   });
 
   it('names no topic for My text, which has none', async () => {
-    const { root } = await renderAfterSession('custom', 10, [], () => {}, null);
+    const { root } = await renderAfterSession('speaking', 10, [], () => {}, null, 'custom');
     expect(root.querySelector('.summary-title')?.textContent).toBe('My text');
   });
 
@@ -133,23 +133,23 @@ describe('SessionSummary', () => {
   });
 
   it('omits the average wherever it omits the stars', async () => {
-    const { root } = await renderAfterSession('listening', 5);
+    const { root } = await renderAfterSession('dictation', 5);
     expect(root.querySelector('[data-stat="stars"]')).toBeNull();
     expect(root.querySelector('[data-stat="average"]')).toBeNull();
   });
 
   it('omits the stars when nothing was scored, rather than showing zero', async () => {
-    const { root } = await renderAfterSession('listening', 5);
+    const { root } = await renderAfterSession('dictation', 5);
     expect(root.querySelector('[data-stat="stars"]')).toBeNull();
   });
 
   it('omits accumulated progress entirely when it cannot be read', async () => {
-    const { root } = await renderAfterSession('listening', 5);
+    const { root } = await renderAfterSession('dictation', 5);
     expect(root.querySelector('.summary-progress')).toBeNull();
   });
 
   it('shows the accumulated progress once it has been read', async () => {
-    const { root } = await renderAfterSession('listening', 5, [
+    const { root } = await renderAfterSession('dictation', 5, [
       {
         provide: HistoryService,
         useValue: {
@@ -175,7 +175,7 @@ describe('SessionSummary', () => {
   });
 
   it('goes back to the chooser', async () => {
-    const { fixture, root, flow } = await renderAfterSession('listening', 5);
+    const { fixture, root, flow } = await renderAfterSession('dictation', 5);
     root.querySelector<HTMLButtonElement>('#backToChooser')!.click();
     fixture.detectChanges();
     expect(flow.screen()).toBe('chooser');
