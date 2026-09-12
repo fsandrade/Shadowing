@@ -14,9 +14,7 @@
   <div appYoutubePlayer></div>
 }
 
-<div class="dictation-challenge"
-  [class.correct]="status() === 'correct'"
-  [class.incorrect]="status() === 'incorrect'">
+<div class="dictation-challenge">
   <button type="button" id="dictReplay" (click)="onReplay()">&#8635; Replay</button>
 
   @if (!issue()) {
@@ -31,7 +29,9 @@
       <button type="button" id="dictSkip" (click)="store.skip()">Skip</button>
     </div>
   } @else {
-    <div class="dict-verdict">{{ status() === 'correct' ? 'Correct' : 'Incorrect' }}</div>
+    <div class="dict-verdict"
+      [class.correct]="status() === 'correct'"
+      [class.incorrect]="status() === 'incorrect'">{{ status() === 'correct' ? 'Correct' : 'Incorrect' }}</div>
     <div class="dict-answer">
       @if (status() === 'incorrect') {
         @if (store.showFull()) {

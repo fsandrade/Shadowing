@@ -4,8 +4,8 @@ import { SafeStorage } from '../platform/storage';
 import { TextSanitizer } from '../platform/text-sanitizer';
 import { YoutubeTopicStore } from './youtube-topic-store';
 
-function setup() {
-  const backing = new Map<string, unknown>();
+function setup(seed?: Record<string, unknown>) {
+  const backing = new Map<string, unknown>(Object.entries(seed ?? {}));
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -43,40 +43,30 @@ describe('YoutubeTopicStore', () => {
   });
 
   it('restores from storage on construction', () => {
-    const { backing } = setup();
-    backing.set('shadowing.youtubeTopic', { videoId: 'abc', lines: ['hello world'] });
-    const fresh = TestBed.inject(YoutubeTopicStore);
-    expect(fresh.videoId()).toBe('abc');
-    expect(fresh.lines()).toEqual(['hello world']);
+    const { store } = setup({ 'shadowing.youtubeTopic': { videoId: 'abc', lines: ['hello world'] } });
+    expect(store.videoId()).toBe('abc');
+    expect(store.lines()).toEqual(['hello world']);
   });
 
   it('restores start times alongside the lines', () => {
-    const { backing } = setup();
-    backing.set('shadowing.youtubeTopic', {
-      videoId: 'abc',
-      lines: ['hello world', 'goodbye world'],
-      starts: [3.5, 9],
+    const { store } = setup({
+      'shadowing.youtubeTopic': { videoId: 'abc', lines: ['hello world', 'goodbye world'], starts: [3.5, 9] },
     });
-    const fresh = TestBed.inject(YoutubeTopicStore);
-    expect(fresh.lines()).toEqual(['hello world', 'goodbye world']);
-    expect(fresh.starts()).toEqual([3.5, 9]);
+    expect(store.lines()).toEqual(['hello world', 'goodbye world']);
+    expect(store.starts()).toEqual([3.5, 9]);
   });
 
   it('falls back to empty start times when a stored value has none', () => {
-    const { backing } = setup();
-    backing.set('shadowing.youtubeTopic', { videoId: 'abc', lines: ['hello world'] });
-    const fresh = TestBed.inject(YoutubeTopicStore);
-    expect(fresh.starts()).toEqual([]);
+    const { store } = setup({ 'shadowing.youtubeTopic': { videoId: 'abc', lines: ['hello world'] } });
+    expect(store.starts()).toEqual([]);
   });
 
   it('ignores malformed stored values', () => {
-    const { backing } = setup();
-    backing.set('shadowing.youtubeTopic', { videoId: '', lines: [1, 'ok'] });
-    const fresh = TestBed.inject(YoutubeTopicStore);
-    expect(fresh.videoId()).toBeNull();
-    expect(fresh.lines()).toEqual([]);
-    expect(fresh.starts()).toEqual([]);
-    expect(fresh.hasLines()).toBe(false);
+    const { store } = setup({ 'shadowing.youtubeTopic': { videoId: '', lines: [1, 'ok'] } });
+    expect(store.videoId()).toBeNull();
+    expect(store.lines()).toEqual([]);
+    expect(store.starts()).toEqual([]);
+    expect(store.hasLines()).toBe(false);
   });
 
   it('clear() empties the store', () => {
