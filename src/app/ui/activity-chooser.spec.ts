@@ -1,20 +1,16 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
-import { INITIAL_USER } from '../platform/auth';
 import { RANDOM } from '../platform/rng';
 import {
   SPEECH_RECOGNITION_CTOR, type SpeechRecognitionCtor,
 } from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
-import { SUPABASE } from '../platform/supabase-client';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
-import { YoutubeTopicStore } from '../state/youtube-topic-store';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
 import { ActivityChooser } from './activity-chooser';
 
@@ -24,8 +20,8 @@ import { ActivityChooser } from './activity-chooser';
 })
 class Host {}
 
-// The chooser gates the Speaking card on speech recognition being available,
-// so the specs that drive it provide a fake ctor to keep the card enabled.
+
+
 class FakeRecognition {
   lang = '';
   continuous = false;
@@ -48,21 +44,8 @@ function render(extra: unknown[] = []) {
       ...(extra as never[]),
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
-      { provide: INITIAL_USER, useValue: null },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
       { provide: SPEECH_RECOGNITION_CTOR, useValue: FakeRecognition as unknown as SpeechRecognitionCtor },
-      {
-        provide: SUPABASE,
-        useValue: {
-          from: () => ({
-            select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
-            upsert: () => Promise.resolve({ error: null }),
-            insert: () => Promise.resolve({ error: null, status: 201 }),
-            update: () => ({ eq: () => Promise.resolve({ error: null, status: 204 }) }),
-          }),
-          auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
-        } as unknown as SupabaseClient,
-      },
       {
         provide: SafeStorage,
         useValue: {
@@ -84,7 +67,6 @@ function render(extra: unknown[] = []) {
     q,
     flow: TestBed.inject(FlowStore),
     settings: TestBed.inject(SettingsStore),
-    youtube: TestBed.inject(YoutubeTopicStore),
     cards: () => [...root.querySelectorAll<HTMLButtonElement>('.activity-card')],
     durations: () => [...root.querySelectorAll<HTMLButtonElement>('.durations button')],
     start: () => q<HTMLButtonElement>('#startActivity'),
@@ -146,17 +128,13 @@ describe('ActivityChooser', () => {
     fixture.detectChanges();
 
     expect([...root.querySelectorAll('.source-tabs button')].map((b) => b.textContent?.trim()))
-      .toEqual(['Topic', 'My text', 'YouTube']);
+      .toEqual(['Topic', 'My text']);
     expect(root.querySelector('#decks')).not.toBeNull();
 
     root.querySelector<HTMLButtonElement>('#srcCustom')!.click();
     fixture.detectChanges();
     expect(root.querySelector('#decks')).toBeNull();
     expect(root.querySelector('.custom-topic')).not.toBeNull();
-
-    root.querySelector<HTMLButtonElement>('#srcYoutube')!.click();
-    fixture.detectChanges();
-    expect(root.querySelector('.youtube-link')).not.toBeNull();
 
     root.querySelector<HTMLButtonElement>('#srcCatalog')!.click();
     fixture.detectChanges();
@@ -180,21 +158,6 @@ describe('ActivityChooser', () => {
     root.querySelector<HTMLButtonElement>('#customSave')!.click();
     fixture.detectChanges();
 
-    expect(start().disabled).toBe(false);
-  });
-
-  it('needs a stored transcript before Start on the YouTube source', () => {
-    const { fixture, cards, root, start, youtube } = render();
-
-    cards()[0].click();
-    fixture.detectChanges();
-    root.querySelector<HTMLButtonElement>('#srcYoutube')!.click();
-    fixture.detectChanges();
-
-    expect(start().disabled).toBe(true);
-
-    youtube.set('abc', ['Once upon a time', 'In a kingdom far away']);
-    fixture.detectChanges();
     expect(start().disabled).toBe(false);
   });
 
@@ -277,7 +240,7 @@ describe('ActivityChooser practice panels', () => {
   async function renderWith(totals: unknown) {
     const r = render([{
       provide: HistoryService,
-      useValue: { totals: () => Promise.resolve(totals) } as unknown as HistoryService,
+      useValue: { totals: () => totals as ReturnType<HistoryService['totals']> } as unknown as HistoryService,
     }]);
     r.fixture.detectChanges();
     await r.fixture.whenStable();
@@ -329,7 +292,7 @@ describe('ActivityChooser practice panels', () => {
 
     expect(root.querySelector('[data-panel="all"] [data-stat="average"]')).toBeNull();
     expect(root.querySelector('[data-panel="today"] [data-stat="average"]')).toBeNull();
-    // Days and minutes still count, which is the whole point.
+    
     expect(root.querySelector('[data-panel="all"] [data-stat="days"]')?.textContent)
       .toMatch(/47/);
   });

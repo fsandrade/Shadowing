@@ -401,8 +401,8 @@ describe('ValidationService end of speech', () => {
     const { validation, rec, resultAt } = setup();
     void validation.begin(0, TARGET);
 
-    // Completing the sentence arms the force-finish fallback, then the browser
-    // reports its final result well inside that window.
+    
+    
     rec.speak(TARGET);
     expect(rec.latest().stopped).toBe(true);
     rec.endWithFinalText(TARGET);

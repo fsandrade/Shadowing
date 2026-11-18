@@ -1,174 +1,58 @@
 import { TestBed } from '@angular/core/testing';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { describe, expect, it } from 'vitest';
-import { INITIAL_USER } from '../platform/auth';
-import { SUPABASE } from '../platform/supabase-client';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { HistoryService } from './history-service';
 
-const USER = '11111111-1111-4111-8111-111111111111';
-
-function setup(opts: {
-  streaks?: Record<string, unknown> | null;
-  level?: Record<string, unknown> | null;
-  fails?: boolean;
-  userId?: string | null;
-} = {}) {
-  const asked: string[] = [];
-  const client = {
-    from: (table: string) => {
-      asked.push(table);
-      const data = table === 'user_streaks' ? (opts.streaks ?? null) : (opts.level ?? null);
-      const reply = Promise.resolve(
-        opts.fails ? { data: null, error: { message: 'nope' } } : { data, error: null },
-      );
-      const eq = () => ({ eq: () => ({ maybeSingle: () => reply }), maybeSingle: () => reply });
-      return { select: () => ({ eq }) };
-    },
-  } as unknown as SupabaseClient;
-
-  const userId = opts.userId === undefined ? USER : opts.userId;
-
-  TestBed.resetTestingModule();
-  TestBed.configureTestingModule({
-    providers: [
-      { provide: SUPABASE, useValue: client },
-      {
-        provide: INITIAL_USER,
-        useValue: userId === null ? null : { id: userId, is_anonymous: true, user_metadata: {} },
-      },
-    ],
-  });
-
-  return { history: TestBed.inject(HistoryService), asked };
+function storageKeys() {
+  return Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'));
 }
 
-describe('HistoryService', () => {
-  it('reports the streak and the level progress together', async () => {
-    const { history } = setup({
-      streaks: { current_streak: 4, longest_streak: 11 },
-
-    });
-
-    expect(await history.accumulated()).toEqual({
-      currentStreak: 4,
-      longestStreak: 11,
-    });
-  });
-
-  it('reads zeroes for a learner with no history yet, rather than failing', async () => {
-    const { history } = setup({ streaks: null, level: null });
-    expect(await history.accumulated()).toEqual({
-      currentStreak: 0,
-      longestStreak: 0,
-    });
-  });
-
-  it('returns nothing with nobody signed in, without touching the network', async () => {
-    const { history, asked } = setup({ userId: null });
-    expect(await history.accumulated()).toBeNull();
-    expect(asked).toEqual([]);
-  });
-
-  it('returns nothing when the read fails, so the summary can just omit the section', async () => {
-    const { history } = setup({ fails: true });
-    expect(await history.accumulated()).toBeNull();
-  });
+beforeEach(() => {
+  for (const key of storageKeys()) { localStorage.removeItem(key); }
 });
 
-describe('HistoryService totals', () => {
-  function totalsSetup(opts: { row?: Record<string, unknown> | null; fails?: boolean;
-    userId?: string | null } = {}) {
-    const asked: string[] = [];
-    const client = {
-      from: (table: string) => {
-        asked.push(table);
-        const reply = Promise.resolve(
-          opts.fails
-            ? { data: null, error: { message: 'nope' } }
-            : { data: opts.row === undefined ? {} : opts.row, error: null },
-        );
-        return { select: () => ({ eq: () => ({ maybeSingle: () => reply }) }) };
-      },
-    } as unknown as SupabaseClient;
-
-    const userId = opts.userId === undefined ? USER : opts.userId;
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: SUPABASE, useValue: client },
-        {
-          provide: INITIAL_USER,
-          useValue: userId === null ? null : { id: userId, is_anonymous: true, user_metadata: {} },
-        },
-      ],
-    });
-    return { history: TestBed.inject(HistoryService), asked };
-  }
-
-  it('reads both scopes in one query', async () => {
-    const { history, asked } = totalsSetup({
-      row: {
-        current_streak: 12, longest_streak: 20, days_studied: 47,
-        practised_ms: 22_800_000, sentences_practised: 1312,
-        sentences_distinct: 431, stars_earned: 4986,
-        today_practised_ms: 840_000, today_sentences_practised: 38,
-        today_sentences_distinct: 22, today_stars_earned: 156,
-      },
-    });
-
-    const totals = await history.totals();
-
-    expect(asked).toEqual(['user_practice_totals']);
-    expect(totals).toEqual({
-      currentStreak: 12,
-      longestStreak: 20,
-      daysStudied: 47,
-      practisedMs: 22_800_000,
-      sentencesPractised: 1312,
-      sentencesDistinct: 431,
-      averageStars: 3.8,
-      today: {
-        practisedMs: 840_000,
-        sentencesPractised: 38,
-        sentencesDistinct: 22,
-        averageStars: 4.1,
-      },
-    });
+describe('HistoryService', () => {
+  it('returns null with no stored progress', () => {
+    const history = TestBed.inject(HistoryService);
+    expect(history.totals()).toBeNull();
+    expect(history.accumulated()).toBeNull();
   });
 
-  it('reports no average rather than zero when nothing was scored', async () => {
-    const { history } = totalsSetup({
-      row: {
-        current_streak: 3, days_studied: 3, practised_ms: 900_000,
-        sentences_practised: 0, stars_earned: 0,
-        today_practised_ms: 300_000, today_sentences_practised: 0,
-      },
-    });
+  it('computes totals from stored sessions and attempts', () => {
+    const today = new Date().toISOString();
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString();
 
-    const totals = await history.totals();
+    const sessions = [
+      { id: 's1', activity: 'speaking', deckId: 'a', startedAt: today, endedAt: today,
+        elapsedMs: 60000, practisedMs: 60000, plannedDurationMin: 10, sentencesPracticed: 2, starsEarned: 8 },
+      { id: 's2', activity: 'speaking', deckId: 'a', startedAt: yesterday, endedAt: yesterday,
+        elapsedMs: 30000, practisedMs: 30000, plannedDurationMin: 10, sentencesPracticed: 0, starsEarned: 0 },
+    ];
+    const attempts = [
+      { id: 'a1', sessionId: 's1', sentenceId: 'sent-1', mode: 'speech', status: 'scored',
+        stars: 5, transcript: 'hi', targetWordCount: 1, matchedWordCount: 1, similarity: 1, attemptedAt: today },
+      { id: 'a2', sessionId: 's1', sentenceId: 'sent-2', mode: 'speech', status: 'scored',
+        stars: 3, transcript: 'yo', targetWordCount: 1, matchedWordCount: 1, similarity: 1, attemptedAt: today },
+      { id: 'a3', sessionId: 's1', sentenceId: 'sent-1', mode: 'speech', status: 'failed',
+        stars: null, transcript: '', targetWordCount: 1, matchedWordCount: 0, similarity: 0, attemptedAt: today },
+    ];
+    localStorage.setItem('shadowing.sessions', JSON.stringify(sessions));
+    localStorage.setItem('shadowing.attempts', JSON.stringify(attempts));
 
-    // A week of Listening has minutes and days but nothing marked. Zero stars
-    // per sentence would be a judgement; no average is the truth.
-    expect(totals?.averageStars).toBeNull();
-    expect(totals?.today.averageStars).toBeNull();
-    expect(totals?.daysStudied).toBe(3);
-  });
+    const history = TestBed.inject(HistoryService);
+    const totals = history.totals()!;
+    const accumulated = history.accumulated()!;
 
-  it('reads zeroes for a learner with no history at all', async () => {
-    const { history } = totalsSetup({ row: null });
-    const totals = await history.totals();
-    expect(totals?.daysStudied).toBe(0);
-    expect(totals?.averageStars).toBeNull();
-  });
+    expect(totals.daysStudied).toBe(2);
+    expect(totals.practisedMs).toBe(90000);
+    expect(totals.sentencesPractised).toBe(2);
+    expect(totals.sentencesDistinct).toBe(2);
+    expect(totals.averageStars).toBe(4);
+    expect(totals.currentStreak).toBe(2);
+    expect(totals.longestStreak).toBe(2);
+    expect(totals.today.sentencesPractised).toBe(2);
+    expect(totals.today.practisedMs).toBe(60000);
 
-  it('returns nothing with nobody signed in, without touching the network', async () => {
-    const { history, asked } = totalsSetup({ userId: null });
-    expect(await history.totals()).toBeNull();
-    expect(asked).toEqual([]);
-  });
-
-  it('returns nothing when the read fails, so the panels can just be absent', async () => {
-    const { history } = totalsSetup({ fails: true });
-    expect(await history.totals()).toBeNull();
+    expect(accumulated.currentStreak).toBe(2);
+    expect(accumulated.longestStreak).toBe(2);
   });
 });

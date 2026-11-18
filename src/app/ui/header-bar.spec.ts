@@ -59,8 +59,8 @@ describe('HeaderBar session clock', () => {
     draw();
 
     expect(flow.screen()).toBe('summary');
-    // finish() puts a full duration back on the timer, so a clock rendered
-    // here would tell the learner they still have all of it left.
+    
+    
     expect(clock()).toBeNull();
   });
 });

@@ -21,9 +21,9 @@ function storedString(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null;
 }
 
-// Zero is the unlimited session, so it has to survive the read - `|| 10` would
-// quietly turn it into a ten-minute one. Only a real non-negative number
-// counts: `Number(null)` is 0, which would read as unlimited by accident.
+
+
+
 function storedDuration(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 10;
 }
@@ -45,8 +45,8 @@ export class SettingsStore {
   readonly voiceName = signal(
     typeof this.saved.voiceName === 'string' ? this.saved.voiceName : '',
   );
-  // Zero means no time limit: the clock counts up and only the Finish button
-  // ends the activity. Every other value is a countdown that ends it for you.
+  
+  
   readonly durationMin = signal(storedDuration(this.saved.durationMin));
   readonly sttEnabled = signal(this.saved.stt === true);
   readonly typingMode = signal(this.saved.typing === true);

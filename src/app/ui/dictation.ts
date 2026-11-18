@@ -4,18 +4,16 @@ import {
 import { maskedWords } from '../core/typing';
 import { PlaybackService } from '../playback/playback-service';
 import { Speaker } from '../platform/speaker';
-import { YoutubePlayerService } from '../platform/youtube-player';
 import { DictationStore } from '../state/dictation-store';
 import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
-import { YoutubePlayer } from './youtube-player';
 
 @Component({
   selector: 'main[appDictation]',
-  imports: [YoutubePlayer],
+  imports: [],
   host: { class: 'dictation' },
   templateUrl: './dictation.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,7 +24,6 @@ export class Dictation {
   protected readonly timer = inject(SessionTimerStore);
 
   private readonly speaker = inject(Speaker);
-  private readonly youtube = inject(YoutubePlayerService);
   private readonly settings = inject(SettingsStore);
   private readonly voices = inject(VoiceStore);
   private readonly playback = inject(PlaybackService);
@@ -40,8 +37,6 @@ export class Dictation {
   constructor() {
     afterRenderEffect(() => {
       this.store.index();
-      // The input keeps its DOM value via [value]="typed()"; on a new
-      // challenge the old answer must not survive to be scored against it.
       this.typed.set('');
       untracked(() => void this.playCurrent());
     });
@@ -69,12 +64,7 @@ export class Dictation {
     const text = this.store.textAt(i);
     if (!text) { return; }
     this.playing.set(true);
-    if (this.practice.youtubeActive()) {
-      const played = await this.youtube.playSegment(i);
-      if (!played) { await this.speakText(text); }
-    } else {
-      await this.speakText(text);
-    }
+    await this.speakText(text);
     this.playing.set(false);
   }
 

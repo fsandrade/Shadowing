@@ -1,15 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
-import { INITIAL_USER } from '../platform/auth';
 import { MicrophoneService } from '../platform/microphone';
 import { RANDOM } from '../platform/rng';
 import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
 } from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
-import { SUPABASE } from '../platform/supabase-client';
 import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
 import { ValidationService } from '../validation/validation-service';
 import { BannerStore } from './banner-store';
@@ -19,18 +16,6 @@ import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
 import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
-
-function fakeSupabase() {
-  return {
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
-      upsert: () => Promise.resolve({ error: null }),
-      insert: () => Promise.resolve({ error: null, status: 201 }),
-      update: () => ({ eq: () => Promise.resolve({ error: null, status: 204 }) }),
-    }),
-    auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
-  } as unknown as SupabaseClient;
-}
 
 function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
   const level = opts.level === undefined ? TEST_LEVEL : opts.level;
@@ -47,9 +32,9 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     },
   } as unknown as SpeechRecognizer;
 
-  // NO_SHUFFLE's value: every draw lands on the element already there, so the
-  // order comes out unchanged. Moving it makes the shuffle produce a different
-  // permutation, which is how a test tells one shuffle from another.
+  
+  
+  
   let seed = NO_SHUFFLE();
 
   let denied = opts.micDenied ?? false;
@@ -67,8 +52,6 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
     providers: [
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: () => seed },
-      { provide: SUPABASE, useValue: fakeSupabase() },
-      { provide: INITIAL_USER, useValue: null },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
       { provide: SpeechRecognizer, useValue: recognizer },
       { provide: MicrophoneService, useValue: mic },
@@ -207,8 +190,8 @@ describe('FlowStore starting a session', () => {
     expect(validation.results().size).toBe(1);
 
     flow.finish();
-    // Same kind, same topic: no signal the validator watches changes, so
-    // nothing else clears the last session's transcripts and stars.
+    
+    
     await flow.start('speaking', 'catalog', 'a', 10);
 
     expect(validation.results().size).toBe(0);
@@ -220,8 +203,8 @@ describe('FlowStore starting a session', () => {
 
     await flow.start('speaking', 'catalog', 'a', 10);
 
-    // Silently, this is Shadowing under another name - and the session row
-    // still says kind = 'speaking'.
+    
+    
     expect(settings.sttEnabled()).toBe(false);
     expect(banner.html()).toBe(MESSAGES.micDenied);
   });
@@ -242,8 +225,8 @@ describe('FlowStore starting a session', () => {
     await flow.start('speaking', 'catalog', 'a', 10);
     expect(banner.html()).toBe(MESSAGES.micDenied);
 
-    // Dictation asks for nothing - the warning is about a session that never
-    // happened, and must not survive on screen for it.
+    
+    
     await flow.start('dictation', 'catalog', 'a', 10);
     expect(banner.html()).toBeNull();
   });
@@ -268,16 +251,16 @@ describe('FlowStore starting a session', () => {
     expect(startSession).not.toHaveBeenCalled();
   });
 
-  it('custom and youtube sources never open a database session', async () => {
+  it('custom sources never open a database session', async () => {
     const { flow, progress } = setup();
     const startSession = vi.spyOn(progress, 'startSession');
 
-    // startSession is only reached for source === 'catalog'
+    
     await flow.start('dictation', 'custom', null, 15);
-    await flow.start('speaking', 'youtube', null, 15);
+    await flow.start('speaking', 'custom', null, 15);
 
     expect(startSession).not.toHaveBeenCalled();
-    expect(flow.kind()).toBe('speaking'); // the last start won
+    expect(flow.kind()).toBe('speaking'); 
     expect(flow.screen()).toBe('practice');
   });
 });
@@ -294,8 +277,8 @@ describe('FlowStore finishing', () => {
     expect(result.source).toBe('catalog');
     expect(result.name).toBe('Speaking');
     expect(result.topicId).toBe('a');
-    // Nothing was ever played, so nothing was practised - the summary reports
-    // the time consumed, not the 15 minutes that were planned.
+    
+    
     expect(result.practisedMs).toBe(0);
     expect(result.spoken).toBe(0);
     expect(result.stars).toBeNull();

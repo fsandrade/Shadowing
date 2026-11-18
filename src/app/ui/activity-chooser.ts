@@ -8,12 +8,10 @@ import { HistoryService, type PracticeTotals } from '../data/history-service';
 import { SpeechRecognizer } from '../platform/speech-recognition';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { FlowStore } from '../state/flow-store';
-import { YoutubeTopicStore } from '../state/youtube-topic-store';
 import { CustomTopic } from './custom-topic';
 import { TopicList } from './topic-list';
-import { YoutubeLink } from './youtube-link';
 
-export type SourceTab = 'catalog' | 'custom' | 'youtube';
+export type SourceTab = 'catalog' | 'custom';
 
 interface DurationOption {
   readonly min: number;
@@ -25,14 +23,12 @@ const DURATIONS: readonly DurationOption[] = [
   { min: 5, label: '5 min', title: 'Practise for 5 minutes' },
   { min: 10, label: '10 min', title: 'Practise for 10 minutes' },
   { min: 15, label: '15 min', title: 'Practise for 15 minutes' },
-  // Zero is the unlimited session: the clock counts up and nothing ends the
-  // activity but the Finish button.
   { min: 0, label: 'Unlimited', title: 'Practise until you finish the activity' },
 ];
 
 @Component({
   selector: 'main[appActivityChooser]',
-  imports: [TopicList, CustomTopic, YoutubeLink],
+  imports: [TopicList, CustomTopic],
   host: { class: 'chooser' },
   templateUrl: './activity-chooser.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,14 +52,12 @@ export class ActivityChooser {
   protected readonly minutes = signal(10);
 
   private readonly custom = inject(CustomTopicStore);
-  private readonly youtube = inject(YoutubeTopicStore);
 
   protected readonly chooserVisible = computed(() => this.kind() !== null);
 
   protected readonly sourceReady = computed(() => {
     switch (this.source()) {
       case 'custom': return this.custom.hasText();
-      case 'youtube': return this.youtube.hasLines();
       default: return this.topicPicked();
     }
   });
@@ -76,12 +70,10 @@ export class ActivityChooser {
   private readonly topicPicked = signal(false);
 
   constructor() {
-    void this.history.totals().then((value) => this.totals.set(value));
+    this.totals.set(this.history.totals());
     afterEveryRender(() => {
       if (!this.focusTopics) { return; }
       this.focusTopics = false;
-      // On a phone the activity cards stack in one column, so the topic grid
-      // renders below the fold and the learner must be dropped into it.
       if (this.onPhone()) { this.topics?.nativeElement.focus(); }
     });
   }

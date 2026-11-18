@@ -59,14 +59,14 @@ describe('HelpModal content', () => {
 
   it('describes only controls the app actually has', () => {
     const text = render(true).modal.textContent ?? '';
-    // "rate me" was the old transport toggle; it is the Speaking kind now.
-    // "Shuffle" went the same way: the order is reshuffled on every start, so
-    // there is no control to document. ("type it" is no longer checked: it
-    // names the Dictation kind's everyday activity.)
+    
+    
+    
+    
     for (const gone of ['rate me', 'Shuffle', 'Blur', 'Spelling', 'retry until 5']) {
       expect(text, `help should not name the removed ${gone} control`).not.toContain(gone);
     }
-    for (const term of ['Speaking', 'Dictation', 'Topic', 'My text', 'YouTube']) {
+    for (const term of ['Speaking', 'Dictation', 'Topic', 'My text']) {
       expect(text, `help should describe ${term}`).toContain(term);
     }
   });

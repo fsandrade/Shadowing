@@ -1,7 +1,6 @@
 import { effect, inject, Injectable, untracked } from '@angular/core';
 import { isKnownLevel } from './core/catalog';
 import { ProgressService } from './data/progress-service';
-import { DebugBridge } from './debug-bridge';
 import { AuthStore } from './platform/auth';
 import { PlaybackService } from './playback/playback-service';
 import { MicrophoneService } from './platform/microphone';
@@ -15,7 +14,6 @@ import { SessionTimerStore } from './state/session-timer-store';
 import { SettingsStore } from './state/settings-store';
 import { VoiceStore } from './state/voice-store';
 import { type LineResult, ValidationService } from './validation/validation-service';
-
 const CLOCK_TICK_MS = 250;
 
 const KEEPALIVE_MS = 10_000;
@@ -33,7 +31,6 @@ export class AppStartup {
   private readonly playback = inject(PlaybackService);
   private readonly validation = inject(ValidationService);
   private readonly mic = inject(MicrophoneService);
-  private readonly debug = inject(DebugBridge);
   private readonly auth = inject(AuthStore);
   private readonly progress = inject(ProgressService);
 
@@ -55,7 +52,6 @@ export class AppStartup {
     this.attachValidator();
     this.dropResultsWhenOrderChanges();
     this.releaseMicOnUnload();
-    this.debug.install();
   }
 
   private dropResultsWhenOrderChanges(): void {
@@ -118,8 +114,8 @@ export class AppStartup {
     const release = () => {
       this.mic.release();
 
-      // Closing the tab mid-activity still practised whatever it practised, so
-      // read the timer live rather than letting the session default to zero.
+      
+      
       this.progress.endSession(this.timer.consumedMs());
     };
     addEventListener('pagehide', release);

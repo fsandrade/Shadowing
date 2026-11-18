@@ -1,9 +1,6 @@
 import type { Provider } from '@angular/core';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Catalog, Sentence } from '../core/catalog';
 import { SENTENCE_IDS } from '../data/progress-service';
-import { INITIAL_USER } from '../platform/auth';
-import { SUPABASE } from '../platform/supabase-client';
 
 function sentence(id: string, topicId: string, levelId: string, text: string): Sentence {
   return { id, topicId, levelId, text };
@@ -52,26 +49,11 @@ export function storedProfile(
   };
 }
 
-// PracticeStore reaches ProfileStore, which injects Supabase and the auth
-// store. Signed out, both load() and the push back no-op, so a spec that only
-// needs a level never has to await anything. The same goes for ProgressService,
-// reached through FlowStore: with no user it writes nothing, so the fake needs
-// no insert or update - only the SENTENCE_IDS map it injects to exist.
+
+
+
 export function signedOutBackend(): Provider[] {
   return [
-    { provide: INITIAL_USER, useValue: null },
     { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
-    {
-      provide: SUPABASE,
-      useValue: {
-        from: () => ({
-          select: () => ({
-            eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
-          }),
-          upsert: () => Promise.resolve({ error: null }),
-        }),
-        auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
-      } as unknown as SupabaseClient,
-    },
   ];
 }

@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { RANDOM } from '../platform/rng';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
-import { YoutubePlayerService } from '../platform/youtube-player';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
 import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
@@ -37,12 +36,6 @@ function render() {
           cancel: () => {},
           keepAlive: () => {},
         } as unknown as Speaker,
-      },
-      {
-        provide: YoutubePlayerService,
-        useValue: {
-          playSegment: () => Promise.resolve(false),
-        } as unknown as YoutubePlayerService,
       },
     ],
   });
@@ -104,11 +97,11 @@ describe('Dictation screen', () => {
     clicked(root, 'dictSkip');
     fixture.detectChanges();
 
-    // The skipped challenge is marked incorrect and the next one is on screen.
+    
     expect(root.querySelector('#dictationCount')?.textContent?.trim()).toBe('2 / 3');
     expect(root.querySelector('#dictInput')).not.toBeNull();
 
-    // Back on the skipped challenge the revealed answer shows.
+    
     clicked(root, 'dictPrev');
     fixture.detectChanges();
     expect(root.querySelector('.dict-verdict')?.classList.contains('incorrect')).toBe(true);

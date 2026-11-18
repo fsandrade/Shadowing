@@ -4,7 +4,7 @@
   <span
     class="level-chip"
     id="levelChip"
-    [title]="'Your level: ' + profile.levelId()"
+    [title]="'Level ' + profile.levelId()"
   >
     <span class="level-chip-code">{{ profile.levelId() }}</span>
   </span>
@@ -21,11 +21,9 @@
   aria-label="Settings"
   aria-controls="settingsDrawer"
   [attr.aria-expanded]="settingsOpen()"
-  title="Playback and practice options"
+  title="Practice and playback options"
   (click)="toggleSettings.emit()"
 >&#9881;</button>
-
-<div appAccountMenu (openSettings)="toggleSettings.emit()"></div>
 
 <button
   type="button"

@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
-import { YoutubePlayerService } from '../platform/youtube-player';
 import { BannerStore } from '../state/banner-store';
 import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
@@ -11,7 +10,6 @@ import { MESSAGES } from '../state/messages';
 import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
-import { YoutubeTopicStore } from '../state/youtube-topic-store';
 import { PlaybackService } from './playback-service';
 import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
@@ -45,11 +43,7 @@ function fakeSpeaker(speakMs: number) {
   return { spoken, impl, setSpeakMs: (next: number) => { ms = next; } };
 }
 
-function fakeYoutubePlayer(playSegment: ReturnType<typeof vi.fn>) {
-  return { playSegment, stop: vi.fn() } as unknown as YoutubePlayerService;
-}
-
-function setup(speakMs = 1000, corpus: Catalog = DATA, video?: { playSegment: ReturnType<typeof vi.fn> }) {
+function setup(speakMs = 1000, corpus: Catalog = DATA) {
   const speaker = fakeSpeaker(speakMs);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -62,13 +56,12 @@ function setup(speakMs = 1000, corpus: Catalog = DATA, video?: { playSegment: Re
       { provide: CATALOG, useValue: corpus },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: Speaker, useValue: speaker.impl },
-      ...(video ? [{ provide: YoutubePlayerService, useValue: fakeYoutubePlayer(video.playSegment) }] : []),
     ],
   });
   const settings = TestBed.inject(SettingsStore);
   const timer = TestBed.inject(SessionTimerStore);
-  // Mirror AppStartup: a real session always starts with its timer seeded,
-  // so tests that are not about expiry get a duration long enough to ignore.
+  
+  
   timer.reset(settings.durationMin());
   return {
     speaker,
@@ -338,8 +331,8 @@ describe('PlaybackService dead-voice detection', () => {
 
   it('a fresh Play leaves the refused-microphone warning standing', () => {
     const { playback, banner } = setup(1000);
-    // Raised by FlowStore.start() when Speaking degrades to unscored. Pressing
-    // Play does not un-deny the microphone, so it must survive.
+    
+    
     banner.show(MESSAGES.micDenied, 'stt-denied');
 
     playback.play();
@@ -360,10 +353,10 @@ describe('PlaybackService session expiry', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  // Expiry now ends the activity rather than raising a banner, and finish() is
-  // a no-op unless a session is running - so these tests have to start one.
-  // start() also applies the level's pacing; the gap arithmetic below is
-  // written in whole speech lengths, so put the slack back to 1.
+  
+  
+  
+  
   async function startSession(
     t: { flow: FlowStore; settings: SettingsStore },
     minutes: number,
@@ -826,8 +819,8 @@ describe('PlaybackService repeating a line for the typist', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(speaker.spoken.length).toBe(midGap + 1);
 
-    // The loop owns the generation; a repeat must not bump it, or the gap
-    // resolves early and the typing promise is abandoned.
+    
+    
     expect(practice.playing()).toBe(true);
     await vi.advanceTimersByTimeAsync(2000);
     expect(practice.index()).toBeGreaterThan(0);
@@ -841,37 +834,5 @@ describe('PlaybackService repeating a line for the typist', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(speaker.spoken).toEqual(['first line is long enough to measure']);
-  });
-});
-
-describe('PlaybackService youtube source', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it('seeks the player instead of speaking when youtube is active', async () => {
-    const playSegment = vi.fn().mockResolvedValue(true);
-    const { playback, practice, speaker } = setup(1000, DATA, { playSegment });
-    TestBed.inject(YoutubeTopicStore).set('abc', ['short one', 'short two'], [0, 4]);
-    practice.useYoutube();
-
-    playback.play();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(playSegment).toHaveBeenCalledWith(0);
-    expect(speaker.spoken).toEqual([]);
-  });
-
-  it('falls back to the speaker when the player cannot play the segment', async () => {
-    const playSegment = vi.fn().mockResolvedValue(false);
-    const { playback, practice, speaker } = setup(1000, DATA, { playSegment });
-    TestBed.inject(YoutubeTopicStore).set('abc', ['short one', 'short two'], [0, 4]);
-    practice.useYoutube();
-
-    playback.play();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(playSegment).toHaveBeenCalledWith(0);
-    expect(speaker.spoken[0]).toBe('short one');
-    expect(practice.playing()).toBe(true);
   });
 });

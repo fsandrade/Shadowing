@@ -25,8 +25,6 @@ export class SessionSummary {
     return result ? formatPractised(result.practisedMs) : '';
   });
 
-  // Which topic, not just which kind - two Speaking sessions in a row are
-  // otherwise indistinguishable here. My text and YouTube carry their own name.
   protected readonly title = computed(() => {
     const result = this.flow.result();
     if (!result) { return ''; }
@@ -35,8 +33,6 @@ export class SessionSummary {
     return `${result.name} · ${topic?.name ?? 'All topics'}`;
   });
 
-  // Stars per sentence, so a long session and a short one can be compared.
-  // Null whenever the stars stat is, and the template hides it the same way.
   protected readonly average = computed<string | null>(() => {
     const result = this.flow.result();
     if (!result || result.stars === null || result.spoken === 0) { return null; }
@@ -44,6 +40,6 @@ export class SessionSummary {
   });
 
   constructor() {
-    void this.history.accumulated().then((value) => this.progress.set(value));
+    this.progress.set(this.history.accumulated());
   }
 }

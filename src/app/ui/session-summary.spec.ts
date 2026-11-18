@@ -16,9 +16,9 @@ import { SessionSummary } from './session-summary';
 })
 class Host {}
 
-// Signed out, so HistoryService returns null without touching the network and
-// ProgressService never writes a row - which is what lets the shared backend
-// fake get away with no insert/update.
+
+
+
 function configureTestBed(extra: Provider[] = []): void {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -36,8 +36,8 @@ async function renderAfterSession(
   kind: 'speaking' | 'dictation',
   minutes: number,
   extra: Provider[] = [],
-  // Stands in for the practising itself: the countdown is the only record of
-  // how much of the session was spent by the time Finish is pressed.
+  
+  
   spend: (timer: SessionTimerStore) => void = () => {},
   topic: string | null = 'a',
   source: 'catalog' | 'custom' = 'catalog',
@@ -47,7 +47,7 @@ async function renderAfterSession(
 
   await flow.start(kind, source, source === 'catalog' ? topic : null, minutes);
   if (kind === 'speaking') {
-    // Give the scored case something to report, so the stars stat has a value.
+    
     TestBed.inject(SessionTimerStore).countSpoken(0);
     TestBed.inject(SessionTimerStore).recordStars(0, 4);
   }
@@ -74,7 +74,7 @@ describe('SessionSummary', () => {
   });
 
   it('reports the time practised, not the duration that was picked', async () => {
-    // 15 minutes chosen, 90 seconds of it spent before Finish.
+    
     const { root } = await renderAfterSession('speaking', 15, [], (timer) => {
       timer.remainingMs.set(15 * 60_000 - 90_000);
     });
@@ -94,7 +94,7 @@ describe('SessionSummary', () => {
   });
 
   it('counts the sentences and the stars', async () => {
-    // The setup speaks exactly one line and scores it four stars.
+    
     const { root } = await renderAfterSession('speaking', 5);
 
     const sentences = root.querySelector('[data-stat="sentences"]')!;
@@ -121,7 +121,7 @@ describe('SessionSummary', () => {
   });
 
   it('averages the stars over the sentences practised', async () => {
-    // The setup scores line 0 four stars; this adds a second at three.
+    
     const { root } = await renderAfterSession('speaking', 5, [], (timer) => {
       timer.countSpoken(1);
       timer.recordStars(1, 3);
@@ -143,9 +143,14 @@ describe('SessionSummary', () => {
     expect(root.querySelector('[data-stat="stars"]')).toBeNull();
   });
 
-  it('omits accumulated progress entirely when it cannot be read', async () => {
-    const { root } = await renderAfterSession('dictation', 5);
-    expect(root.querySelector('.summary-progress')).toBeNull();
+  it('shows the accumulated progress from the session just finished', async () => {
+    const { root } = await renderAfterSession('dictation', 5, [], (timer) => {
+      timer.remainingMs.set(4 * 60_000); 
+    });
+    expect(root.querySelector('.summary-progress')).not.toBeNull();
+    const streak = root.querySelector('[data-stat="streak"]')!;
+    expect(streak.querySelector('.summary-value')?.textContent?.trim()).toBe('1');
+    expect(streak.querySelector('.summary-label')?.textContent).toMatch(/day streak · best 1/);
   });
 
   it('shows the accumulated progress once it has been read', async () => {
@@ -153,7 +158,7 @@ describe('SessionSummary', () => {
       {
         provide: HistoryService,
         useValue: {
-          accumulated: () => Promise.resolve({
+          accumulated: () => ({
             currentStreak: 4,
             longestStreak: 11,
           }),
@@ -162,15 +167,15 @@ describe('SessionSummary', () => {
     ]);
 
     expect(root.querySelector('.summary-progress')).not.toBeNull();
-    // Asserted in position, so swapping the streaks
-    // fails here - the compiler is happy with either arrangement.
+    
+    
     const streak = root.querySelector('[data-stat="streak"]')!;
     expect(streak.querySelector('.summary-value')?.textContent?.trim()).toBe('4');
     expect(streak.querySelector('.summary-label')?.textContent).toMatch(/day streak · best 11/);
 
-    // The level's mastered count was removed: it read 0 / 0 for anyone whose
-    // progress rows did not exist yet, and 0 forever for the unscored
-    // activities, which is discouraging rather than informative.
+    
+    
+    
     expect(root.querySelector('[data-stat="mastered"]')).toBeNull();
   });
 

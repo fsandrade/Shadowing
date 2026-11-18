@@ -1,6 +1,6 @@
 export type PracticeKind = 'speaking' | 'dictation';
 
-export type PracticeSource = 'catalog' | 'custom' | 'youtube';
+export type PracticeSource = 'catalog' | 'custom';
 
 export interface Kind {
   readonly id: PracticeKind;

@@ -30,9 +30,9 @@ export class Shortcuts {
 
     if (e.key !== 'ArrowLeft') { this.lastLeftAt = 0; }
 
-    // Above the enabled() guard on purpose: the practice shortcuts are off
-    // everywhere but the practice screen, and the help modal opens from all of
-    // them. Escape has to close it wherever it was opened.
+    
+    
+    
     if (e.key === 'Escape' && this.helpOpen()) {
       e.preventDefault();
       this.closeHelp.emit();

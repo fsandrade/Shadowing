@@ -160,8 +160,8 @@ describe('SessionTimerStore in countdown mode', () => {
 
     practice.setPlaying(true);
     timer.resume();
-    // Overshoots zero the way a real tick does; the report must not exceed the
-    // duration the learner asked for.
+    
+    
     advance(300_400);
     timer.accrue();
 
@@ -324,8 +324,8 @@ describe('SessionTimerStore reporting time spent', () => {
     timer.resume();
     advance(90_000);
 
-    // Not banked yet: accrue() has not run, so this has to include the live
-    // slice or a session ended mid-play would report zero.
+    
+    
     expect(timer.consumedMs()).toBe(90_000);
   });
 

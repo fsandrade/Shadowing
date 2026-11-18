@@ -5,7 +5,7 @@ import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
 import { VoiceStore } from '../state/voice-store';
 
-const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (←)';
+const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (left arrow)';
 
 @Component({
   selector: 'div[appTransportControls]',
@@ -27,13 +27,9 @@ export class TransportControls {
   );
 
   protected readonly playLabel = computed(
-    () => (this.practice.playing() ? '⏸ Pause' : '▶ Auto Play'),
+    () => (this.practice.playing() ? 'Pause' : 'Auto Play'),
   );
 
-  // FlowStore.finish() does not know about playback, and the timer it resets
-  // puts a full duration back on the clock - so the expiry checkpoint would
-  // not catch a loop left running for another whole session. Stop first, the
-  // same order finishIfExpired() uses.
   protected finish(): void {
     this.playback.stop();
     this.flow.finish();

@@ -11,12 +11,6 @@ export interface TranscriptLine {
 const SENTENCE_END = /[.!?…"”]$/;
 const GAP_MS = 2500;
 
-// Merely punctuation-based, not a dialect detector: captions already put
-// real sentence boundaries in, so this only decides when a run of fragments
-// becomes a line. A 2.5s caption gap is a sentence boundary too - a subtitle
-// whose author forgot the full stop still wraps the next line.
-// ponytail: coarse heuristic, fine for dictation challenge pacing; swap for a
-// proper aligner if a caption track brackets more than one sentence per line.
 export function wordCount(text: string): number {
   return text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
 }

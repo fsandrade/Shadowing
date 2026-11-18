@@ -24,16 +24,13 @@
     <div class="source-tabs" role="group" aria-label="Content source">
       <button type="button" id="srcCatalog" [attr.aria-pressed]="source() === 'catalog'" (click)="pickSource('catalog')">Topic</button>
       <button type="button" id="srcCustom" [attr.aria-pressed]="source() === 'custom'" (click)="pickSource('custom')">My text</button>
-      <button type="button" id="srcYoutube" [attr.aria-pressed]="source() === 'youtube'" (click)="pickSource('youtube')">YouTube</button>
     </div>
 
     @if (source() === 'catalog') {
       <h3 class="chooser-heading">Topic</h3>
       <nav appTopicList [selected]="topicId()" (pick)="pickTopic($event)"></nav>
-    } @else if (source() === 'custom') {
-      <div appCustomTopic></div>
     } @else {
-      <div appYoutubeLink></div>
+      <div appCustomTopic></div>
     }
   </section>
 

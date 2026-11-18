@@ -1,7 +1,7 @@
 function message(reason: unknown): string {
   return reason instanceof Error && reason.message
     ? reason.message
-    : 'Could not reach Supabase.';
+    : 'Could not start the app.';
 }
 
 export function showStartupError(reason: unknown): void {
