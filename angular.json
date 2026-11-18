@@ -93,6 +93,9 @@
             "include": [
               "src/**/*.spec.ts",
               "tools/**/*.spec.ts"
+            ],
+            "setupFiles": [
+              "src/test-setup.ts"
             ]
           }
         }
