@@ -1,19 +1,13 @@
 import { test as base, type Page as PlaywrightPage } from '@playwright/test';
-import { installFakeSupabase } from './fake-supabase';
 
-export const test = base.extend({
-  page: async ({ page }, use) => {
-    await installFakeSupabase(page);
-    await use(page);
-  },
-});
+export const test = base;
 
 export { expect, type Page } from '@playwright/test';
 
 export const E2E_LEVEL = 'B1';
 
 export type ActivityChoice = 'speaking' | 'dictation';
-export type SourceChoice = 'catalog' | 'custom' | 'youtube';
+export type SourceChoice = 'catalog' | 'custom';
 
 export interface GotoOptions {
   /** null skips seeding a level, so the app opens on onboarding. */
@@ -32,8 +26,6 @@ export interface StartOptions {
   minutes?: number;
 }
 
-// Speaking is the default, because it is the closest thing to the screen every
-// older assertion was written against, and it needs no source seeding.
 export async function gotoApp(
   page: PlaywrightPage,
   opts: GotoOptions = {},
@@ -53,19 +45,16 @@ export async function gotoApp(
     return;
   }
 
-  await page.waitForFunction(
-    () => (window as unknown as Record<string, unknown>)['__shadowing'] !== undefined,
-  );
+  await page.locator('#activities').waitFor();
 
   if (activity === null) {
-    await page.locator('#activities').waitFor();
     return;
   }
 
-  if (opts.source === 'custom' || opts.source === 'youtube') {
+  if (opts.source === 'custom') {
     throw new Error(
-      'gotoApp: custom/youtube sessions need content pasted into the chooser '
-      + 'first - seed it in the spec (see startCustomText), then startActivity.',
+      'gotoApp: custom sessions need content pasted into the chooser first - '
+      + 'seed it in the spec (see startCustomText), then startActivity.',
     );
   }
 
@@ -77,14 +66,6 @@ export async function gotoApp(
 }
 
 async function waitForScreen(page: PlaywrightPage): Promise<void> {
-  await page.waitForFunction(() => {
-    const bridge = (window as unknown as Record<string, { state: { screen: string } }>)['__shadowing'];
-    return bridge?.state.screen === 'practice' || bridge?.state.screen === 'dictation';
-  });
-
-  // The debug bridge reads signals, which flip before Angular re-renders the
-  // switch. Interactions aimed at the practice/dictation screen must wait out
-  // that gap or they land on the still-mounted chooser and vanish.
   await page.locator('#startActivity').waitFor({ state: 'detached' });
 }
 
@@ -108,15 +89,10 @@ export async function startActivity(
 
   await page.locator(`[data-kind-id="${kind}"]`).click();
 
-  // Choosing the kind resets the source tab, so it is always clicked here even
-  // when the caller already picked it.
+  await page.locator(source === 'catalog' ? '#srcCatalog' : '#srcCustom').click();
+
   if (source === 'catalog') {
-    await page.locator('#srcCatalog').click();
     await page.locator(topic === null ? '#allTopics' : `[data-deck-id="${topic}"]`).click();
-  } else if (source === 'custom') {
-    await page.locator('#srcCustom').click();
-  } else {
-    await page.locator('#srcYoutube').click();
   }
 
   await page.locator(`.durations [data-min="${minutes}"]`).click();

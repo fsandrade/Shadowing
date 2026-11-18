@@ -1,6 +1,5 @@
-import { test, expect, gotoApp, startActivity, Page } from './helpers/fixtures';
+import { test, expect, gotoApp, Page } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
-import { installFakeYoutube } from './helpers/fake-supabase';
 
 /**
  * Misspells exactly one word, whatever the sentence is.
@@ -27,11 +26,20 @@ function misspellOneWord(sentence: string): string {
 }
 
 function stripTags(sentence: string): string {
-  return sentence.replace(/<[^>]*>/g, '');
+  let stripped = sentence;
+  let previous = '';
+  while (stripped !== previous) {
+    previous = stripped;
+    stripped = stripped.replace(/<[^>]*>/g, '');
+  }
+  return stripped;
 }
 
 async function currentLineText(page: Page): Promise<string> {
-  return page.evaluate(() => (window as any).__shadowing.state.currentText as string);
+  await expect.poll(
+    () => page.evaluate(() => ((window as any).__spokenText as string[] | undefined)?.length ?? 0),
+  ).toBeGreaterThan(0);
+  return page.evaluate(() => ((window as any).__spokenText as string[])[0]);
 }
 
 /**
@@ -119,17 +127,4 @@ test('the Move-to select jumps straight to a challenge', async ({ page }) => {
   await gotoApp(page, { activity: 'dictation', topic: null });
   await page.locator('#dictMoveTo').selectOption('2');
   await expect(page.locator('#dictationCount')).toContainText('3 /');
-});
-
-test('a youtube source loads captions through the edge-function fake', async ({ page }) => {
-  installFakeAudio(page);
-  installFakeYoutube(page, ['Once upon a time. And a second line.']);
-  await gotoApp(page, { activity: null });
-  await page.locator('[data-kind-id="dictation"]').click();
-  await page.locator('#srcYoutube').click();
-  await page.locator('#youtubeLink').fill('https://www.youtube.com/watch?v=abcde12345');
-  await page.locator('#youtubeLoad').click();
-  await expect(page.locator('.youtube-ready')).toBeVisible();
-  await startActivity(page, 'dictation', { source: 'youtube' });
-  await expect(page.locator('#dictInput')).toBeVisible();
 });

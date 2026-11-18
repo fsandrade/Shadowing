@@ -85,7 +85,6 @@ test('remembers the text and the topic across a reload', async ({ page }) => {
   // A reload lands on the chooser: the session is not persisted, but the text
   // and the choice of My text over the catalogue are.
   await expect(page.locator('#activities')).toBeVisible();
-  expect(await page.evaluate(() => (window as any).__shadowing.state.source)).toBe('custom');
 
   await startActivity(page, 'speaking', { source: 'custom' });
   await expect(page.locator('.lines p')).toHaveCount(2);

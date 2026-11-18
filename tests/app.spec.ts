@@ -2,15 +2,12 @@ import {
   test, expect, gotoApp, startActivity, Page,
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
-import { breakSupabase, installFakeSupabase } from './helpers/fake-supabase';
 
-const APP_URL = '/';
-
-const TOTAL_LINES = 731;
 const TOPICS_AT_LEVEL = 25;
 
 async function currentIndex(page: Page): Promise<number> {
-  return page.evaluate(() => (window as any).__shadowing.state.index);
+  return page.locator('.lines p')
+    .evaluateAll((lines) => lines.findIndex((line) => line.classList.contains('current')));
 }
 
 async function openSettings(page: Page): Promise<void> {
@@ -33,10 +30,6 @@ async function closeSettings(page: Page): Promise<void> {
   await expect(page.locator('.scrim')).toHaveCount(0);
 }
 
-async function loadedLines(page: Page): Promise<number> {
-  return page.evaluate(() => (window as any).__shadowing.state.lines.length);
-}
-
 test('loads the corpus with numbered lines', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page);
@@ -44,7 +37,7 @@ test('loads the corpus with numbered lines', async ({ page }) => {
   await expect(page).toHaveTitle('Shadowing');
   await openSettings(page);
   await expect(page.locator('.sliders label').first()).toHaveAttribute('title', /speed/i);
-  expect(await loadedLines(page)).toBe(TOTAL_LINES);
+  await expect(page.locator('.lines p')).toHaveCount(60);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -68,7 +61,6 @@ test('a first-time visitor is asked for a level before anything else', async ({ 
   await page.locator('.level-card[data-level-id="B1"]').click();
 
   await expect(page.locator('#activities')).toBeVisible();
-  await expect.poll(() => loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('#levelChip')).toContainText('B1');
 });
 
@@ -169,36 +161,6 @@ test('My text swaps the topic list for the custom editor', async ({ page }) => {
   await expect(page.locator('.chooser .custom-topic')).toBeVisible();
 });
 
-test('the sentences arrive shuffled rather than grouped by topic', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page);
-
-  const firstFew = await page.evaluate(
-    () => (window as any).__shadowing.state.lines.slice(0, 30) as string[],
-  );
-  expect(new Set(firstFew).size).toBe(firstFew.length);
-
-  const inOrder = await page.evaluate(async () => {
-    const res = await fetch('/rest/v1/sentences?offset=0&limit=1000');
-    return (await res.json()).filter((r: any) => r.level_id === 'B1').map((r: any) => r.content);
-  });
-  expect(firstFew).not.toEqual(inOrder.slice(0, 30));
-});
-
-test('shows an error instead of an empty app when the content cannot be loaded', async ({ page }) => {
-  installFakeAudio(page);
-  await breakSupabase(page);
-
-  await page.goto(APP_URL);
-
-  await expect(page.locator('.startup-error')).toBeVisible();
-  await expect(page.locator('.startup-error h1')).toHaveText('Practice is unavailable');
-
-  await expect(page.locator('.lines p')).toHaveCount(0);
-  await expect(page.locator('#play')).toHaveCount(0);
-  await expect(page.locator('.startup-error button')).toHaveText('Try again');
-});
-
 test('renders a first page of lines and appends more as you scroll', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page);
@@ -206,7 +168,7 @@ test('renders a first page of lines and appends more as you scroll', async ({ pa
   const rendered = () => page.locator('.lines p').count();
   await expect.poll(rendered, { timeout: 5_000 }).toBeGreaterThan(0);
   const first = await rendered();
-  expect(first).toBeLessThan(TOTAL_LINES);
+  expect(first).toBe(60);
 
   await page.locator('.lines').evaluate((el) => { el.scrollTop = el.scrollHeight; });
   await expect.poll(rendered).toBeGreaterThan(first);
@@ -255,7 +217,7 @@ test('starting on one topic narrows the list and renumbers from one', async ({ p
   installFakeAudio(page);
   await gotoApp(page, { topic: 'socializing' });
 
-  await expect.poll(() => loadedLines(page)).toBe(26);
+  await expect(page.locator('.lines p')).toHaveCount(26);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -296,40 +258,56 @@ test('the chooser shows both practice panels, and still fits on one screen',
   async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     installFakeAudio(page);
-    // Registered after the fixture's routes, so these win: the panels only
-    // load for a signed-in learner, which the default harness is not.
-    await installFakeSupabase(page, {
-      signedIn: true,
-      totals: {
-        current_streak: 12,
-        longest_streak: 20,
-        days_studied: 47,
-        practised_ms: 6 * 60 * 60_000 + 20 * 60_000,
-        sentences_practised: 1312,
-        sentences_distinct: 431,
-        stars_earned: 4986,
-        today_practised_ms: 14 * 60_000,
-        today_sentences_practised: 38,
-        today_sentences_distinct: 22,
-        today_stars_earned: 156,
-      },
+    await page.addInitScript(() => {
+      const now = new Date();
+      const at = (daysAgo: number) => new Date(
+        now.getFullYear(), now.getMonth(), now.getDate() - daysAgo, 9,
+      ).toISOString();
+      localStorage.setItem('shadowing.sessions', JSON.stringify([
+        {
+          id: 's-yesterday', activity: 'speaking', deckId: null,
+          startedAt: at(1), plannedDurationMin: 10, endedAt: at(1),
+          elapsedMs: 600_000, practisedMs: 600_000,
+          sentencesPracticed: 2, starsEarned: 6,
+        },
+        {
+          id: 's-today', activity: 'speaking', deckId: null,
+          startedAt: at(0), plannedDurationMin: 15, endedAt: at(0),
+          elapsedMs: 840_000, practisedMs: 840_000,
+          sentencesPracticed: 3, starsEarned: 14,
+        },
+      ]));
+      const attempt = (
+        id: string, sessionId: string, sentenceId: string, stars: number, daysAgo: number,
+      ) => ({
+        id, sessionId, sentenceId, activity: 'speaking', stars,
+        status: 'scored', attemptedAt: at(daysAgo),
+      });
+      localStorage.setItem('shadowing.attempts', JSON.stringify([
+        attempt('a1', 's-yesterday', 'sentence-3', 3, 1),
+        attempt('a2', 's-yesterday', 'sentence-4', 3, 1),
+        attempt('a3', 's-today', 'sentence-1', 5, 0),
+        attempt('a4', 's-today', 'sentence-2', 5, 0),
+        attempt('a5', 's-today', 'sentence-1', 4, 0),
+      ]));
     });
     await gotoApp(page, { activity: null });
 
     const all = page.locator('[data-panel="all"]');
     await expect(all).toBeVisible();
-    await expect(all).toContainText('12');
-    await expect(all).toContainText('best 20');
-    await expect(all).toContainText('47');
-    await expect(all).toContainText('6h 20m');
-    await expect(all).toContainText('1312');
-    await expect(all).toContainText('431');
-    await expect(all).toContainText('3.8');
+    await expect(all.locator('[data-stat="streak"]')).toContainText('2');
+    await expect(all.locator('[data-stat="streak"]')).toContainText('best 2');
+    await expect(all.locator('[data-stat="days"]')).toContainText('2');
+    await expect(all.locator('[data-stat="time"]')).toContainText('24m');
+    await expect(all.locator('[data-stat="sentences"]')).toContainText('5');
+    await expect(all.locator('[data-stat="sentences"]')).toContainText('4 different');
+    await expect(all.locator('[data-stat="average"]')).toContainText('4★');
 
     const today = page.locator('[data-panel="today"]');
-    await expect(today).toContainText('14m');
-    await expect(today).toContainText('38');
-    await expect(today).toContainText('4.1');
+    await expect(today.locator('[data-stat="time"]')).toContainText('14m');
+    await expect(today.locator('[data-stat="sentences"]')).toContainText('3');
+    await expect(today.locator('[data-stat="sentences"]')).toContainText('2 different');
+    await expect(today.locator('[data-stat="average"]')).toContainText('4.7★');
     await expect(today.locator('[data-stat="days"]')).toHaveCount(0);
 
     // Everything on the arrival screen has to be reachable without scrolling.
@@ -393,7 +371,6 @@ test('every start reshuffles, keeping the corpus and renumbering from one', asyn
   await page.locator('#backToChooser').click();
   await startActivity(page, 'speaking');
 
-  expect(await loadedLines(page)).toBe(TOTAL_LINES);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   expect(await opening()).not.toBe(before);
 });
