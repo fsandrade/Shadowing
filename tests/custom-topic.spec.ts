@@ -8,10 +8,16 @@ const PAYLOAD = [
   'Mr. Smith paid $3.50, so this stays one sentence.',
 ].join(' ');
 
-/** Starts the My text activity and lands on the practice screen with the editor open. */
+/**
+ * Opens the chooser and lands in the My-text editor (fresh pages have no saved
+ * text, so the editor is open). Text is still pasted and the session started
+ * per test: the pieces are chooser state, not a started practice screen.
+ */
 async function gotoCustom(page: Page): Promise<void> {
-  await gotoApp(page, { activity: 'custom' });
-  await expect(page.locator('.custom-topic')).toBeVisible();
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-kind-id="speaking"]').click();
+  await page.locator('#srcCustom').click();
+  await expect(page.locator('.chooser .custom-topic')).toBeVisible();
 }
 
 async function useText(page: Page, text: string): Promise<void> {
@@ -26,6 +32,7 @@ test('splits pasted text into practice lines', async ({ page }) => {
   await expect(page.locator('#customSave')).toBeDisabled();
 
   await useText(page, 'First one. Second one! Third one?');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await expect(page.locator('.lines p')).toHaveCount(3);
   await expect(page.locator('.lines p .text').first()).toHaveText('First one.');
@@ -38,6 +45,7 @@ test('neutralises markup and scripts in pasted text', async ({ page }) => {
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, PAYLOAD);
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await expect(page.locator('.lines p')).toHaveCount(4);
   await expect(page.locator('.lines img')).toHaveCount(0);
@@ -60,6 +68,7 @@ test('keeps ampersands and angle brackets the learner typed', async ({ page }) =
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'R&D found that 5 < 10 and 20 > 3 in the report.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await expect(page.locator('.lines p .text').first())
     .toHaveText('R&D found that 5 < 10 and 20 > 3 in the report.');
@@ -69,15 +78,15 @@ test('remembers the text and the topic across a reload', async ({ page }) => {
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'Kept after reload. And a second one.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await page.reload();
 
   // A reload lands on the chooser: the session is not persisted, but the text
   // and the choice of My text over the catalogue are.
   await expect(page.locator('#activities')).toBeVisible();
-  expect(await page.evaluate(() => (window as any).__shadowing.state.source)).toBe('custom');
 
-  await startActivity(page, 'custom');
+  await startActivity(page, 'speaking', { source: 'custom' });
   await expect(page.locator('.lines p')).toHaveCount(2);
   await expect(page.locator('.lines p .text').first()).toHaveText('Kept after reload.');
 });
@@ -86,6 +95,7 @@ test('sanitises text that was written straight into storage', async ({ page }) =
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'Placeholder text.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await page.evaluate(() => {
     localStorage.setItem(
@@ -94,7 +104,7 @@ test('sanitises text that was written straight into storage', async ({ page }) =
     );
   });
   await page.reload();
-  await startActivity(page, 'custom');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await expect(page.locator('.lines p')).toHaveCount(2);
   await expect(page.locator('.lines img')).toHaveCount(0);
@@ -106,6 +116,7 @@ test('editing and clearing the text', async ({ page }) => {
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'Original one. Original two.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await page.locator('#customEdit').click();
   await expect(page.locator('#customText')).toHaveValue('Original one. Original two.');
@@ -123,6 +134,7 @@ test('speaks a custom sentence exactly as written', async ({ page }) => {
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'This first sentence is long enough to measure. A second one follows.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await page.locator('#play').click();
 
@@ -135,6 +147,7 @@ test('speaks angle brackets that tag stripping would have swallowed', async ({ p
   installFakeAudio(page);
   await gotoCustom(page);
   await useText(page, 'Five < ten is a statement that is definitely true.');
+  await startActivity(page, 'speaking', { source: 'custom' });
 
   await page.locator('#play').click();
 

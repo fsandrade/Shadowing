@@ -1,11 +1,8 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStartup } from './app-startup';
 import { ProgressService, SENTENCE_IDS } from './data/progress-service';
-import { INITIAL_USER } from './platform/auth';
-import { SUPABASE } from './platform/supabase-client';
 import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
 import { SafeStorage } from './platform/storage';
@@ -32,14 +29,6 @@ function setup(storedLevelId: string | null, storedTopicId: string | null = null
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },
-      { provide: INITIAL_USER, useValue: null },
-      {
-        provide: SUPABASE,
-        useValue: {
-          auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
-          from: () => { throw new Error('no writes expected in startup tests'); },
-        } as unknown as SupabaseClient,
-      },
       {
         provide: SafeStorage,
         useValue: {
@@ -110,7 +99,7 @@ describe('AppStartup level recovery', () => {
   });
 
   it('does not strand the learner on a topic that belonged to the forgotten level', () => {
-    // 'a' is a topic of A2, and C2 has been emptied out from under this learner.
+    
     const { practice, profile } = setup('C2', 'a');
     expect(profile.chosen()).toBe(false);
 

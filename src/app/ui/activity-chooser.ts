@@ -2,15 +2,16 @@ import {
   afterEveryRender, ChangeDetectionStrategy, Component, computed, ElementRef,
   inject, signal, ViewChild,
 } from '@angular/core';
-import { type Activity, ACTIVITIES } from '../core/activity';
+import { type Kind, KINDS } from '../core/activity';
 import { formatStudied } from '../core/timing';
 import { HistoryService, type PracticeTotals } from '../data/history-service';
 import { SpeechRecognizer } from '../platform/speech-recognition';
+import { CustomTopicStore } from '../state/custom-topic-store';
 import { FlowStore } from '../state/flow-store';
-import { ValidationService } from '../validation/validation-service';
-import { CheckModeControl } from './check-mode';
 import { CustomTopic } from './custom-topic';
 import { TopicList } from './topic-list';
+
+export type SourceTab = 'catalog' | 'custom';
 
 interface DurationOption {
   readonly min: number;
@@ -22,24 +23,21 @@ const DURATIONS: readonly DurationOption[] = [
   { min: 5, label: '5 min', title: 'Practise for 5 minutes' },
   { min: 10, label: '10 min', title: 'Practise for 10 minutes' },
   { min: 15, label: '15 min', title: 'Practise for 15 minutes' },
-  // Zero is the unlimited session: the clock counts up and nothing ends the
-  // activity but the Finish button.
   { min: 0, label: 'Unlimited', title: 'Practise until you finish the activity' },
 ];
 
 @Component({
   selector: 'main[appActivityChooser]',
-  imports: [TopicList, CustomTopic, CheckModeControl],
+  imports: [TopicList, CustomTopic],
   host: { class: 'chooser' },
   templateUrl: './activity-chooser.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ActivityChooser {
   private readonly flow = inject(FlowStore);
-  private readonly validation = inject(ValidationService);
   private readonly sttSupported = inject(SpeechRecognizer).supported();
 
-  protected readonly ACTIVITIES = ACTIVITIES;
+  protected readonly KINDS = KINDS;
   protected readonly DURATIONS = DURATIONS;
 
   private readonly history = inject(HistoryService);
@@ -48,20 +46,31 @@ export class ActivityChooser {
 
   protected readonly studied = formatStudied;
 
-  protected readonly chosen = signal<Activity | null>(null);
+  protected readonly kind = signal<Kind | null>(null);
+  protected readonly source = signal<SourceTab>('catalog');
   protected readonly topicId = signal<string | null>(null);
   protected readonly minutes = signal(10);
 
-  protected readonly custom = computed(() => this.chosen()?.id === 'custom');
+  private readonly custom = inject(CustomTopicStore);
 
-  protected readonly ready = computed(() => this.chosen() !== null);
+  protected readonly chooserVisible = computed(() => this.kind() !== null);
+
+  protected readonly sourceReady = computed(() => {
+    switch (this.source()) {
+      case 'custom': return this.custom.hasText();
+      default: return this.topicPicked();
+    }
+  });
+
+  protected readonly ready = computed(() => this.kind() !== null && this.sourceReady());
 
   @ViewChild(TopicList, { read: ElementRef }) private readonly topics?: ElementRef<HTMLElement>;
 
   private focusTopics = false;
+  private readonly topicPicked = signal(false);
 
   constructor() {
-    void this.history.totals().then((value) => this.totals.set(value));
+    this.totals.set(this.history.totals());
     afterEveryRender(() => {
       if (!this.focusTopics) { return; }
       this.focusTopics = false;
@@ -69,20 +78,24 @@ export class ActivityChooser {
     });
   }
 
-  protected unavailable(activity: Activity): boolean {
-    return activity.needsMicrophone && !this.sttSupported;
+  protected unavailable(kind: Kind): boolean {
+    return kind.needsMicrophone && !this.sttSupported;
   }
 
-  protected choose(activity: Activity): void {
-    if (this.unavailable(activity)) { return; }
-    this.chosen.set(activity);
-    // On a phone the activity cards stack in one column, so the topic grid
-    // renders below the fold and the learner must be dropped into it.
+  protected choose(kind: Kind): void {
+    if (this.unavailable(kind)) { return; }
+    this.kind.set(kind);
+    this.source.set('catalog');
     this.focusTopics = true;
+  }
+
+  protected pickSource(tab: SourceTab): void {
+    this.source.set(tab);
   }
 
   protected pickTopic(id: string | null): void {
     this.topicId.set(id);
+    this.topicPicked.set(true);
   }
 
   protected pickDuration(min: number): void {
@@ -94,20 +107,13 @@ export class ActivityChooser {
   }
 
   protected async begin(): Promise<void> {
-    const activity = this.chosen();
-    if (!activity) { return; }
-
-    // The check-mode control writes straight through ValidationService as the
-    // learner clicks it, so for My text their choice is already applied and we
-    // must carry it across. Leaving it undefined would make start() fall back
-    // to the custom preset ('nothing') and silently undo them.
-    const checkMode = this.custom() ? this.validation.mode() : undefined;
-
+    const kind = this.kind();
+    if (!kind) { return; }
     await this.flow.start(
-      activity,
-      this.custom() ? null : this.topicId(),
+      kind.id,
+      this.source(),
+      this.source() === 'catalog' ? this.topicId() : null,
       this.minutes(),
-      checkMode,
     );
   }
 }

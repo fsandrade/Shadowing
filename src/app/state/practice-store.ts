@@ -30,10 +30,10 @@ export class PracticeStore {
 
   readonly levels = computed<readonly Level[]>(() => this.catalog.levels);
 
-  // The level the running session was pinned to by activateLevel(), or the
-  // profile's if no session has started one yet. Not a plain computed off the
-  // profile: changing your level in Settings must not swap the sentences out
-  // from under an activity already running - it applies to the next one.
+  
+  
+  
+  
   private readonly pinnedLevel = signal<string | null>(null);
 
   readonly level = computed<string | null>(
@@ -42,8 +42,8 @@ export class PracticeStore {
 
   readonly customActive = computed(() => this.settings.source() === 'custom');
 
-  // The profile level, not the running one: this list is what the chooser
-  // offers for the *next* activity.
+  
+  
   readonly topics = computed<readonly Topic[]>(() => {
     const level = this.profile.levelId();
     return level ? topicsAt(this.catalog, level) : [];
@@ -70,8 +70,8 @@ export class PracticeStore {
 
   readonly hasLines = computed(() => this.lines().length > 0);
 
-  // Pins the session to a level. Called by FlowStore when an activity starts,
-  // which is the only moment the profile level is read into practice.
+  
+  
   activateLevel(id: string | null): void {
     this.pinnedLevel.set(id);
   }

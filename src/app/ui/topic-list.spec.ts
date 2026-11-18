@@ -14,8 +14,8 @@ const DATA = TEST_CATALOG;
   template: `<nav appTopicList [selected]="selected()" (pick)="picked.push($event)"></nav>`,
 })
 class Host {
-  // A signal, not a plain field: change detection is zoneless, so only a
-  // signal read from the template marks this host dirty for the next tick.
+  
+  
   readonly selected = signal<string | null>(null);
   readonly picked: Array<string | null> = [];
 }

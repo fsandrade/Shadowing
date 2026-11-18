@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
-import { activityById } from '../core/activity';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
@@ -49,7 +48,7 @@ describe('SettingsDrawer profile section', () => {
   it('offers every level in the catalog, disabling the ones with nothing behind them', () => {
     const { levels } = render();
     expect(levels().map((b) => b.dataset['levelId'])).toEqual(['A2', 'B1', 'C2']);
-    // C2 carries no sentences in the test catalog.
+    
     expect(levels()[2].disabled).toBe(true);
     expect(levels()[0].disabled).toBe(false);
   });
@@ -65,8 +64,8 @@ describe('SettingsDrawer profile section', () => {
     const group = root.querySelector('#profileLevels')!;
     expect(group.getAttribute('role')).toBe('group');
     expect(group.getAttribute('aria-label')).toMatch(/level/i);
-    // role="listitem" would override the implicit button role and make
-    // aria-pressed invalid, which is the defect the chooser already fixed.
+    
+    
     expect(levels().some((b) => b.hasAttribute('role'))).toBe(false);
   });
 
@@ -89,7 +88,7 @@ describe('SettingsDrawer profile section', () => {
   it('leaves a running activity on the level it started with', async () => {
     const { levels, draw, flow, practice } = render();
 
-    await flow.start(activityById('shadowing')!, 'a', 10);
+    await flow.start('speaking', 'catalog', 'a', 10);
     draw();
     const running = [...practice.lines()];
 

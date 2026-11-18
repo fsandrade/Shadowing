@@ -7,8 +7,8 @@ import { SettingsStore } from './settings-store';
 export interface SessionTally {
   readonly spoken: number;
   readonly stars: number | null;
-  // Time the countdown actually consumed, so the summary can report what was
-  // practised instead of what was planned.
+  
+  
   readonly usedMs: number;
 }
 
@@ -33,8 +33,8 @@ export class SessionTimerStore {
     return total;
   });
 
-  // A session with no time limit has nothing to count down from, so the same
-  // signal counts up instead and remainingMs holds time spent, not time left.
+  
+  
   private readonly unlimited = computed(() => this.settings.durationMin() === 0);
 
   readonly clockText = computed(() => {
@@ -54,16 +54,16 @@ export class SessionTimerStore {
   }
 
   accrue(): void {
-    if (!this.practice.playing()) { return; }
+    if (!this.practice.playing() && !this.settings.typingMode()) { return; }
     const used = this.clock.now() - this.resumedAt;
     this.remainingMs.update((ms) => (this.unlimited() ? ms + used : ms - used));
     this.resumedAt = this.clock.now();
   }
 
-  // Time the session has actually spent playing, live - the open slice is
-  // included, so a session ended mid-play does not report zero. A method
-  // rather than a computed because elapsed() reads the clock, which no signal
-  // tracks; a computed would serve a stale value.
+  
+  
+  
+  
   consumedMs(): number {
     if (this.unlimited()) { return Math.max(0, this.remainingMs() + this.elapsed()); }
     const plannedMs = this.settings.durationMin() * 60_000;
@@ -101,14 +101,14 @@ export class SessionTimerStore {
   finish(): SessionTally {
     const plannedMs = this.settings.durationMin() * 60_000;
 
-    // Both callers stop playback first, which accrues the open slice, so
-    // remainingMs is already current here; the live slice is not added again.
-    // Clamped because an expired session overshoots zero by up to one tick.
-    //
-    // This is playing time, not wall-clock: practice_sessions.elapsed_ms counts
-    // pauses too, so the two will not match for a session that sat paused. That
-    // is deliberate - the summary answers "how long did I practise", the row
-    // answers "how long was this session open".
+    
+    
+    
+    
+    
+    
+    
+    
     const usedMs = this.unlimited()
       ? Math.max(0, this.remainingMs())
       : Math.min(plannedMs, Math.max(0, plannedMs - this.remainingMs()));
@@ -123,6 +123,7 @@ export class SessionTimerStore {
   }
 
   private elapsed(): number {
-    return this.practice.playing() ? this.clock.now() - this.resumedAt : 0;
+    const running = this.practice.playing() || this.settings.typingMode();
+    return running ? this.clock.now() - this.resumedAt : 0;
   }
 }

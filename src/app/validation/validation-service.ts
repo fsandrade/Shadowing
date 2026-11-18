@@ -1,8 +1,6 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
-import type { CheckMode } from '../core/activity';
+import { inject, Injectable, signal } from '@angular/core';
 import { soundsComplete, starsFor } from '../core/scoring';
 import { listenCeilingMs } from '../core/timing';
-import { missedWords, type TypedWord, typedWords, typingStars } from '../core/typing';
 import { Clock } from '../platform/clock';
 import { MicrophoneService } from '../platform/microphone';
 import {
@@ -12,16 +10,12 @@ import { BannerStore } from '../state/banner-store';
 import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 
-export type LineStatus = 'listening' | 'typing' | 'scored' | 'failed';
-
-export type { CheckMode };
+export type LineStatus = 'listening' | 'scored' | 'failed';
 
 export interface LineResult {
   readonly transcript: string;
   readonly stars: number | null;
   readonly status: LineStatus;
-  readonly words?: readonly TypedWord[];
-  readonly missed?: readonly string[];
 }
 
 const DENIAL_CODES = new Set(['not-allowed', 'service-not-allowed']);
@@ -54,7 +48,6 @@ export class ValidationService {
   readonly activeLine = signal<number | null>(null);
 
   begin(lineIndex: number, baseText: string): Promise<void> | null {
-    if (this.settings.typingMode()) { return this.beginTyping(lineIndex, baseText); }
     if (this.mic.denied() || !this.recognizer.supported()) { return null; }
 
     this.dispose();
@@ -125,39 +118,6 @@ export class ValidationService {
     return done;
   }
 
-  private beginTyping(lineIndex: number, baseText: string): Promise<void> {
-    this.dispose();
-
-    this.activeLine.set(lineIndex);
-    this.baseText = baseText;
-    this.put(lineIndex, {
-      transcript: MESSAGES.typePrompt,
-      stars: null,
-      status: 'typing',
-    });
-
-    return new Promise<void>((resolve) => { this.settle = resolve; });
-  }
-
-  submitTyped(text: string): void {
-    if (!this.settle) { return; }
-    const lineIndex = this.activeLine();
-    if (lineIndex === null) { return; }
-
-    const stars = typingStars(this.baseText, text);
-    this.put(lineIndex, stars === null
-      ? { transcript: MESSAGES.nothingTyped, stars: null, status: 'failed' }
-      : {
-        transcript: text,
-        stars,
-        status: 'scored',
-        words: typedWords(this.baseText, text),
-        missed: missedWords(this.baseText, text),
-      });
-    this.activeLine.set(null);
-    this.finish();
-  }
-
   dispose(): void {
     this.clearWatch();
     this.session?.abort();
@@ -165,9 +125,9 @@ export class ValidationService {
 
     const active = this.activeLine();
     const pending = active === null ? undefined : this.results().get(active)?.status;
-    if (active !== null && (pending === 'listening' || pending === 'typing')) {
+    if (active !== null && pending === 'listening') {
       this.put(active, {
-        transcript: pending === 'typing' ? MESSAGES.nothingTyped : MESSAGES.noSpeechDetected,
+        transcript: MESSAGES.noSpeechDetected,
         stars: null,
         status: 'failed',
       });
@@ -181,29 +141,12 @@ export class ValidationService {
     this.results.set(new Map());
   }
 
-  readonly mode = computed<CheckMode>(() => {
-    if (!this.settings.sttEnabled()) { return 'nothing'; }
-    return this.settings.typingMode() ? 'spelling' : 'speaking';
-  });
-
-  async setMode(mode: CheckMode): Promise<CheckMode> {
-    if (mode === 'nothing') {
-      this.disable();
-      return 'nothing';
-    }
-
-    this.settings.setTypingMode(mode === 'spelling');
-    if (mode === 'spelling') { this.mic.release(); }
-
-    await this.enable();
-    return this.mode();
+  async useSpeaking(): Promise<boolean> {
+    this.settings.setTypingMode(false);
+    return this.enable();
   }
 
   enable(): Promise<boolean> {
-    if (this.settings.typingMode()) {
-      this.settings.setSttEnabled(true);
-      return Promise.resolve(true);
-    }
     if (this.enabling) { return this.enabling; }
     this.enabling = this.mic.ensure().then(
       () => {

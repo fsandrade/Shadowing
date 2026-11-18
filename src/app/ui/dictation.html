@@ -1,0 +1,61 @@
+<div class="dictation-head">
+  <button type="button" id="dictPrev" (click)="store.back()" [disabled]="store.index() === 0">&larr;</button>
+  <span id="dictationCount">{{ store.index() + 1 }} / {{ store.lines().length }}</span>
+  <button type="button" id="dictNext" (click)="store.next()">&rarr;</button>
+  <select id="dictMoveTo" [value]="store.index()"
+    (change)="store.goTo(+$any($event.target).value)">
+    @for (line of store.lines(); track $index) {
+      <option [value]="$index">Move to… {{ $index + 1 }}</option>
+    }
+  </select>
+</div>
+
+<div class="dictation-challenge">
+  <button type="button" id="dictReplay" (click)="onReplay()">&#8635; Replay</button>
+
+  @if (!issue()) {
+    <input
+      id="dictInput"
+      type="text"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      [value]="typed()"
+      (input)="typed.set($any($event.target).value)"
+      (keydown.enter)="check()">
+    <div class="dict-actions">
+      <button type="button" id="dictCheck" (click)="check()">Check</button>
+      <button type="button" id="dictSkip" (click)="store.skip()">Skip</button>
+    </div>
+  } @else {
+    <div class="dict-verdict"
+      [class.correct]="status() === 'correct'"
+      [class.incorrect]="status() === 'incorrect'">{{ status() === 'correct' ? 'Correct' : 'Incorrect' }}</div>
+    <div class="dict-answer">
+      @if (status() === 'incorrect') {
+        @if (store.showFull()) {
+          <span>{{ store.textAt(store.index()) }}</span>
+        } @else {
+          @for (word of masked(); track $index) {
+            <span [class.dict-masked]="!word.ok">{{ word.ok ? word.text : '*'.repeat(word.text.length) }}</span>
+          }
+        }
+      } @else {
+        <span>{{ store.textAt(store.index()) }}</span>
+      }
+    </div>
+    @if (status() === 'incorrect') {
+      <label><input type="checkbox" id="dictShowImmediate"
+        [checked]="store.showAnswerImmediately()"
+        (change)="store.showAnswerImmediately.set($any($event.target).checked)"> Show answer immediately</label>
+      <label><input type="checkbox" id="dictShowFull"
+        [checked]="store.showFull()"
+        (change)="store.showFull.set($any($event.target).checked); store.revealFull()"> Show full answer</label>
+    }
+  }
+</div>
+
+<div class="transport">
+  <button type="button" id="finish" (click)="finish()">Finish</button>
+  <span id="clock">{{ timer.clockText() }}</span>
+</div>

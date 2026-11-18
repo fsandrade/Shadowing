@@ -9,8 +9,6 @@ import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { SettingsSliders } from './settings-sliders';
 
-const BLUR_TITLE = 'Hide the text so you practise by ear';
-
 @Component({
   selector: 'div[appSettingsDrawer]',
   imports: [SettingsSliders],
@@ -34,8 +32,6 @@ export class SettingsDrawer {
 
   readonly open = input(false);
   readonly close = output<void>();
-
-  protected readonly BLUR_TITLE = BLUR_TITLE;
 
   protected readonly levels = computed(() => this.catalog.levels.map((level) => ({
     id: level.id,

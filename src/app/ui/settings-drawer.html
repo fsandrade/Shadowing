@@ -2,7 +2,7 @@
   <h2>Settings</h2>
   <button type="button" class="icon-btn" id="closeSettings"
     aria-label="Close settings" title="Close settings"
-    (click)="close.emit()">&#10005;</button>
+    (click)="close.emit()">&times;</button>
 </div>
 
 <section class="drawer-section">
@@ -29,14 +29,4 @@
     [disabled]="atLevelPacing()"
     [title]="'Back to the speed and gap suggested for ' + (practice.level() ?? 'this level')"
     (click)="resetPacing()">Reset to level default</button>
-</section>
-
-<section class="drawer-section">
-  <h3>Practice</h3>
-  <div class="drawer-toggles">
-    <button type="button" id="blur"
-      [attr.aria-pressed]="settings.blur()"
-      [title]="BLUR_TITLE"
-      (click)="settings.setBlur(!settings.blur())">&#9682; blur text</button>
-  </div>
 </section>

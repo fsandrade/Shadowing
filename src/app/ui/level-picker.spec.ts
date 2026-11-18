@@ -22,8 +22,8 @@ function render() {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        // No level yet, but a topic left over from a level this learner no
-        // longer has: picking a level has to drop it.
+        
+        
         useValue: {
           read: (key: string) => (key === 'shadowing.settings' ? { topicId: 'b' } : null),
           write: () => {},
@@ -51,7 +51,7 @@ describe('LevelPicker', () => {
     expect(root.querySelector('.level-title')?.textContent).toBe('Choose your level');
     const lede = root.querySelector('.level-lede')?.textContent;
     expect(lede).toMatch(/sets the sentences you practise/i);
-    // Nothing in this release changes the level again, so nothing may promise it.
+    
     expect(lede).not.toMatch(/change/i);
   });
 

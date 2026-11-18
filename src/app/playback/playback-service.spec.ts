@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activityById } from '../core/activity';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { BannerStore } from '../state/banner-store';
@@ -61,8 +60,8 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
   });
   const settings = TestBed.inject(SettingsStore);
   const timer = TestBed.inject(SessionTimerStore);
-  // Mirror AppStartup: a real session always starts with its timer seeded,
-  // so tests that are not about expiry get a duration long enough to ignore.
+  
+  
   timer.reset(settings.durationMin());
   return {
     speaker,
@@ -332,8 +331,8 @@ describe('PlaybackService dead-voice detection', () => {
 
   it('a fresh Play leaves the refused-microphone warning standing', () => {
     const { playback, banner } = setup(1000);
-    // Raised by FlowStore.start() when Speaking degrades to unscored. Pressing
-    // Play does not un-deny the microphone, so it must survive.
+    
+    
     banner.show(MESSAGES.micDenied, 'stt-denied');
 
     playback.play();
@@ -354,19 +353,17 @@ describe('PlaybackService session expiry', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  // Expiry now ends the activity rather than raising a banner, and finish() is
-  // a no-op unless a session is running - so these tests have to start one.
-  // start() also applies the level's pacing; the gap arithmetic below is
-  // written in whole speech lengths, so put the slack back to 1.
+  
+  
+  
+  
   async function startSession(
     t: { flow: FlowStore; settings: SettingsStore },
     minutes: number,
   ): Promise<void> {
-    await t.flow.start(activityById('shadowing')!, 'a', minutes);
+    await t.flow.start('speaking', 'catalog', 'a', minutes);
     t.settings.setSlack(1);
   }
-
-  const SHADOWING = activityById('shadowing')!;
 
   it('finishes and reports the session once a timed session runs out', async () => {
     const t = setup(1000);
@@ -378,7 +375,7 @@ describe('PlaybackService session expiry', () => {
     expect(t.practice.playing()).toBe(false);
     expect(t.flow.screen()).toBe('summary');
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: null, name: 'Speaking',
     });
     expect(t.timer.spokenCount()).toBe(0);
   });
@@ -395,7 +392,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(70_000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 12,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 12, name: 'Speaking',
     });
   });
 
@@ -415,7 +412,7 @@ describe('PlaybackService session expiry', () => {
 
     expect(scored).toBeGreaterThan(3);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 15,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 3, stars: 15, name: 'Speaking',
     });
   });
 
@@ -440,7 +437,7 @@ describe('PlaybackService session expiry', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null, name: 'Speaking',
     });
     expect(t.playback.inGap()).toBe(false);
     expect(t.practice.playing()).toBe(false);
@@ -459,7 +456,7 @@ describe('PlaybackService session expiry', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
     expect(t.flow.result()).toEqual({
-      activity: SHADOWING, topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null,
+      kind: 'speaking', source: 'catalog', topicId: 'a', practisedMs: 60_000, spoken: 1, stars: null, name: 'Speaking',
     });
     expect(t.practice.playing()).toBe(false);
     expect(t.practice.index()).toBe(0);
@@ -710,7 +707,7 @@ describe('PlaybackService validation timing', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('opens validation only after the audio when spelling is off', async () => {
+  it('opens validation only after the audio when the timing hook is off', async () => {
     const { playback, speaker } = setup(1000);
     const openedAfter: number[] = [];
     playback.setValidationHook(() => {
@@ -726,7 +723,7 @@ describe('PlaybackService validation timing', () => {
     expect(openedAfter).toEqual([1]);
   });
 
-  it('opens validation as the audio starts when spelling is on', async () => {
+  it('opens validation as the audio starts when the timing hook is on', async () => {
     const { playback, speaker } = setup(1000);
     const openedAfter: number[] = [];
     playback.setValidationTiming(() => true);
@@ -822,8 +819,8 @@ describe('PlaybackService repeating a line for the typist', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(speaker.spoken.length).toBe(midGap + 1);
 
-    // The loop owns the generation; a repeat must not bump it, or the gap
-    // resolves early and the typing promise is abandoned.
+    
+    
     expect(practice.playing()).toBe(true);
     await vi.advanceTimersByTimeAsync(2000);
     expect(practice.index()).toBeGreaterThan(0);

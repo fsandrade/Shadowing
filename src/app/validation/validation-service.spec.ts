@@ -401,8 +401,8 @@ describe('ValidationService end of speech', () => {
     const { validation, rec, resultAt } = setup();
     void validation.begin(0, TARGET);
 
-    // Completing the sentence arms the force-finish fallback, then the browser
-    // reports its final result well inside that window.
+    
+    
     rec.speak(TARGET);
     expect(rec.latest().stopped).toBe(true);
     rec.endWithFinalText(TARGET);
@@ -444,19 +444,6 @@ describe('ValidationService enable flow', () => {
     expect(settings.sttEnabled()).toBe(false);
   });
 
-  it('enable turns the setting back off when a refusal follows a typing session', async () => {
-    const { validation, mic, settings } = setup();
-    // Spelling turns the flag on without ever touching the microphone. Leaving
-    // it on through a refused Speaking would make mode() claim 'speaking'.
-    settings.setSttEnabled(true);
-    mic.ensure.mockRejectedValue(new Error('denied'));
-
-    expect(await validation.enable()).toBe(false);
-
-    expect(settings.sttEnabled()).toBe(false);
-    expect(validation.mode()).toBe('nothing');
-  });
-
   it('a second enable while the first is pending does not re-prompt', async () => {
     const { validation, mic } = setup();
     let release!: (v: unknown) => void;
@@ -481,122 +468,4 @@ describe('ValidationService enable flow', () => {
   });
 });
 
-describe('ValidationService typing mode', () => {
-  function typingSetup(options: { denied?: boolean } = {}) {
-    const kit = setup(options);
-    kit.settings.setTypingMode(true);
-    return kit;
-  }
 
-  it('opens a typing result instead of listening', () => {
-    const { validation, rec, resultAt } = typingSetup();
-    const done = validation.begin(1, 'hit the road');
-
-    expect(done).not.toBeNull();
-    expect(validation.activeLine()).toBe(1);
-    expect(resultAt(1)).toEqual({
-      transcript: MESSAGES.typePrompt, stars: null, status: 'typing',
-    });
-    expect(rec.sessions.length).toBe(0);
-  });
-
-  it('never asks for the microphone', () => {
-    const { validation, mic } = typingSetup();
-    validation.begin(0, 'hit the road');
-    expect(mic.ensure).not.toHaveBeenCalled();
-  });
-
-  it('works even when the microphone was denied', () => {
-    const { validation, resultAt } = typingSetup({ denied: true });
-    expect(validation.begin(0, 'hit the road')).not.toBeNull();
-    expect(resultAt(0)?.status).toBe('typing');
-  });
-
-  it('scores what was typed and settles the turn', async () => {
-    const { validation, resultAt } = typingSetup();
-    const done = validation.begin(0, 'hit the road');
-
-    validation.submitTyped('Hit the road');
-    await done;
-
-    expect(resultAt(0)?.stars).toBe(5);
-    expect(resultAt(0)?.status).toBe('scored');
-    expect(resultAt(0)?.transcript).toBe('Hit the road');
-    expect(validation.activeLine()).toBeNull();
-  });
-
-  it('marks the words that were wrong', () => {
-    const { validation, resultAt } = typingSetup();
-    validation.begin(0, 'a quick clarification');
-    validation.submitTyped('a quik clarification');
-
-    expect(resultAt(0)?.stars).toBeLessThan(5);
-    expect(resultAt(0)?.words).toEqual([
-      { text: 'a', ok: true },
-      { text: 'quik', ok: false },
-      { text: 'clarification', ok: true },
-    ]);
-  });
-
-  it('names the words that were left out', () => {
-    const { validation, resultAt } = typingSetup();
-    validation.begin(0, 'let me jump in with a quick note');
-    validation.submitTyped('let me jump in with quick note');
-
-    expect(resultAt(0)?.missed).toEqual(['a']);
-  });
-
-  it('holds the speller to the exact spelling, unlike speech', () => {
-    const { validation, resultAt } = typingSetup();
-    validation.begin(0, 'It looks gray outside');
-    validation.submitTyped('It looks grey outside');
-
-    expect(resultAt(0)?.stars).toBeLessThan(5);
-  });
-
-  it('treats an empty submission as nothing typed', async () => {
-    const { validation, resultAt } = typingSetup();
-    const done = validation.begin(0, 'hit the road');
-
-    validation.submitTyped('   ');
-    await done;
-
-    expect(resultAt(0)).toEqual({
-      transcript: MESSAGES.nothingTyped, stars: null, status: 'failed',
-    });
-  });
-
-  it('ignores a submission when no turn is open', () => {
-    const { validation, resultAt } = typingSetup();
-    validation.submitTyped('nothing to score');
-    expect(resultAt(0)).toBeUndefined();
-  });
-
-  it('marks an abandoned turn as nothing typed', async () => {
-    const { validation, resultAt } = typingSetup();
-    const done = validation.begin(3, 'hit the road');
-
-    validation.dispose();
-    await done;
-
-    expect(resultAt(3)).toEqual({
-      transcript: MESSAGES.nothingTyped, stars: null, status: 'failed',
-    });
-  });
-
-  it('turns the validator on without the microphone', async () => {
-    const { validation, mic, settings } = typingSetup();
-    expect(await validation.enable()).toBe(true);
-    expect(settings.sttEnabled()).toBe(true);
-    expect(mic.ensure).not.toHaveBeenCalled();
-  });
-
-  it('goes back to listening when typing mode is switched off', () => {
-    const { validation, rec, settings, resultAt } = typingSetup();
-    settings.setTypingMode(false);
-    validation.begin(0, 'hit the road');
-
-    expect(rec.sessions.length).toBe(1);
-    expect(resultAt(0)?.status).toBe('listening');
-  });
-});
