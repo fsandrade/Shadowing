@@ -240,7 +240,10 @@ describe('ActivityChooser practice panels', () => {
   async function renderWith(totals: unknown) {
     const r = render([{
       provide: HistoryService,
-      useValue: { totals: () => totals as ReturnType<HistoryService['totals']> } as unknown as HistoryService,
+      useValue: {
+        totals: () => totals as ReturnType<HistoryService['totals']>,
+        progress: () => new Map(),
+      } as unknown as HistoryService,
     }]);
     r.fixture.detectChanges();
     await r.fixture.whenStable();

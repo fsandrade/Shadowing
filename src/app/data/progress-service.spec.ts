@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsStore } from '../state/settings-store';
+import { HistoryService } from './history-service';
 import { SENTENCE_IDS, type Attempt, ProgressService } from './progress-service';
 
 const LINE = 'I must\'ve <b>hit the snooze button</b> like four times this morning.';
@@ -152,5 +153,16 @@ describe('ProgressService', () => {
   it('flush is a no-op since localStorage writes are synchronous', () => {
     const { progress } = setup();
     expect(() => progress.flush()).not.toThrow();
+  });
+
+  it('refreshes sentence history after recording an attempt', () => {
+    const { progress } = setup();
+    const history = TestBed.inject(HistoryService);
+    const refresh = vi.spyOn(history, 'refresh');
+
+    progress.startSession('speaking', null, 10);
+    progress.record(scored);
+
+    expect(refresh).toHaveBeenCalledOnce();
   });
 });

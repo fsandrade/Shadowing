@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HistoryService } from '../data/history-service';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
 import { MicrophoneService } from '../platform/microphone';
 import { RANDOM } from '../platform/rng';
@@ -15,6 +16,12 @@ import { FlowStore } from './flow-store';
 import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
+
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
 
 function setup(opts: { micDenied?: boolean } = {}) {
   const store = new Map<string, unknown>();
@@ -68,6 +75,7 @@ function setup(opts: { micDenied?: boolean } = {}) {
     banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
     practice: TestBed.inject(PracticeStore),
+    history: TestBed.inject(HistoryService),
     heard: (text: string) => recognition.onResult?.(text),
     setMicDenied: (value: boolean) => { denied = value; },
     setSeed: (value: number) => { seed = value; },
@@ -132,6 +140,41 @@ describe('FlowStore starting a session', () => {
     const { flow, settings } = setup();
     await flow.start('speaking', 'catalog', null, 10);
     expect(settings.topicId()).toBeNull();
+  });
+
+  it('reshuffles the study queue on every start', async () => {
+    const { flow, practice, setSeed } = setup();
+
+    await flow.start('speaking', 'catalog', 'a', 10);
+    expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
+
+    setSeed(0);
+    flow.finish();
+    await flow.start('speaking', 'catalog', 'a', 10);
+
+    expect(practice.lines()).not.toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('leaves a mastered sentence out of the next session queue', async () => {
+    const { flow, practice, history } = setup();
+
+    await flow.start('speaking', 'catalog', 'a', 10);
+    expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
+
+    localStorage.setItem('shadowing.attempts', JSON.stringify([
+      {
+        sentenceId: 's-a1',
+        status: 'scored',
+        stars: 5,
+        attemptedAt: new Date().toISOString(),
+      },
+    ]));
+    history.refresh();
+
+    flow.finish();
+    await flow.start('speaking', 'catalog', 'a', 10);
+
+    expect(practice.lines()).toEqual(['a2', 'a3']);
   });
 
   it('switches to the learner\'s own text for My text', async () => {

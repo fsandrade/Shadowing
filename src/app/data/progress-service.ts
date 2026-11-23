@@ -6,6 +6,7 @@ import {
 import { typingCounts } from '../core/typing';
 import { SettingsStore } from '../state/settings-store';
 import type { SentenceIds } from './corpus-source';
+import { HistoryService } from './history-service';
 
 export const SENTENCE_IDS = new InjectionToken<SentenceIds>('SENTENCE_IDS');
 
@@ -52,6 +53,7 @@ function writeStore<T>(key: string, value: T[]): void {
 export class ProgressService {
   private readonly settings = inject(SettingsStore);
   private readonly sentenceIds = inject(SENTENCE_IDS);
+  private readonly history = inject(HistoryService);
 
   private sessionId: string | null = null;
   private sessionStartedAt = 0;
@@ -100,6 +102,7 @@ export class ProgressService {
       attemptedAt: new Date().toISOString(),
     };
     writeStore(ATTEMPTS_KEY, [...readStore(ATTEMPTS_KEY), record]);
+    this.history.refresh();
   }
 
   

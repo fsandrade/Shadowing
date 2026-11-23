@@ -1,4 +1,5 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import type { SentenceProgress } from '../core/progression';
 
 export interface AccumulatedProgress {
   readonly currentStreak: number;
@@ -86,9 +87,40 @@ function isConsecutive(a: string, b: string): boolean {
   return (db.getTime() - da.getTime()) === 86_400_000;
 }
 
+function sentenceProgress(attempts: JsonRecord[]): Map<string, SentenceProgress> {
+  const map = new Map<string, SentenceProgress>();
+
+  for (const attempt of attempts) {
+    const sentenceId = attempt['sentenceId'];
+    if (typeof sentenceId !== 'string' || !sentenceId) { continue; }
+
+    const stars = count(attempt['stars']);
+    const at = dayOf(attempt['attemptedAt'] as string | null)?.getTime() ?? 0;
+    const previous = map.get(sentenceId);
+    const latest = !previous || at >= previous.lastAttemptedAt;
+
+    map.set(sentenceId, {
+      bestStars: Math.max(previous?.bestStars ?? 0, stars),
+      lastStars: latest ? stars : previous!.lastStars,
+      lastAttemptedAt: Math.max(previous?.lastAttemptedAt ?? 0, at),
+    });
+  }
+
+  return map;
+}
+
 @Injectable({ providedIn: 'root' })
 export class HistoryService {
-  
+  readonly progress = signal<ReadonlyMap<string, SentenceProgress>>(new Map());
+
+  constructor() {
+    this.refresh();
+  }
+
+  refresh(): void {
+    this.progress.set(sentenceProgress(readStore(ATTEMPTS_KEY)));
+  }
+
   
   
   

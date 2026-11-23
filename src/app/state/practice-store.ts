@@ -1,8 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
-import { type Rng, shuffle } from '../core/shuffle';
+import { buildQueue } from '../core/progression';
+import { type Rng } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
+import { HistoryService } from '../data/history-service';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { SettingsStore } from './settings-store';
@@ -16,15 +18,20 @@ export class PracticeStore {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
+  private readonly history = inject(HistoryService);
   private readonly random = inject(RANDOM);
 
   private readonly revealed = signal(FIRST_PAGE);
-  private readonly reshuffle = signal(0);
   private readonly rng = signal<Rng | undefined>(undefined);
+  private readonly queue = signal<readonly Sentence[]>([]);
 
   readonly index = signal(0);
   readonly playing = signal(false);
   readonly spoken = signal<ReadonlySet<number>>(new Set<number>());
+
+  constructor() {
+    this.rebuildQueue();
+  }
 
 
 
@@ -46,8 +53,7 @@ export class PracticeStore {
 
   readonly lines = computed<readonly string[]>(() => {
     if (this.customActive()) { return this.custom.lines(); }
-    this.reshuffle();
-    return shuffle(this.sentences().map((s) => s.text), this.rng() ?? this.random);
+    return this.queue().map((s) => s.text);
   });
 
   readonly visibleLines = computed<readonly string[]>(
@@ -63,6 +69,7 @@ export class PracticeStore {
   selectTopic(id: string | null): void {
     this.settings.setTopicId(id);
     this.settings.setSource('catalog');
+    this.rebuildQueue();
     this.resetProgress();
   }
 
@@ -73,7 +80,7 @@ export class PracticeStore {
 
   shuffleLines(rng?: Rng): void {
     this.rng.set(rng);
-    this.reshuffle.update((n) => n + 1);
+    this.rebuildQueue();
     this.resetProgress();
   }
 
@@ -110,6 +117,14 @@ export class PracticeStore {
   private revealThrough(i: number): void {
     const needed = Math.min(i + 1 + LOOKAHEAD, this.lines().length);
     if (needed > this.revealed()) { this.revealed.set(needed); }
+  }
+
+  private rebuildQueue(): void {
+    this.queue.set(buildQueue(
+      this.sentences(),
+      this.history.progress(),
+      this.rng() ?? this.random,
+    ));
   }
 
   private resetProgress(): void {

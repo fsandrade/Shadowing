@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
+import { HistoryService } from '../data/history-service';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
 import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
@@ -10,6 +11,29 @@ import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
+
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
+
+function seedAttempts(attempts: unknown[]): void {
+  localStorage.setItem('shadowing.attempts', JSON.stringify(attempts));
+}
+
+function attempt(
+  sentenceId: string,
+  stars: number | null,
+  attemptedAt = new Date().toISOString(),
+): Record<string, unknown> {
+  return {
+    sentenceId,
+    status: stars === null ? 'failed' : 'scored',
+    stars,
+    attemptedAt,
+  };
+}
 
 function setup() {
   TestBed.resetTestingModule();
@@ -28,6 +52,7 @@ function setup() {
     store: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
     custom: TestBed.inject(CustomTopicStore),
+    history: TestBed.inject(HistoryService),
   };
 }
 
@@ -216,6 +241,52 @@ describe('PracticeStore progressive rendering', () => {
     store.visibleLines().forEach((line, i) => {
       expect(line).toBe(all[i]);
     });
+  });
+});
+
+describe('PracticeStore study queue', () => {
+  it('leaves mastered sentences out of the queue', () => {
+    seedAttempts([attempt('s-a1', 5)]);
+    const { store } = setup();
+    store.selectTopic('a');
+    expect(store.lines()).toEqual(['a2', 'a3']);
+  });
+
+  it('puts unseen sentences before weaker grades and stronger grades last', () => {
+    seedAttempts([attempt('s-a1', 2), attempt('s-a2', 4)]);
+    const { store } = setup();
+    store.selectTopic('a');
+    expect(store.lines()).toEqual(['a3', 'a1', 'a2']);
+  });
+
+  it('keeps the queue snapshot when history changes mid-session', () => {
+    const { store, history } = setup();
+    store.selectTopic('a');
+    const running = [...store.lines()];
+
+    seedAttempts([attempt('s-a1', 5)]);
+    history.refresh();
+
+    expect(store.lines()).toEqual(running);
+  });
+
+  it('rebuilds the queue when the topic changes', () => {
+    seedAttempts([attempt('s-b1', 5)]);
+    const { store } = setup();
+
+    store.selectTopic('b');
+    expect(store.lines()).toEqual([]);
+
+    store.selectTopic('a');
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('does not filter custom text through the queue', () => {
+    seedAttempts([attempt('s-a1', 5)]);
+    const { store, custom } = setup();
+    custom.setText('Mine. Yours.');
+    store.useCustomText();
+    expect(store.lines()).toEqual(['Mine.', 'Yours.']);
   });
 });
 

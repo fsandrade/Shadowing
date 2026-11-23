@@ -162,6 +162,7 @@ describe('SessionSummary', () => {
             currentStreak: 4,
             longestStreak: 11,
           }),
+          progress: () => new Map(),
         },
       },
     ]);
