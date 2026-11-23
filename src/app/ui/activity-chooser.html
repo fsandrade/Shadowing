@@ -103,5 +103,5 @@
 
 <button type="button" id="startActivity" class="start-btn"
   [disabled]="!ready()"
-  title="Start this activity"
+  [title]="mastered() ? 'Every sentence in this topic has 5 stars' : 'Start this activity'"
   (click)="begin()">Start</button>

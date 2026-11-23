@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
-import { buildQueue } from '../core/progression';
+import { buildQueue, MASTERED_STARS } from '../core/progression';
 import { type Rng } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
@@ -50,6 +50,29 @@ export class PracticeStore {
   readonly sentences = computed<readonly Sentence[]>(() => {
     return sentencesIn(this.catalog, this.settings.topicId());
   });
+
+  readonly remaining = computed<{
+    readonly all: number;
+    readonly byTopic: ReadonlyMap<string, number>;
+  }>(() => {
+    const progress = this.history.progress();
+    const byTopic = new Map<string, number>();
+    let all = 0;
+
+    for (const sentence of this.catalog.sentences) {
+      const seen = progress.get(sentence.id);
+      if (seen && seen.bestStars >= MASTERED_STARS) { continue; }
+      all++;
+      byTopic.set(sentence.topicId, (byTopic.get(sentence.topicId) ?? 0) + 1);
+    }
+
+    return { all, byTopic };
+  });
+
+  remainingFor(topicId: string | null): number {
+    const remaining = this.remaining();
+    return topicId === null ? remaining.all : remaining.byTopic.get(topicId) ?? 0;
+  }
 
   readonly lines = computed<readonly string[]>(() => {
     if (this.customActive()) { return this.custom.lines(); }

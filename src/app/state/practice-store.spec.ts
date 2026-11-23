@@ -290,6 +290,43 @@ describe('PracticeStore study queue', () => {
   });
 });
 
+describe('PracticeStore remaining counts', () => {
+  it('counts every unmastered sentence, overall and per topic', () => {
+    seedAttempts([attempt('s-a1', 5)]);
+    const { store } = setup();
+
+    expect(store.remainingFor(null)).toBe(5);
+    expect(store.remainingFor('a')).toBe(2);
+    expect(store.remainingFor('b')).toBe(1);
+    expect(store.remainingFor('c')).toBe(2);
+  });
+
+  it('reports nothing remaining for a fully mastered topic', () => {
+    seedAttempts([attempt('s-a1', 5), attempt('s-a2', 5), attempt('s-a3', 5)]);
+    const { store } = setup();
+
+    expect(store.remainingFor('a')).toBe(0);
+    expect(store.remainingFor(null)).toBe(3);
+  });
+
+  it('keeps a sentence that only failed attempts remain', () => {
+    seedAttempts([attempt('s-a1', null)]);
+    const { store } = setup();
+
+    expect(store.remainingFor('a')).toBe(3);
+  });
+
+  it('updates when history refreshes', () => {
+    const { store, history } = setup();
+    expect(store.remainingFor('a')).toBe(3);
+
+    seedAttempts([attempt('s-a1', 5)]);
+    history.refresh();
+
+    expect(store.remainingFor('a')).toBe(2);
+  });
+});
+
 describe('PracticeStore navigation', () => {
   it('advances with wraparound', () => {
     const { store } = setup();

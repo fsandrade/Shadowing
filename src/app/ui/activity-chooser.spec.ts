@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
@@ -13,6 +13,23 @@ import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
 import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
 import { ActivityChooser } from './activity-chooser';
+
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
+
+function master(...ids: string[]): void {
+  localStorage.setItem('shadowing.attempts', JSON.stringify(
+    ids.map((sentenceId) => ({
+      sentenceId,
+      status: 'scored',
+      stars: 5,
+      attemptedAt: new Date().toISOString(),
+    })),
+  ));
+}
 
 @Component({
   imports: [ActivityChooser],
@@ -115,6 +132,44 @@ describe('ActivityChooser', () => {
     fixture.detectChanges();
 
     expect(start().disabled).toBe(false);
+  });
+
+  it('disables Start when every sentence in the picked topic has five stars', () => {
+    master('s-a1', 's-a2', 's-a3');
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="a"]')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(true);
+    expect(start().title).toBe('Every sentence in this topic has 5 stars');
+  });
+
+  it('still starts a topic that has sentences left', () => {
+    master('s-a1');
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="a"]')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(false);
+    expect(start().title).toBe('Start this activity');
+  });
+
+  it('disables Start for All topics once everything is mastered', () => {
+    master('s-a1', 's-a2', 's-a3', 's-b1', 's-c1', 's-c2');
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('#allTopics')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(true);
   });
 
   it('keeps both cards enabled here, since the browser can transcribe speech', () => {

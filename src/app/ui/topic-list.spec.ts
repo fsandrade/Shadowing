@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
@@ -8,6 +8,23 @@ import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../t
 import { TopicList } from './topic-list';
 
 const DATA = TEST_CATALOG;
+
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
+
+function master(...ids: string[]): void {
+  localStorage.setItem('shadowing.attempts', JSON.stringify(
+    ids.map((sentenceId) => ({
+      sentenceId,
+      status: 'scored',
+      stars: 5,
+      attemptedAt: new Date().toISOString(),
+    })),
+  ));
+}
 
 @Component({
   imports: [TopicList],
@@ -47,7 +64,7 @@ function render() {
 describe('TopicList', () => {
   it('offers All topics first, then every topic that has sentences', () => {
     const { buttons } = render();
-    expect(buttons()[0].textContent?.trim()).toBe('All topics');
+    expect(buttons()[0].querySelector('.deck-name')?.textContent?.trim()).toBe('All topics');
     expect(buttons().slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b', 'c']);
   });
 
@@ -84,5 +101,32 @@ describe('TopicList', () => {
   it('no longer offers My text — that is an activity now', () => {
     const { root } = render();
     expect(root.querySelector('#myText')).toBeNull();
+  });
+
+  it('shows how many sentences are left, per topic and overall', () => {
+    const { root } = render();
+    const label = (selector: string) =>
+      root.querySelector(`${selector} .deck-count`)?.textContent?.trim();
+
+    expect(label('#allTopics')).toBe('6 left');
+    expect(label('[data-deck-id="a"]')).toBe('3 left');
+    expect(label('[data-deck-id="b"]')).toBe('1 left');
+    expect(label('[data-deck-id="c"]')).toBe('2 left');
+  });
+
+  it('shows Mastered when every sentence in a topic has five stars', () => {
+    master('s-a1', 's-a2', 's-a3');
+    const { root } = render();
+
+    expect(root.querySelector('[data-deck-id="a"] .deck-count')?.textContent?.trim())
+      .toBe('Mastered');
+    expect(root.querySelector('#allTopics .deck-count')?.textContent?.trim()).toBe('3 left');
+  });
+
+  it('marks All topics mastered once everything is done', () => {
+    master('s-a1', 's-a2', 's-a3', 's-b1', 's-c1', 's-c2');
+    const { root } = render();
+
+    expect(root.querySelector('#allTopics .deck-count')?.textContent?.trim()).toBe('Mastered');
   });
 });

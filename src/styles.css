@@ -119,7 +119,11 @@ header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01e
 .decks { overflow-y: auto; padding: 6px 0 10px; }
 .decks-list { display: contents; }
 .decks button {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
   width: 100%;
   text-align: left;
   background: none;
@@ -131,6 +135,9 @@ header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01e
   padding: 8px 16px;
   cursor: pointer;
 }
+.deck-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-count { color: var(--dim-2); font-size: 12px; white-space: nowrap; }
+.deck-count.mastered { color: var(--accent); }
 .decks button:hover { color: var(--text); background: #1f232a; }
 .decks button[aria-pressed="true"] {
   color: var(--text);

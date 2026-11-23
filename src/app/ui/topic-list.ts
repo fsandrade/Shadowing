@@ -12,4 +12,9 @@ export class TopicList {
 
   readonly selected = input<string | null>(null);
   readonly pick = output<string | null>();
+
+  protected countLabel(topicId: string | null): string {
+    const remaining = this.practice.remainingFor(topicId);
+    return remaining === 0 ? 'Mastered' : `${remaining} left`;
+  }
 }
