@@ -128,3 +128,41 @@ test('the Move-to select jumps straight to a challenge', async ({ page }) => {
   await page.locator('#dictMoveTo').selectOption('2');
   await expect(page.locator('#dictationCount')).toContainText('3 /');
 });
+
+test('without Repeat, an incorrect check does not offer Try again', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'dictation', topic: null });
+
+  await expect(page.locator('#dictRetry')).toHaveCount(0);
+
+  const sentence = stripTags(await currentLineText(page));
+  await page.locator('#dictInput').fill(misspellOneWord(sentence));
+  await page.locator('#dictCheck').click();
+  await expect(page.locator('.dict-verdict')).toHaveText(/Incorrect/i);
+  await expect(page.locator('#dictRetry')).toHaveCount(0);
+});
+
+test('Repeat keeps an incorrect dictation challenge in play', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'dictation', topic: null });
+
+  await page.locator('#dictRepeat').click();
+  await expect(page.locator('#dictRepeat')).toHaveAttribute('aria-pressed', 'true');
+
+  const sentence = stripTags(await currentLineText(page));
+  await page.locator('#dictInput').fill(misspellOneWord(sentence));
+  await page.locator('#dictCheck').click();
+  await expect(page.locator('.dict-verdict')).toHaveText(/Incorrect/i);
+
+  await expect(page.locator('#dictRetry')).toBeVisible();
+  await page.locator('#dictRetry').click();
+
+  // Stays on the same challenge, verdict and input cleared.
+  await expect(page.locator('#dictationCount')).toContainText('1 /');
+  await expect(page.locator('.dict-verdict')).toHaveCount(0);
+  await expect(page.locator('#dictInput')).toHaveValue('');
+
+  // Skip still moves on.
+  await page.locator('#dictSkip').click();
+  await expect(page.locator('#dictationCount')).toContainText('2 /');
+});

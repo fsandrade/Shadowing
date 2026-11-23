@@ -1,9 +1,54 @@
+import { createHash } from 'crypto';
 import {
   test, expect, gotoApp, startActivity, Page,
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 
 const TOPIC_COUNT = 25;
+
+/** Mirrors tools/generate-corpus-meta.js so e2e seeds can address real sentences. */
+function sentenceId(deckId: string, content: string): string {
+  const name = `sentence:${deckId}:${content}`;
+  const ns = 'b7c9f0a2-3e41-4f8d-9a6b-1d2e3f405162';
+  const nsBuf = Buffer.from(ns.replace(/-/g, ''), 'hex');
+  const hash = createHash('sha1')
+    .update(Buffer.concat([nsBuf, Buffer.from(name, 'utf8')]))
+    .digest();
+  const bytes = hash.subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = bytes.toString('hex');
+  return [h.slice(0, 8), h.slice(8, 12), h.slice(12, 16), h.slice(16, 20), h.slice(20, 32)].join('-');
+}
+
+async function installFakeSpeech(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as any).__fakeTranscript = '';
+    class FakeRec {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      maxAlternatives = 1;
+      onresult: any = null;
+      onerror: any = null;
+      onend: any = null;
+      start(): void {
+        const t = (window as any).__fakeTranscript || '';
+        if (t) {
+          this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: t }], { isFinal: true })] });
+        }
+        this.onend?.();
+      }
+      stop(): void {}
+      abort(): void {}
+    }
+    (window as any).SpeechRecognition = FakeRec;
+    const media = (navigator as any).mediaDevices;
+    if (media) {
+      media.getUserMedia = () => Promise.resolve({ getTracks: () => [] });
+    }
+  });
+}
 
 async function currentIndex(page: Page): Promise<number> {
   return page.locator('.lines p')
@@ -472,4 +517,121 @@ test('dictation can be started from the chooser', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null, minutes: 5 });
   await expect(page.locator('#dictInput')).toBeVisible();
+});
+
+test('no level picker or level chip on first load', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-kind-id="speaking"]').click();
+
+  await expect(page.locator('#level-picker')).toHaveCount(0);
+  await expect(page.locator('.level-chip')).toHaveCount(0);
+  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
+  await expect(page.locator('#decks .deck-count')).toHaveCount(TOPIC_COUNT + 1);
+});
+
+test('a sentence scored five stars leaves the next session queue', async ({ page }) => {
+  installFakeAudio(page);
+  await installFakeSpeech(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  const masteredText = await page.locator('.lines p.current .text').innerText();
+  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
+  await page.locator('#play').click();
+
+  await page.waitForFunction(() => {
+    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts') ?? '[]') as Array<{ stars: number }>;
+    return attempts.some((a) => a.stars === 5);
+  });
+
+  await page.locator('#finish').click();
+  await expect(page.locator('.summary-title')).toBeVisible();
+  await page.locator('#backToChooser').click();
+
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+
+  const restarts = await page.locator('.lines p .text').allInnerTexts();
+  expect(restarts.length).toBe(29);
+  expect(restarts).not.toContain(masteredText);
+});
+
+test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+  await expect(page.locator('.lines p')).toHaveCount(30);
+
+  const contents = await page.evaluate(() => [...document.querySelectorAll('.lines p .text')]
+    .map((el) => el.innerHTML));
+  const attempts = contents.map((c) => ({
+    sentenceId: sentenceId('nuance-debate', c),
+    status: 'scored' as const,
+    stars: 5,
+    attemptedAt: new Date().toISOString(),
+  }));
+  await page.evaluate((a) => { localStorage.setItem('shadowing.attempts', JSON.stringify(a)); }, attempts);
+  await page.reload();
+
+  await page.locator('[data-kind-id="speaking"]').click();
+  await page.locator('#srcCatalog').click();
+  await page.locator('[data-deck-id="nuance-debate"]').click();
+  await page.locator('.durations [data-min="15"]').click();
+
+  await expect(page.locator('#startActivity')).toBeDisabled();
+  await expect(page.locator('#startActivity')).toHaveAttribute('title', /Every sentence in this topic has 5 stars/);
+  await expect(page.locator('[data-deck-id="nuance-debate"] .deck-count')).toHaveText('Mastered');
+
+  // We are still on the chooser: no empty session, timer, or mic prompt was started.
+  await expect(page.locator('#activities')).toBeVisible();
+  await expect(page.locator('#clock')).toHaveCount(0);
+});
+
+test('blur hides unspoken lines and persists across reload', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  await expect(page.locator('#blur')).toBeVisible();
+  await page.locator('#blur').click();
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.lines')).toHaveClass(/blurred/);
+
+  // unspoken lines are blurred; hovering a line makes it readable again
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p:nth-child(2) .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('blur(6px)');
+  await page.locator('.lines p:nth-child(2) .text').hover();
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p:nth-child(2) .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('none');
+
+  await page.reload();
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  await expect(page.locator('.lines')).toHaveClass(/blurred/);
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#blur').click();
+  await expect(page.locator('.lines')).not.toHaveClass(/blurred/);
+});
+
+test('repeat keeps a below-five line in play', async ({ page }) => {
+  installFakeAudio(page);
+  await installFakeSpeech(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  await page.evaluate(() => { (window as any).__fakeTranscript = 'garbage'; });
+  await page.locator('#play').click();
+
+  // Scoring is on now, so Repeat can be enabled.
+  await expect(page.locator('#repeat')).toBeEnabled();
+  await page.locator('#repeat').click();
+  await expect(page.locator('#repeat')).toHaveAttribute('aria-pressed', 'true');
+
+  const lineText = await page.locator('.lines p.current .text').innerText();
+  await page.waitForFunction((t) => {
+    const spoken = (window as any).__spokenText || [];
+    return spoken.filter((s) => s === t).length >= 2;
+  }, lineText);
+
+  await page.locator('#finish').click();
 });
