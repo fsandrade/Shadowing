@@ -15,6 +15,9 @@ const CLOCK_TICK_MS = 250;
 
 const KEEPALIVE_MS = 10_000;
 
+const MAX_REPEATS = 5;
+const MAX_STARS = 5;
+
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
   private readonly settings = inject(SettingsStore);
@@ -42,6 +45,7 @@ export class AppStartup {
     this.progress.flush();
 
     this.attachValidator();
+    this.attachRepeatPolicy();
     this.dropResultsWhenOrderChanges();
     this.releaseMicOnUnload();
   }
@@ -73,6 +77,16 @@ export class AppStartup {
     });
 
     this.playback.setValidationAbort(() => this.validation.dispose());
+  }
+
+  private attachRepeatPolicy(): void {
+    this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {
+      if (!this.settings.sttEnabled() || !this.settings.repeatUntilFive()) { return false; }
+      if (repeatsDone >= MAX_REPEATS) { return false; }
+
+      const result = this.validation.results().get(lineIndex);
+      return !result || result.stars === null || result.stars < MAX_STARS;
+    });
   }
 
   private recordAttempt(

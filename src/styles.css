@@ -630,6 +630,8 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
 }
 .lines p.current b { color: var(--accent); }
 .lines p.spoken { color: var(--dim-2); }
+.lines.blurred .text { filter: blur(6px); }
+.lines.blurred p:hover .text, .lines.blurred p.spoken .text { filter: none; }
 
 .validate-box {
   display: flex;

@@ -15,6 +15,8 @@ interface StoredSettings {
   durationMin?: unknown;
   stt?: unknown;
   typing?: unknown;
+  blur?: unknown;
+  repeat?: unknown;
 }
 
 function storedString(value: unknown): string | null {
@@ -50,6 +52,8 @@ export class SettingsStore {
   readonly durationMin = signal(storedDuration(this.saved.durationMin));
   readonly sttEnabled = signal(this.saved.stt === true);
   readonly typingMode = signal(this.saved.typing === true);
+  readonly blur = signal(this.saved.blur === true);
+  readonly repeatUntilFive = signal(this.saved.repeat === true);
 
   constructor() {
     effect(() => {
@@ -62,6 +66,8 @@ export class SettingsStore {
         durationMin: this.durationMin(),
         stt: this.sttEnabled(),
         typing: this.typingMode(),
+        blur: this.blur(),
+        repeat: this.repeatUntilFive(),
       });
     });
   }
@@ -74,4 +80,6 @@ export class SettingsStore {
   setDurationMin(min: number): void { this.durationMin.set(min); }
   setSttEnabled(on: boolean): void { this.sttEnabled.set(on); }
   setTypingMode(on: boolean): void { this.typingMode.set(on); }
+  setBlur(on: boolean): void { this.blur.set(on); }
+  setRepeatUntilFive(on: boolean): void { this.repeatUntilFive.set(on); }
 }

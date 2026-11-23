@@ -242,6 +242,32 @@ describe('LineList renders custom text as text, never as markup', () => {
   });
 });
 
+describe('LineList blur preference', () => {
+  it('blurs the list while the preference is on', () => {
+    const { fixture, lines, settings } = render();
+    expect(lines.classList.contains('blurred')).toBe(false);
+
+    settings.setBlur(true);
+    fixture.detectChanges();
+    expect(lines.classList.contains('blurred')).toBe(true);
+
+    settings.setBlur(false);
+    fixture.detectChanges();
+    expect(lines.classList.contains('blurred')).toBe(false);
+  });
+
+  it('still renders custom text as literal text when blurring', () => {
+    const rendered = renderCustom(['<b>bold</b> attempt.']);
+    rendered.settings.setBlur(true);
+    rendered.fixture.detectChanges();
+
+    const text = rendered.lines.querySelector('p .text')!;
+    expect(rendered.lines.classList.contains('blurred')).toBe(true);
+    expect(text.querySelector('b')).toBeNull();
+    expect(text.textContent).toBe('<b>bold</b> attempt.');
+  });
+});
+
 describe('LineList still trusts the built-in corpus', () => {
   it('renders chunk markup for corpus decks', () => {
     const { lines } = render();

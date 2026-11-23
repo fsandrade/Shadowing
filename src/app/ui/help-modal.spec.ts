@@ -52,7 +52,8 @@ describe('HelpModal content', () => {
     const text = render(true).modal.textContent ?? '';
     for (const term of ['How to use this app', 'gap', 'speed', 'voice',
                         'Play / Pause', 'Next', 'Session', 'Finish',
-                        'unlimited', 'Speaking', 'Dictation', 'Correct', 'Incorrect']) {
+                        'unlimited', 'Speaking', 'Dictation', 'Correct', 'Incorrect',
+                        'Blur', 'Retry until 5']) {
       expect(text, `help should mention ${term}`).toContain(term);
     }
   });
@@ -62,8 +63,7 @@ describe('HelpModal content', () => {
     
     
     
-    
-    for (const gone of ['rate me', 'Shuffle', 'Blur', 'Spelling', 'retry until 5']) {
+    for (const gone of ['rate me', 'Shuffle', 'Spelling']) {
       expect(text, `help should not name the removed ${gone} control`).not.toContain(gone);
     }
     for (const term of ['Speaking', 'Dictation', 'Topic', 'My text']) {
