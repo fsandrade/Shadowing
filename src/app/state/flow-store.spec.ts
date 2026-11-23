@@ -7,21 +7,17 @@ import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
 } from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
-import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
 import { ValidationService } from '../validation/validation-service';
 import { BannerStore } from './banner-store';
 import { CATALOG } from './catalog-token';
 import { FlowStore } from './flow-store';
 import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
-import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
-function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
-  const level = opts.level === undefined ? TEST_LEVEL : opts.level;
-  const store = new Map<string, unknown>([
-    ['shadowing.profile', level === null ? { levelId: null } : { levelId: level }],
-  ]);
+function setup(opts: { micDenied?: boolean } = {}) {
+  const store = new Map<string, unknown>();
 
   let recognition: RecognitionOptions = {};
   const recognizer = {
@@ -68,7 +64,6 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
   return {
     flow: TestBed.inject(FlowStore),
     settings: TestBed.inject(SettingsStore),
-    profile: TestBed.inject(ProfileStore),
     progress: TestBed.inject(ProgressService),
     banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
@@ -80,19 +75,8 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
 }
 
 describe('FlowStore screens', () => {
-  it('asks for a level on a first visit and nothing else', () => {
-    const { flow } = setup({ level: null });
-    expect(flow.screen()).toBe('onboarding');
-  });
-
-  it('opens on the chooser once a level is known', () => {
+  it('opens on the chooser with no session running', () => {
     const { flow } = setup();
-    expect(flow.screen()).toBe('chooser');
-  });
-
-  it('leaves onboarding the moment a level is chosen', () => {
-    const { flow, profile } = setup({ level: null });
-    profile.setLevel('A2');
     expect(flow.screen()).toBe('chooser');
   });
 
@@ -136,13 +120,6 @@ describe('FlowStore starting a session', () => {
     expect(settings.typingMode()).toBe(true);
   });
 
-  it('applies the pacing the level suggests', async () => {
-    const { flow, settings } = setup();
-    await flow.start('speaking', 'catalog', 'a', 10);
-    expect(settings.rate()).toBe(0.8);
-    expect(settings.slack()).toBe(2);
-  });
-
   it('sets the chosen topic and duration', async () => {
     const { flow, settings } = setup();
     await flow.start('speaking', 'catalog', 'a', 15);
@@ -151,7 +128,7 @@ describe('FlowStore starting a session', () => {
     expect(settings.source()).toBe('catalog');
   });
 
-  it('takes null to mean every topic at the level', async () => {
+  it('takes null to mean every topic', async () => {
     const { flow, settings } = setup();
     await flow.start('speaking', 'catalog', null, 10);
     expect(settings.topicId()).toBeNull();
@@ -318,70 +295,3 @@ describe('FlowStore finishing', () => {
   });
 });
 
-describe('FlowStore reshuffles on every start', () => {
-  it('reorders the sentences when the same session restarts on the same topic', async () => {
-    const { flow, practice, setSeed } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const first = [...practice.lines()];
-    expect(first.length).toBeGreaterThan(1);
-
-    flow.finish();
-    setSeed(0);
-    await flow.start('speaking', 'catalog', 'a', 10);
-
-    expect(practice.lines()).not.toEqual(first);
-  });
-
-  it('keeps the same sentences, only in a different order', async () => {
-    const { flow, practice, setSeed } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const first = [...practice.lines()];
-
-    flow.finish();
-    setSeed(0);
-    await flow.start('speaking', 'catalog', 'a', 10);
-
-    expect([...practice.lines()].sort()).toEqual([...first].sort());
-  });
-});
-
-describe('FlowStore freezes the level for the running session', () => {
-  it('leaves the sentences alone when the profile level changes mid-session', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const running = [...practice.lines()];
-    expect(running.length).toBeGreaterThan(0);
-
-    profile.setLevel('B1');
-
-    expect(practice.lines()).toEqual(running);
-    expect(practice.level()).toBe(TEST_LEVEL);
-  });
-
-  it('picks the new level up on the next session', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    profile.setLevel('B1');
-    flow.finish();
-
-    await flow.start('speaking', 'catalog', null, 10);
-
-    expect(practice.level()).toBe('B1');
-    expect([...practice.lines()].sort()).toEqual(['c1', 'c2']);
-  });
-
-  it('offers the profile level\'s topics for choosing, not the running one\'s', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    expect(practice.topics().map((t) => t.id)).toEqual(['a', 'b']);
-
-    profile.setLevel('B1');
-
-    expect(practice.topics().map((t) => t.id)).toEqual(['c']);
-  });
-});

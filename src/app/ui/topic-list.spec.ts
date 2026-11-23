@@ -45,10 +45,10 @@ function render() {
 }
 
 describe('TopicList', () => {
-  it('offers All topics first, then every topic at the level', () => {
+  it('offers All topics first, then every topic that has sentences', () => {
     const { buttons } = render();
     expect(buttons()[0].textContent?.trim()).toBe('All topics');
-    expect(buttons().slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b']);
+    expect(buttons().slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b', 'c']);
   });
 
   it('marks All topics when nothing is selected', () => {

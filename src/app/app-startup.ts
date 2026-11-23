@@ -1,15 +1,12 @@
 import { effect, inject, Injectable, untracked } from '@angular/core';
-import { isKnownLevel } from './core/catalog';
 import { ProgressService } from './data/progress-service';
 import { AuthStore } from './platform/auth';
 import { PlaybackService } from './playback/playback-service';
 import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
 import { BannerStore } from './state/banner-store';
-import { CATALOG } from './state/catalog-token';
 import { MESSAGES } from './state/messages';
 import { PracticeStore } from './state/practice-store';
-import { ProfileStore } from './state/profile-store';
 import { SessionTimerStore } from './state/session-timer-store';
 import { SettingsStore } from './state/settings-store';
 import { VoiceStore } from './state/voice-store';
@@ -20,10 +17,8 @@ const KEEPALIVE_MS = 10_000;
 
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
-  private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly practice = inject(PracticeStore);
-  private readonly profile = inject(ProfileStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
@@ -35,8 +30,6 @@ export class AppStartup {
   private readonly progress = inject(ProgressService);
 
   run(): void {
-    this.forgetLevelThatNoLongerExists();
-
     this.timer.reset(this.settings.durationMin());
     this.voices.refresh();
     this.watchAudioAvailability();
@@ -45,7 +38,6 @@ export class AppStartup {
     setInterval(() => this.speaker.keepAlive(), KEEPALIVE_MS);
 
     this.auth.watch();
-    void this.profile.load();
 
     this.progress.flush();
 
@@ -81,14 +73,6 @@ export class AppStartup {
     });
 
     this.playback.setValidationAbort(() => this.validation.dispose());
-  }
-
-  private forgetLevelThatNoLongerExists(): void {
-    const levelId = this.profile.levelId();
-    if (levelId !== null && !isKnownLevel(this.catalog, levelId)) {
-      this.profile.clear();
-      this.settings.setTopicId(null);
-    }
   }
 
   private recordAttempt(

@@ -113,24 +113,6 @@ header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01e
   border-color: var(--accent);
 }
 
-.level-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font: inherit;
-  color: var(--text);
-  font-size: 14px;
-}
-.level-chip-code {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--accent);
-}
-
 .app { grid-row: 3; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
 .app:has(main.full) { grid-template-columns: 1fr; }
 
@@ -246,32 +228,6 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
   color: var(--dim-2);
 }
 
-.level-choices { display: flex; flex-wrap: wrap; gap: 10px; }
-.level-choices button {
-  background: var(--panel-2);
-  color: var(--text-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 10px 16px;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  min-width: 64px;
-  text-align: center;
-}
-.level-choices button:disabled { opacity: 0.5; cursor: not-allowed; }
-.level-choices button:not(:disabled):hover {
-  background: #232a33;
-  border-color: var(--line-2);
-  color: var(--text);
-}
-.level-choices button[aria-pressed="true"]:not(:disabled),
-.level-choices button[aria-current="true"] {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-  font-weight: 700;
-}
 .drawer-note { margin: 0; font-size: 12px; color: var(--dim-2); }
 
 .settings-drawer .sliders {
@@ -303,39 +259,6 @@ main[appPractice] { grid-template-rows: auto auto auto 1fr; }
   background: var(--accent);
   border-color: var(--accent);
 }
-
-.level-picker { padding: 8vh 24px 32px; overflow-y: auto; }
-.level-title { margin: 0 0 8px; font-size: 28px; font-weight: 700; text-align: center; letter-spacing: -0.02em; }
-.level-lede { margin: 0 0 36px; color: var(--dim-2); text-align: center; font-size: 15px; }
-.level-grid {
-  display: grid;
-  gap: 14px;
-  max-width: 800px;
-  margin: 0 auto;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-.level-card {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-  text-align: left;
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  font: inherit;
-  cursor: pointer;
-}
-.level-card:not(:disabled):hover, .level-card:focus-visible {
-  border-color: var(--accent);
-  background: #1f232a;
-}
-.level-card:disabled { opacity: 0.5; cursor: not-allowed; }
-.level-card[aria-current="true"] { border-color: var(--accent); }
-.level-code { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
-.level-name { font-size: 16px; font-weight: 600; }
-.level-blurb { font-size: 13px; color: var(--dim-2); line-height: 1.45; }
 
 .chooser {
   display: flex;
@@ -1000,7 +923,6 @@ main[appDictation] .transport #clock {
 
 @media (min-width: 641px) and (max-width: 1024px) {
   .activity-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .level-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
   .panels { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 }
 

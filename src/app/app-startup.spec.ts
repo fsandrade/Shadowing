@@ -1,4 +1,3 @@
-import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStartup } from './app-startup';
@@ -8,21 +7,13 @@ import { Speaker } from './platform/speaker';
 import { SafeStorage } from './platform/storage';
 import { CATALOG } from './state/catalog-token';
 import { PracticeStore } from './state/practice-store';
-import { ProfileStore } from './state/profile-store';
-import { SETTINGS_KEY, SettingsStore } from './state/settings-store';
+import { SettingsStore } from './state/settings-store';
 import { NO_SHUFFLE, TEST_CATALOG } from './testing/catalog';
 import { RANDOM } from './platform/rng';
-import { LevelPicker } from './ui/level-picker';
 
 const DATA = TEST_CATALOG;
 
-@Component({
-  imports: [LevelPicker],
-  template: `<div appLevelPicker></div>`,
-})
-class PickerHost {}
-
-function setup(storedLevelId: string | null, storedTopicId: string | null = null) {
+function setup() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -32,9 +23,7 @@ function setup(storedLevelId: string | null, storedTopicId: string | null = null
       {
         provide: SafeStorage,
         useValue: {
-          read: (key: string) => (
-            key === SETTINGS_KEY ? { levelId: storedLevelId, topicId: storedTopicId } : null
-          ),
+          read: () => null,
           write: () => {},
         } as unknown as SafeStorage,
       },
@@ -63,60 +52,18 @@ function setup(storedLevelId: string | null, storedTopicId: string | null = null
   const startup = TestBed.inject(AppStartup);
   TestBed.runInInjectionContext(() => startup.run());
   return {
-    profile: TestBed.inject(ProfileStore),
     practice: TestBed.inject(PracticeStore),
     settings: TestBed.inject(SettingsStore),
     progress: TestBed.inject(ProgressService),
   };
 }
 
-describe('AppStartup level recovery', () => {
+describe('AppStartup', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('keeps a remembered level that still has sentences', () => {
-    expect(setup('A2').profile.levelId()).toBe('A2');
-  });
-
-  it('forgets a level that no longer exists at all', () => {
-    expect(setup('Z9').profile.levelId()).toBeNull();
-  });
-
-  it('forgets a level that exists but has been emptied', () => {
-    expect(setup('C2').profile.levelId()).toBeNull();
-  });
-
-  it('leaves a first-time visitor at the picker', () => {
-    expect(setup(null).profile.levelId()).toBeNull();
-  });
-
-  it('forgets the topic along with the level it was picked at', () => {
-    expect(setup('C2', 'a').settings.topicId()).toBeNull();
-  });
-
-  it('keeps the topic when the remembered level is still good', () => {
-    expect(setup('A2', 'a').settings.topicId()).toBe('a');
-  });
-
-  it('does not strand the learner on a topic that belonged to the forgotten level', () => {
-    
-    const { practice, profile } = setup('C2', 'a');
-    expect(profile.chosen()).toBe(false);
-
-    const fixture = TestBed.createComponent(PickerHost);
-    fixture.detectChanges();
-    const card = (fixture.nativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('.level-card[data-level-id="B1"]')!;
-    card.click();
-    fixture.detectChanges();
-
-    expect(practice.level()).toBe('B1');
-    expect(practice.topicId()).toBeNull();
-    expect(practice.lines()).toEqual(['c1', 'c2']);
-  });
-
   it('does not end a session behind the flow store\'s back when the duration changes', async () => {
-    const { settings, progress } = setup('A2');
+    const { settings, progress } = setup();
     const ended = vi.spyOn(progress, 'endSession');
 
     settings.setDurationMin(15);

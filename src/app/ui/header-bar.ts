@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy, Component, computed, inject, input, output,
 } from '@angular/core';
 import { FlowStore } from '../state/flow-store';
-import { ProfileStore } from '../state/profile-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 
@@ -14,7 +13,6 @@ import { SettingsStore } from '../state/settings-store';
 })
 export class HeaderBar {
   protected readonly timer = inject(SessionTimerStore);
-  protected readonly profile = inject(ProfileStore);
   private readonly flow = inject(FlowStore);
   private readonly settings = inject(SettingsStore);
 

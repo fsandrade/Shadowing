@@ -1,16 +1,14 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type PracticeKind, type PracticeSource } from '../core/activity';
-import { pacingFor } from '../core/pacing';
 import { ProgressService } from '../data/progress-service';
 import { ValidationService } from '../validation/validation-service';
 import { BannerStore } from './banner-store';
 import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
-import { ProfileStore } from './profile-store';
 import { SessionTimerStore } from './session-timer-store';
 import { SettingsStore } from './settings-store';
 
-export type Screen = 'onboarding' | 'chooser' | 'practice' | 'dictation' | 'summary';
+export type Screen = 'chooser' | 'practice' | 'dictation' | 'summary';
 
 export interface SessionResult {
   readonly kind: PracticeKind;
@@ -36,7 +34,6 @@ interface RunningSession {
 
 @Injectable({ providedIn: 'root' })
 export class FlowStore {
-  private readonly profile = inject(ProfileStore);
   private readonly settings = inject(SettingsStore);
   private readonly practice = inject(PracticeStore);
   private readonly timer = inject(SessionTimerStore);
@@ -52,7 +49,6 @@ export class FlowStore {
   readonly result = this.finished.asReadonly();
 
   readonly screen = computed<Screen>(() => {
-    if (!this.profile.chosen()) { return 'onboarding'; }
     if (this.finished()) { return 'summary'; }
     if (!this.running()) { return 'chooser'; }
     return this.running()!.kind === 'dictation' ? 'dictation' : 'practice';
@@ -76,8 +72,6 @@ export class FlowStore {
 
     
     
-    this.practice.activateLevel(this.profile.levelId());
-
     if (source === 'custom') {
       this.practice.useCustomText();
     } else {
@@ -87,12 +81,8 @@ export class FlowStore {
       
       
       
-      this.practice.shuffleLines();
     }
 
-    const pacing = pacingFor(this.profile.levelId());
-    this.settings.setRate(pacing.rate);
-    this.settings.setSlack(pacing.slack);
     this.settings.setDurationMin(minutes);
 
     if (kind === 'dictation') {

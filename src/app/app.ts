@@ -10,7 +10,6 @@ import { EdgeTip } from './ui/edge-tip';
 import { Dictation } from './ui/dictation';
 import { HeaderBar } from './ui/header-bar';
 import { HelpModal } from './ui/help-modal';
-import { LevelPicker } from './ui/level-picker';
 import { Practice } from './ui/practice';
 import { SessionSummary } from './ui/session-summary';
 import { SettingsDrawer } from './ui/settings-drawer';
@@ -19,7 +18,7 @@ import { Shortcuts } from './ui/shortcuts';
 @Component({
   selector: 'app-root',
   imports: [
-    HeaderBar, BannerView, LevelPicker, ActivityChooser, Practice, Dictation, SessionSummary,
+    HeaderBar, BannerView, ActivityChooser, Practice, Dictation, SessionSummary,
     Shortcuts, EdgeTip, HelpModal, SettingsDrawer,
   ],
   templateUrl: './app.html',

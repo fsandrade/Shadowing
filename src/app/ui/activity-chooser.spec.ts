@@ -11,7 +11,7 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
-import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
 import { ActivityChooser } from './activity-chooser';
 
 @Component({
@@ -36,7 +36,7 @@ class FakeRecognition {
 }
 
 function render(extra: unknown[] = []) {
-  const store = new Map<string, unknown>([['shadowing.profile', { levelId: TEST_LEVEL }]]);
+  const store = new Map<string, unknown>();
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({

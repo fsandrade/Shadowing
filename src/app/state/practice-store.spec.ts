@@ -55,7 +55,7 @@ describe('PracticeStore custom topic', () => {
   it('leaves the corpus decks untouched', () => {
     const { store, custom } = setup();
     custom.setText('Mine only.');
-    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1', 'c1', 'c2']);
     store.selectTopic('a');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
   });
@@ -79,7 +79,7 @@ describe('PracticeStore custom topic', () => {
 
 describe('PracticeStore lines', () => {
   it('defaults to every line in deck order', () => {
-    expect(setup().store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect(setup().store.lines()).toEqual(['a1', 'a2', 'a3', 'b1', 'c1', 'c2']);
   });
 
   it('selectTopic pins one topic, returns to the catalog and resets progress', () => {
@@ -102,13 +102,16 @@ describe('PracticeStore lines', () => {
     store.selectTopic('b');
     store.selectTopic(null);
     expect(store.topicId()).toBeNull();
-    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3', 'b1', 'c1', 'c2']);
   });
 
-  it('offers the topics present at the level, and no All entry', () => {
+  it('offers every topic that has sentences', () => {
     const topics = setup().store.topics();
-    expect(topics).toEqual([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
-    expect(topics.map((t) => t.id)).not.toContain('all');
+    expect(topics).toEqual([
+      { id: 'a', name: 'A' },
+      { id: 'b', name: 'B' },
+      { id: 'c', name: 'C' },
+    ]);
   });
 
   it('reports whether there is anything to practise', () => {
@@ -122,10 +125,10 @@ describe('PracticeStore lines', () => {
 describe('PracticeStore progressive rendering', () => {
   const many: Catalog = {
     loadedAt: '2026-08-06T00:00:00Z',
-    levels: [{ id: 'A2', description: 'Elementary' }],
+    levels: [{ id: 'big', description: 'Big' }],
     topics: [{ id: 'big', name: 'Big' }],
     sentences: Array.from({ length: 200 }, (_, i) => ({
-      id: `s-${i}`, topicId: 'big', levelId: 'A2', text: `line ${i}`,
+      id: `s-${i}`, topicId: 'big', levelId: 'big', text: `line ${i}`,
     })),
   };
 
@@ -266,8 +269,8 @@ describe('PracticeStore reset semantics', () => {
 
     expect(store.index()).toBe(0);
     expect(store.spoken().size).toBe(0);
-    expect([...store.lines()].sort()).toEqual(['a1', 'a2', 'a3', 'b1']);
-    expect(store.lines()).not.toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect([...store.lines()].sort()).toEqual(['a1', 'a2', 'a3', 'b1', 'c1', 'c2']);
+    expect(store.lines()).not.toEqual(['a1', 'a2', 'a3', 'b1', 'c1', 'c2']);
   });
 
   it('keeps a manual shuffle in force when the topic filter changes', () => {

@@ -3,7 +3,7 @@ import {
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 
-const TOPICS_AT_LEVEL = 25;
+const TOPIC_COUNT = 25;
 
 async function currentIndex(page: Page): Promise<number> {
   return page.locator('.lines p')
@@ -42,54 +42,6 @@ test('loads the corpus with numbered lines', async ({ page }) => {
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
 
-test('a first-time visitor is asked for a level before anything else', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { level: null });
-
-  await expect(page.locator('.level-title')).toHaveText('Choose your level');
-
-  await expect(page.locator('.lines p')).toHaveCount(0);
-  await expect(page.locator('#activities')).toHaveCount(0);
-
-  const cards = page.locator('.level-card');
-  await expect(cards).toHaveCount(6);
-  await expect(cards.filter({ hasText: 'Coming soon' })).toHaveCount(0);
-  await expect(page.locator('.level-card:disabled')).toHaveCount(0);
-  await expect(cards.first()).toContainText('You can follow very short');
-  await expect(cards.first()).not.toContainText(/\d+ sentences/);
-
-  await page.locator('.level-card[data-level-id="B1"]').click();
-
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-});
-
-test('a first visit asks for a level once, then never again', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { level: null });
-  await expect(page.locator('#levels')).toBeVisible();
-
-  await page.locator('#levels [data-level-id="B1"]').click();
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levels')).toHaveCount(0);
-
-  await page.reload();
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levels')).toHaveCount(0);
-});
-
-test('the level survives a reload, and the app bar states it rather than changing it', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page);
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  await page.reload();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  // The level is asked once. The chip reports it; it is not a control.
-  await expect(page.locator('button#levelChip')).toHaveCount(0);
-});
-
 test('the chooser offers every activity, every topic and four durations', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
@@ -101,7 +53,7 @@ test('the chooser offers every activity, every topic and four durations', async 
   await page.locator('[data-kind-id="speaking"]').click();
 
   await expect(page.locator('#allTopics')).toBeVisible();
-  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
   await expect(page.locator('.durations button')).toHaveCount(4);
   await expect(page.locator('.durations button').first())
     .toHaveAttribute('title', /minute/i);
@@ -140,7 +92,7 @@ test('the header keeps its right-hand controls flush right on the chooser and in
     await gotoApp(page, { activity: null });
 
     // There is no clock on the chooser - the icon group must still be held
-    // against the right edge rather than collapsing next to the level chip.
+    // against the right edge rather than collapsing.
     const headerWidth = await page.locator('header').evaluate((el) => el.getBoundingClientRect().width);
     const chooserLeft = await page.locator('#settings')
       .evaluate((el) => el.getBoundingClientRect().left);
@@ -215,9 +167,9 @@ test('a banner can be dismissed with its close button', async ({ page }) => {
 
 test('starting on one topic narrows the list and renumbers from one', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page, { topic: 'socializing' });
+  await gotoApp(page, { topic: 'restaurants' });
 
-  await expect(page.locator('.lines p')).toHaveCount(26);
+  await expect(page.locator('.lines p')).toHaveCount(48);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -228,30 +180,6 @@ test('clicking a sentence highlights it, even when clicking the number', async (
 
   await page.locator('.lines p').nth(2).locator('.num').click();
   await expect(page.locator('.lines p.current .num')).toHaveText('3');
-});
-
-test('the level changes from the drawer, but not under a running activity', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { activity: 'speaking', topic: null, minutes: 15 });
-
-  const opening = () => page.locator('.lines p .text').first().innerText();
-  const running = await opening();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  await openSettings(page);
-  await page.locator('#profileLevels [data-level-id="A2"]').click();
-
-  // The profile moved; the activity on screen did not.
-  await expect(page.locator('#levelChip')).toContainText('A2');
-  expect(await opening()).toBe(running);
-
-  // The next activity is the one that gets the new level.
-  await page.locator('#closeSettings').click();
-  await page.locator('#finish').click();
-  await page.locator('#backToChooser').click();
-  await startActivity(page, 'speaking');
-
-  expect(await opening()).not.toBe(running);
 });
 
 test('the chooser shows both practice panels, and still fits on one screen',
@@ -323,7 +251,7 @@ test('the chooser shows both practice panels, and still fits on one screen',
     // Choosing an activity hands the space to the choices: the panels are what
     // you read on arrival, and keeping them would push Start off a 720 screen.
     await page.locator('[data-kind-id="speaking"]').click();
-    await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+    await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
     await expect(page.locator('.panels')).toHaveCount(0);
 
     below = await page.evaluate(() => ['#startActivity', '.durations']
@@ -352,27 +280,6 @@ test('an unlimited session counts up and ends only when the learner finishes', a
   await page.locator('#finish').click();
   await expect(page.locator('.summary-title')).toContainText('Speaking');
   await expect(page.locator('[data-stat="minutes"]')).toContainText(/\d+ sec|\d+ min/);
-});
-
-test('every start reshuffles, keeping the corpus and renumbering from one', async ({ page }) => {
-  installFakeAudio(page);
-
-  // Five lines, not one: a single line collides by chance about once in 700
-  // runs, which is a flake. Five is one in 700^5.
-  const opening = () => page.evaluate(
-    () => [...document.querySelectorAll('.lines p .text')]
-      .slice(0, 5).map((el) => el.textContent).join('|'),
-  );
-
-  await gotoApp(page, { activity: 'speaking', topic: null });
-  const before = await opening();
-
-  await page.locator('#finish').click();
-  await page.locator('#backToChooser').click();
-  await startActivity(page, 'speaking');
-
-  await expect(page.locator('.lines p .num').first()).toHaveText('1');
-  expect(await opening()).not.toBe(before);
 });
 
 test('playback advances lines while the gap ring fills then disappears', async ({ page }) => {
@@ -448,7 +355,7 @@ test('the chooser fits one screen once an activity is picked', async ({ page }) 
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
   await page.locator('[data-kind-id="speaking"]').click();
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
+  await expect(page.locator('#decks button')).toHaveCount(TOPIC_COUNT + 1);
 
   // One screen, three choices, one button: the topic list must not push the
   // duration control and Start below the fold.
@@ -482,9 +389,9 @@ test('mobile shows every topic in a two-column grid, nothing to swipe', async ({
   // The tap must land the learner in the topic grid, not leave focus on the card.
   await expect(page.locator('#decks')).toBeFocused();
 
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
+  await expect(page.locator('#decks button')).toHaveCount(TOPIC_COUNT + 1);
 
-  // Two-column grid tiles: every topic at the level shows at once, no
+  // Two-column grid tiles: every topic shows at once, no
   // sideways swiping, and both columns are actually laid out.
   const layout = await page.locator('.decks').evaluate((el) => ({
     tracks: getComputedStyle(el).gridTemplateColumns.split(' ').filter((t) => t.trim()).length,

@@ -5,9 +5,7 @@ import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
-import { FlowStore } from '../state/flow-store';
-import { PracticeStore } from '../state/practice-store';
-import { ProfileStore } from '../state/profile-store';
+import { SettingsStore } from '../state/settings-store';
 import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
 import { SettingsDrawer } from './settings-drawer';
 
@@ -36,71 +34,35 @@ function render() {
   return {
     fixture,
     root,
-    flow: TestBed.inject(FlowStore),
-    profile: TestBed.inject(ProfileStore),
-    practice: TestBed.inject(PracticeStore),
+    settings: TestBed.inject(SettingsStore),
     draw: () => fixture.detectChanges(),
-    levels: () => [...root.querySelectorAll<HTMLButtonElement>('#profileLevels button')],
+    reset: () => root.querySelector<HTMLButtonElement>('#resetPacing')!,
   };
 }
 
-describe('SettingsDrawer profile section', () => {
-  it('offers every level in the catalog, disabling the ones with nothing behind them', () => {
-    const { levels } = render();
-    expect(levels().map((b) => b.dataset['levelId'])).toEqual(['A2', 'B1', 'C2']);
-    
-    expect(levels()[2].disabled).toBe(true);
-    expect(levels()[0].disabled).toBe(false);
+describe('SettingsDrawer playback reset', () => {
+  it('is disabled while speed and gap are already at their defaults', () => {
+    const { reset } = render();
+    expect(reset().disabled).toBe(true);
   });
 
-  it('marks the level the profile currently holds', () => {
-    const { levels } = render();
-    expect(levels()[0].getAttribute('aria-pressed')).toBe('true');
-    expect(levels()[1].getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('exposes the levels as buttons in a labelled group, not as list items', () => {
-    const { root, levels } = render();
-    const group = root.querySelector('#profileLevels')!;
-    expect(group.getAttribute('role')).toBe('group');
-    expect(group.getAttribute('aria-label')).toMatch(/level/i);
-    
-    
-    expect(levels().some((b) => b.hasAttribute('role'))).toBe(false);
-  });
-
-  it('changing the level writes it to the profile', () => {
-    const { levels, draw, profile } = render();
-    levels()[1].click();
+  it('returns speed and gap to 1', () => {
+    const { settings, reset, draw } = render();
+    settings.setRate(0.8);
+    settings.setSlack(2);
     draw();
 
-    expect(profile.levelId()).toBe('B1');
-    expect(levels()[1].getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('a level with nothing behind it cannot be chosen', () => {
-    const { levels, draw, profile } = render();
-    levels()[2].click();
-    draw();
-    expect(profile.levelId()).toBe('A2');
-  });
-
-  it('leaves a running activity on the level it started with', async () => {
-    const { levels, draw, flow, practice } = render();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    draw();
-    const running = [...practice.lines()];
-
-    levels()[1].click();
+    expect(reset().disabled).toBe(false);
+    reset().click();
     draw();
 
-    expect(practice.lines()).toEqual(running);
+    expect(settings.rate()).toBe(1);
+    expect(settings.slack()).toBe(1);
+    expect(reset().disabled).toBe(true);
   });
 
-  it('says the change lands on the next activity, so nobody thinks it broke', () => {
+  it('no longer offers a profile level picker', () => {
     const { root } = render();
-    expect(root.querySelector('.drawer-note')?.textContent)
-      .toMatch(/next activity/i);
+    expect(root.querySelector('#profileLevels')).toBeNull();
   });
 });

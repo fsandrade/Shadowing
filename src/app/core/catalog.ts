@@ -51,3 +51,12 @@ export function countAt(catalog: Catalog, levelId: string): number {
 export function isKnownLevel(catalog: Catalog, levelId: string): boolean {
   return catalog.levels.some((l) => l.id === levelId) && countAt(catalog, levelId) > 0;
 }
+
+export function topicsIn(catalog: Catalog): Topic[] {
+  const present = new Set(catalog.sentences.map((s) => s.topicId));
+  return catalog.topics.filter((t) => present.has(t.id));
+}
+
+export function sentencesIn(catalog: Catalog, topicId: string | null): Sentence[] {
+  return catalog.sentences.filter((s) => topicId === null || s.topicId === topicId);
+}

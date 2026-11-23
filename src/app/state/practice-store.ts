@@ -1,11 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { type Level, type Sentence, sentencesAt, type Topic, topicsAt } from '../core/catalog';
+import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
 import { type Rng, shuffle } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
-import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
 const FIRST_PAGE = 60;
@@ -17,7 +16,6 @@ export class PracticeStore {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
-  private readonly profile = inject(ProfileStore);
   private readonly random = inject(RANDOM);
 
   private readonly revealed = signal(FIRST_PAGE);
@@ -28,32 +26,22 @@ export class PracticeStore {
   readonly playing = signal(false);
   readonly spoken = signal<ReadonlySet<number>>(new Set<number>());
 
-  readonly levels = computed<readonly Level[]>(() => this.catalog.levels);
+
 
   
   
   
   
-  private readonly pinnedLevel = signal<string | null>(null);
-
-  readonly level = computed<string | null>(
-    () => this.pinnedLevel() ?? this.profile.levelId(),
-  );
-
   readonly customActive = computed(() => this.settings.source() === 'custom');
 
   
   
-  readonly topics = computed<readonly Topic[]>(() => {
-    const level = this.profile.levelId();
-    return level ? topicsAt(this.catalog, level) : [];
-  });
+  readonly topics = computed<readonly Topic[]>(() => topicsIn(this.catalog));
 
   readonly topicId = computed(() => this.settings.topicId());
 
   readonly sentences = computed<readonly Sentence[]>(() => {
-    const level = this.level();
-    return level ? sentencesAt(this.catalog, level, this.settings.topicId()) : [];
+    return sentencesIn(this.catalog, this.settings.topicId());
   });
 
   readonly lines = computed<readonly string[]>(() => {
@@ -72,10 +60,6 @@ export class PracticeStore {
 
   
   
-  activateLevel(id: string | null): void {
-    this.pinnedLevel.set(id);
-  }
-
   selectTopic(id: string | null): void {
     this.settings.setTopicId(id);
     this.settings.setSource('catalog');
