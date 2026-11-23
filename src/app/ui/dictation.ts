@@ -1,5 +1,6 @@
 import {
-  afterRenderEffect, ChangeDetectionStrategy, Component, computed, inject, signal, untracked,
+  afterEveryRender, afterRenderEffect, ChangeDetectionStrategy, Component, computed,
+  ElementRef, inject, signal, untracked, viewChild,
 } from '@angular/core';
 import { maskedWords } from '../core/typing';
 import { PlaybackService } from '../playback/playback-service';
@@ -31,14 +32,24 @@ export class Dictation {
 
   protected readonly typed = signal('');
   protected readonly playing = signal(false);
+  protected readonly repeatUntilFive = this.settings.repeatUntilFive;
 
   protected readonly status = computed(() => this.store.status(this.store.index()));
+
+  private readonly input = viewChild<ElementRef<HTMLInputElement>>('dictInput');
+  private focusInput = false;
 
   constructor() {
     afterRenderEffect(() => {
       this.store.index();
       this.typed.set('');
       untracked(() => void this.playCurrent());
+    });
+
+    afterEveryRender(() => {
+      if (!this.focusInput) { return; }
+      this.focusInput = false;
+      this.input()?.nativeElement.focus();
     });
   }
 
@@ -53,6 +64,16 @@ export class Dictation {
   protected onReplay(): void { void this.playCurrent(); }
 
   protected check(): void { this.store.check(this.typed()); }
+
+  protected toggleRepeat(): void {
+    this.settings.setRepeatUntilFive(!this.settings.repeatUntilFive());
+  }
+
+  protected retry(): void {
+    this.store.retry();
+    this.typed.set('');
+    this.focusInput = true;
+  }
 
   protected finish(): void {
     this.playback.stop();

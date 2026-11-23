@@ -16,6 +16,7 @@
   @if (!issue()) {
     <input
       id="dictInput"
+      #dictInput
       type="text"
       autocomplete="off"
       autocapitalize="off"
@@ -44,6 +45,9 @@
         <span>{{ store.textAt(store.index()) }}</span>
       }
     </div>
+    @if (status() === 'incorrect' && repeatUntilFive()) {
+      <button type="button" id="dictRetry" (click)="retry()">Try again</button>
+    }
     @if (status() === 'incorrect') {
       <label><input type="checkbox" id="dictShowImmediate"
         [checked]="store.showAnswerImmediately()"
@@ -56,6 +60,9 @@
 </div>
 
 <div class="transport">
+  <button type="button" id="dictRepeat" [attr.aria-pressed]="repeatUntilFive()"
+    title="Retry until 5★: an incorrect check stays put so you can try again"
+    (click)="toggleRepeat()">Repeat</button>
   <button type="button" id="finish" (click)="finish()">Finish</button>
   <span id="clock">{{ timer.clockText() }}</span>
 </div>

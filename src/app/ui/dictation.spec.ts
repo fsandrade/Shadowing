@@ -6,6 +6,7 @@ import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
+import { SettingsStore } from '../state/settings-store';
 import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { Dictation } from './dictation';
 
@@ -116,5 +117,46 @@ describe('Dictation screen', () => {
     fixture.detectChanges();
 
     expect(root.querySelector('#dictationCount')?.textContent?.trim()).toBe('3 / 3');
+  });
+});
+
+describe('Dictation retry until five stars', () => {
+  it('offers a Repeat toggle that updates the preference', () => {
+    const { fixture, root } = render();
+    const repeat = root.querySelector<HTMLButtonElement>('#dictRepeat')!;
+    expect(repeat.getAttribute('aria-pressed')).toBe('false');
+
+    repeat.click();
+    fixture.detectChanges();
+
+    expect(repeat.getAttribute('aria-pressed')).toBe('true');
+    expect(TestBed.inject(SettingsStore).repeatUntilFive()).toBe(true);
+  });
+
+  it('shows Try again after an incorrect check only while Repeat is on', () => {
+    const { fixture, root } = render();
+    type(fixture, root, 'nope');
+    clicked(root, 'dictCheck');
+    fixture.detectChanges();
+    expect(root.querySelector('#dictRetry')).toBeNull();
+
+    clicked(root, 'dictRepeat');
+    fixture.detectChanges();
+    expect(root.querySelector('#dictRetry')).not.toBeNull();
+  });
+
+  it('Try again clears the verdict and input but stays on the same challenge', () => {
+    const { fixture, root } = render();
+    clicked(root, 'dictRepeat');
+    type(fixture, root, 'nope');
+    clicked(root, 'dictCheck');
+    fixture.detectChanges();
+
+    clicked(root, 'dictRetry');
+    fixture.detectChanges();
+
+    expect(root.querySelector('#dictationCount')?.textContent?.trim()).toBe('1 / 3');
+    expect(root.querySelector('.dict-verdict')).toBeNull();
+    expect(root.querySelector<HTMLInputElement>('#dictInput')?.value).toBe('');
   });
 });
