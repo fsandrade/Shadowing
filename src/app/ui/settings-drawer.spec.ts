@@ -6,7 +6,7 @@ import { RANDOM } from '../platform/rng';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { SettingsStore } from '../state/settings-store';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { SettingsDrawer } from './settings-drawer';
 
 @Component({
@@ -20,7 +20,7 @@ function render() {
   TestBed.configureTestingModule({
     providers: [
       ...signedOutBackend(),
-      { provide: SafeStorage, useValue: storedProfile() as unknown as SafeStorage },
+      { provide: SafeStorage, useValue: storedSettings() as unknown as SafeStorage },
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
       { provide: SENTENCE_IDS, useValue: new Map<string, string>() },

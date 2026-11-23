@@ -4,17 +4,17 @@ import { loadContent } from './corpus-source';
 const SEED = 'test-seed';
 
 describe('loadContent', () => {
-  it('builds levels, decks and sentences from the bundled corpus', async () => {
+  it('builds topics and sentences from the bundled corpus, with no level metadata', async () => {
     const { catalog } = await loadContent(SEED);
 
-    expect(catalog.levels.map((l) => l.id)).toEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+    expect('levels' in catalog).toBe(false);
     expect(catalog.topics.length).toBeGreaterThan(0);
     expect(catalog.sentences.length).toBeGreaterThan(0);
 
     for (const sentence of catalog.sentences) {
       expect(sentence.id).toBeTruthy();
       expect(sentence.topicId).toBeTruthy();
-      expect(sentence.levelId).toMatch(/^[ABC][12]$/);
+      expect('levelId' in sentence).toBe(false);
       expect(sentence.text).toBeTruthy();
     }
   });

@@ -11,18 +11,16 @@ import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { PlaybackService } from './playback-service';
-import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA: Catalog = {
-  loadedAt: '2026-08-06T00:00:00Z',
-  levels: [{ id: 'A2', description: 'Elementary' }],
-  topics: [{ id: 'a', name: 'A' }],
+  loadedAt: '2026-08-06T00:00:00Z',  topics: [{ id: 'a', name: 'A' }],
   sentences: [
-    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'first <b>line</b> is long enough to measure' },
-    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'second line is long enough to measure' },
-    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third line is long enough to measure' },
+    { id: 's-0', topicId: 'a', text: 'first <b>line</b> is long enough to measure' },
+    { id: 's-1', topicId: 'a', text: 'second line is long enough to measure' },
+    { id: 's-2', topicId: 'a', text: 'third line is long enough to measure' },
   ],
 };
 
@@ -51,7 +49,7 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: corpus },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -296,11 +294,9 @@ describe('PlaybackService dead-voice detection', () => {
 
   it('does not count a short utterance of short text as a failure', async () => {
     const short: Catalog = {
-      loadedAt: '2026-08-06T00:00:00Z',
-      levels: [{ id: 'A2', description: 'Elementary' }],
-      topics: [{ id: 'a', name: 'A' }],
+      loadedAt: '2026-08-06T00:00:00Z',      topics: [{ id: 'a', name: 'A' }],
       sentences: ['hi', 'yo', 'ok'].map((text, i) => ({
-        id: `s-${i}`, topicId: 'a', levelId: 'A2', text,
+        id: `s-${i}`, topicId: 'a', text,
       })),
     };
     const { playback, banner } = setup(0, short);

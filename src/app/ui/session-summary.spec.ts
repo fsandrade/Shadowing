@@ -7,7 +7,7 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SessionTimerStore } from '../state/session-timer-store';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { SessionSummary } from './session-summary';
 
 @Component({
@@ -26,7 +26,7 @@ function configureTestBed(extra: Provider[] = []): void {
       ...signedOutBackend(),
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
-      { provide: SafeStorage, useValue: storedProfile() as unknown as SafeStorage },
+      { provide: SafeStorage, useValue: storedSettings() as unknown as SafeStorage },
       ...extra,
     ],
   });

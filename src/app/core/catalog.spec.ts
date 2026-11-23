@@ -3,16 +3,15 @@ import { sentencesIn, topicsIn } from './catalog';
 
 const CATALOG = {
   loadedAt: '2026-08-06T00:00:00Z',
-  levels: [{ id: 'A2', description: 'Elementary' }],
   topics: [
     { id: 'a', name: 'A' },
     { id: 'b', name: 'B' },
     { id: 'c', name: 'C' },
   ],
   sentences: [
-    { id: 's-a1', topicId: 'a', levelId: 'A2', text: 'a1' },
-    { id: 's-a2', topicId: 'a', levelId: 'A2', text: 'a2' },
-    { id: 's-b1', topicId: 'b', levelId: 'A2', text: 'b1' },
+    { id: 's-a1', topicId: 'a', text: 'a1' },
+    { id: 's-a2', topicId: 'a', text: 'a2' },
+    { id: 's-b1', topicId: 'b', text: 'b1' },
   ],
 };
 

@@ -5,7 +5,7 @@ import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { PracticeStore } from './practice-store';
 import { SettingsStore } from './settings-store';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
@@ -18,7 +18,7 @@ function setup() {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -124,11 +124,9 @@ describe('PracticeStore lines', () => {
 
 describe('PracticeStore progressive rendering', () => {
   const many: Catalog = {
-    loadedAt: '2026-08-06T00:00:00Z',
-    levels: [{ id: 'big', description: 'Big' }],
-    topics: [{ id: 'big', name: 'Big' }],
+    loadedAt: '2026-08-06T00:00:00Z',    topics: [{ id: 'big', name: 'Big' }],
     sentences: Array.from({ length: 200 }, (_, i) => ({
-      id: `s-${i}`, topicId: 'big', levelId: 'big', text: `line ${i}`,
+      id: `s-${i}`, topicId: 'big', text: `line ${i}`,
     })),
   };
 
@@ -139,7 +137,7 @@ describe('PracticeStore progressive rendering', () => {
         ...signedOutBackend(),
         {
           provide: SafeStorage,
-          useValue: storedProfile() as unknown as SafeStorage,
+          useValue: storedSettings() as unknown as SafeStorage,
         },
         { provide: CATALOG, useValue: many },
       { provide: RANDOM, useValue: NO_SHUFFLE },

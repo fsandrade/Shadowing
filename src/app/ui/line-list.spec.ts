@@ -13,18 +13,17 @@ import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from '../validation/validation-service';
 import { LineList } from './line-list';
-import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA: Catalog = {
   loadedAt: '2026-08-06T00:00:00Z',
-  levels: [{ id: 'A2', description: 'Elementary' }],
   topics: [{ id: 'a', name: 'A' }],
   sentences: [
-    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'plain one' },
-    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'with <b>a chunk</b> inside' },
-    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third' },
+    { id: 's-0', topicId: 'a', text: 'plain one' },
+    { id: 's-1', topicId: 'a', text: 'with <b>a chunk</b> inside' },
+    { id: 's-2', topicId: 'a', text: 'third' },
   ],
 };
 
@@ -57,7 +56,7 @@ function render(extra: readonly unknown[] = []) {
       ...extra,
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },

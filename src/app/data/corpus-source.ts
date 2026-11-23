@@ -1,6 +1,6 @@
-import type { Catalog, Level, Sentence, Topic } from '../core/catalog';
+import type { Catalog, Sentence, Topic } from '../core/catalog';
 import { CORPUS } from './corpus';
-import { DECKS, LEVELS, SENTENCE_META, type SentenceMeta } from './corpus-levels';
+import { DECKS, SENTENCE_META } from './corpus-meta';
 
 export type SentenceIds = ReadonlyMap<string, string>;
 
@@ -34,12 +34,11 @@ export function loadContent(seed: string): Content {
     for (const content of deckSentences) {
       const meta = SENTENCE_META.get(content);
       if (!meta) {
-        throw new Error(`No level metadata for sentence in deck "${deck.id}": ${content}`);
+        throw new Error(`No metadata for sentence in deck "${deck.id}": ${content}`);
       }
       sentences.push({
         id: meta.id,
         topicId: meta.deckId,
-        levelId: meta.level,
         text: content,
       });
       sentenceIds.set(content, meta.id);
@@ -54,11 +53,10 @@ export function loadContent(seed: string): Content {
   
   sentences.sort((a, b) => hashOrder(a.id, seed) - hashOrder(b.id, seed));
 
-  const levels: Level[] = LEVELS.map((l) => ({ id: l.id, description: l.description }));
   const topics: Topic[] = DECKS.map((d) => ({ id: d.id, name: d.name }));
 
   return {
-    catalog: { loadedAt: stamp(), levels, topics, sentences },
+    catalog: { loadedAt: stamp(), topics, sentences },
     sentenceIds,
   };
 }

@@ -8,9 +8,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test && vitest run tools --environment node",
+    "test": "ng test",
     "test:e2e": "playwright test",
-    "gen:levels": "node tools/generate-corpus-levels.js"
+    "gen:corpus-meta": "node tools/generate-corpus-meta.js"
   },
   "dependencies": {
     "@angular/common": "^22.1.0",

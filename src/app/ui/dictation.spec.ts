@@ -6,7 +6,7 @@ import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { Dictation } from './dictation';
 
 @Component({
@@ -22,7 +22,7 @@ function render() {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },

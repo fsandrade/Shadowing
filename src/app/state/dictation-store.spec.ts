@@ -4,7 +4,7 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
 import { SettingsStore } from './settings-store';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 import { DictationStore } from './dictation-store';
 import { PracticeStore } from './practice-store';
@@ -14,7 +14,7 @@ function setup() {
   TestBed.configureTestingModule({
     providers: [
       ...signedOutBackend(),
-      { provide: SafeStorage, useValue: storedProfile() as unknown as SafeStorage },
+      { provide: SafeStorage, useValue: storedSettings() as unknown as SafeStorage },
       { provide: CATALOG, useValue: TEST_CATALOG },
       { provide: RANDOM, useValue: NO_SHUFFLE },
     ],

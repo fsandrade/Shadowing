@@ -9,7 +9,7 @@ import { BannerStore } from '../state/banner-store';
 import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from './validation-service';
-import { signedOutBackend, storedProfile } from '../testing/catalog';
+import { signedOutBackend, storedSettings } from '../testing/catalog';
 
 function fakeRecognizer() {
   const sessions: Array<{ started: boolean; stopped: boolean; aborted: boolean }> = [];
@@ -54,7 +54,7 @@ function setup(options: { denied?: boolean } = {}) {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: SpeechRecognizer, useValue: rec.impl },
       { provide: MicrophoneService, useValue: mic as unknown as MicrophoneService },
