@@ -8,9 +8,10 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
+import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 import { TransportControls } from './transport-controls';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
@@ -30,7 +31,7 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -63,6 +64,7 @@ function render(opts: { voices?: SpeechSynthesisVoice[]; stt?: boolean } = {}) {
     practice: TestBed.inject(PracticeStore),
     playback: TestBed.inject(PlaybackService),
     flow: TestBed.inject(FlowStore),
+    settings: TestBed.inject(SettingsStore),
     btn: (id: string) => root.querySelector(`#${id}`) as HTMLButtonElement,
   };
 }
@@ -72,7 +74,7 @@ describe('TransportControls structure', () => {
     const { transport } = render();
     expect(transport.classList.contains('transport')).toBe(true);
     expect([...transport.querySelectorAll('button')].map((b) => b.id))
-      .toEqual(['play', 'next', 'finish']);
+      .toEqual(['play', 'next', 'blur', 'repeat', 'finish']);
   });
 
   it('keeps the vanilla titles the specs and tooltips rely on', () => {
@@ -134,6 +136,44 @@ describe('TransportControls toggles', () => {
   it('has no shuffle button — every activity starts on a fresh order', () => {
     const { btn } = render();
     expect(btn('shuffle')).toBeNull();
+  });
+});
+
+describe('TransportControls study toggles', () => {
+  it('blur toggles the preference and reflects it', () => {
+    const { fixture, btn, settings } = render();
+    expect(btn('blur').getAttribute('aria-pressed')).toBe('false');
+
+    btn('blur').click();
+    fixture.detectChanges();
+    expect(settings.blur()).toBe(true);
+    expect(btn('blur').getAttribute('aria-pressed')).toBe('true');
+
+    btn('blur').click();
+    fixture.detectChanges();
+    expect(settings.blur()).toBe(false);
+    expect(btn('blur').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('repeat is disabled while scoring is off', () => {
+    const { btn } = render();
+    expect(btn('repeat').disabled).toBe(true);
+  });
+
+  it('repeat toggles once scoring is on', () => {
+    const { fixture, btn, settings } = render();
+    settings.setSttEnabled(true);
+    fixture.detectChanges();
+
+    expect(btn('repeat').disabled).toBe(false);
+    btn('repeat').click();
+    fixture.detectChanges();
+    expect(settings.repeatUntilFive()).toBe(true);
+    expect(btn('repeat').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('explains what Repeat does', () => {
+    expect(render().btn('repeat').title).toContain('Retry until 5');
   });
 });
 

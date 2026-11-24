@@ -11,9 +11,6 @@
   [helpOpen]="helpOpen()"
   (closeHelp)="helpOpen.set(false)">
   @switch (flow.screen()) {
-    @case ('onboarding') {
-      <main class="full"><div appLevelPicker></div></main>
-    }
     @case ('chooser') {
       <main appActivityChooser class="full"></main>
     }

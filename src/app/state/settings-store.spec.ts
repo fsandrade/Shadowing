@@ -24,6 +24,8 @@ describe('SettingsStore defaults', () => {
     expect(store.slack()).toBe(1);
     expect(store.voiceName()).toBe('');
     expect(store.sttEnabled()).toBe(false);
+    expect(store.blur()).toBe(false);
+    expect(store.repeatUntilFive()).toBe(false);
   });
 
   it('keeps a stored zero, because zero is the unlimited session', () => {
@@ -37,7 +39,7 @@ describe('SettingsStore defaults', () => {
   it('restores stored values', () => {
     const { store } = setup({
       topicId: 'meetings', rate: 1.4, slack: 2, voiceName: 'David',
-      durationMin: 10, stt: true,
+      durationMin: 10, stt: true, blur: true, repeat: true,
     });
     expect(store.topicId()).toBe('meetings');
     expect(store.rate()).toBe(1.4);
@@ -45,6 +47,14 @@ describe('SettingsStore defaults', () => {
     expect(store.voiceName()).toBe('David');
     expect(store.durationMin()).toBe(10);
     expect(store.sttEnabled()).toBe(true);
+    expect(store.blur()).toBe(true);
+    expect(store.repeatUntilFive()).toBe(true);
+  });
+
+  it('treats blur and repeat as strictly true, not truthy', () => {
+    const { store } = setup({ blur: 1, repeat: 'yes' });
+    expect(store.blur()).toBe(false);
+    expect(store.repeatUntilFive()).toBe(false);
   });
 
   it('coerces a zero or unparseable rate to 1, matching Number(x) || 1', () => {
@@ -75,8 +85,18 @@ describe('SettingsStore persistence', () => {
     expect(key).toBe(SETTINGS_KEY);
     expect(payload).toEqual({
       topicId: 'travel', source: 'catalog', rate: 1.6, slack: 1, voiceName: '',
-      durationMin: 10, stt: true, typing: false,
+      durationMin: 10, stt: true, typing: false, blur: false, repeat: false,
     });
+  });
+
+  it('persists the blur and repeat study options', () => {
+    const { store, write } = setup(null);
+    store.setBlur(true);
+    store.setRepeatUntilFive(true);
+    TestBed.tick();
+
+    const [, payload] = write.mock.lastCall as [string, Record<string, unknown>];
+    expect(payload).toMatchObject({ blur: true, repeat: true });
   });
 
   it('persists typingMode (dictation) as a request-scoped flag', () => {

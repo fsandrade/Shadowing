@@ -1,9 +1,6 @@
-import {
-  ChangeDetectionStrategy, Component, computed, input, output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MAX_STARS } from '../core/scoring';
 import { type LineResult } from '../validation/validation-service';
-
-const MAX_STARS = 5;
 
 @Component({
   selector: 'div[appValidateBox]',
@@ -18,7 +15,6 @@ const MAX_STARS = 5;
 })
 export class ValidateBox {
   readonly result = input.required<LineResult>();
-  readonly replay = output<void>();
 
   protected readonly starText = computed(() => {
     const n = this.result().stars;

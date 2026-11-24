@@ -8,6 +8,7 @@ import { HistoryService, type PracticeTotals } from '../data/history-service';
 import { SpeechRecognizer } from '../platform/speech-recognition';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { FlowStore } from '../state/flow-store';
+import { PracticeStore } from '../state/practice-store';
 import { CustomTopic } from './custom-topic';
 import { TopicList } from './topic-list';
 
@@ -52,13 +53,19 @@ export class ActivityChooser {
   protected readonly minutes = signal(10);
 
   private readonly custom = inject(CustomTopicStore);
+  private readonly practice = inject(PracticeStore);
 
   protected readonly chooserVisible = computed(() => this.kind() !== null);
+
+  protected readonly mastered = computed(() => {
+    if (this.source() !== 'catalog' || !this.topicPicked()) { return false; }
+    return this.practice.remainingFor(this.topicId()) === 0;
+  });
 
   protected readonly sourceReady = computed(() => {
     switch (this.source()) {
       case 'custom': return this.custom.hasText();
-      default: return this.topicPicked();
+      default: return this.topicPicked() && !this.mastered();
     }
   });
 
@@ -67,7 +74,8 @@ export class ActivityChooser {
   @ViewChild(TopicList, { read: ElementRef }) private readonly topics?: ElementRef<HTMLElement>;
 
   private focusTopics = false;
-  private readonly topicPicked = signal(false);
+  private starting = false;
+  protected readonly topicPicked = signal(false);
 
   constructor() {
     this.totals.set(this.history.totals());
@@ -103,17 +111,24 @@ export class ActivityChooser {
   }
 
   private onPhone(): boolean {
-    return window.matchMedia('(max-width: 640px)').matches;
+    return window.matchMedia?.('(max-width: 640px)').matches ?? false;
   }
 
   protected async begin(): Promise<void> {
+    if (this.starting) { return; }
     const kind = this.kind();
     if (!kind) { return; }
-    await this.flow.start(
-      kind.id,
-      this.source(),
-      this.source() === 'catalog' ? this.topicId() : null,
-      this.minutes(),
-    );
+
+    this.starting = true;
+    try {
+      await this.flow.start(
+        kind.id,
+        this.source(),
+        this.source() === 'catalog' ? this.topicId() : null,
+        this.minutes(),
+      );
+    } finally {
+      this.starting = false;
+    }
   }
 }

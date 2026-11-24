@@ -1,15 +1,5 @@
 <h1>Shadowing</h1>
 
-@if (profile.chosen()) {
-  <span
-    class="level-chip"
-    id="levelChip"
-    [title]="'Level ' + profile.levelId()"
-  >
-    <span class="level-chip-code">{{ profile.levelId() }}</span>
-  </span>
-}
-
 @if (practising()) {
   <div class="clock" id="clock" [title]="clockTitle()">{{ timer.clockText() }}</div>
 }

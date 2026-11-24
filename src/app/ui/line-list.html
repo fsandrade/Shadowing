@@ -13,7 +13,6 @@
       [progress]="playback.progress()"
     ></svg>}</p>
   @if (validation.results().get($index); as result) {
-    <div appValidateBox [result]="result"
-      (replay)="playback.repeatLine()"></div>
+    <div appValidateBox [result]="result"></div>
   }
 }

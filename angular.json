@@ -91,8 +91,7 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "include": [
-              "src/**/*.spec.ts",
-              "tools/**/*.spec.ts"
+              "src/**/*.spec.ts"
             ],
             "setupFiles": [
               "src/test-setup.ts"

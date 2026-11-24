@@ -16,4 +16,7 @@ export const MESSAGES = {
   noSpeechDetected: 'No speech detected',
   micDeniedInline: 'Microphone denied',
   couldNotListen: 'Could not listen — validation skipped',
+  storageFull:
+    'Progress could not be saved — this browser’s storage is full. ' +
+    'Clear some site data, then try again.',
 } as const;

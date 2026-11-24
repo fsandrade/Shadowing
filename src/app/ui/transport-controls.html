@@ -2,6 +2,13 @@
   [title]="PLAY_TITLE" (click)="playback.toggle()">{{ playLabel() }}</button>
 <button type="button" id="next" [disabled]="!enabled()"
   title="Next (&rarr;)" (click)="playback.next()">&rarr;</button>
+<button type="button" id="blur" [attr.aria-pressed]="settings.blur()"
+  title="Blur unspoken sentences until you say them"
+  (click)="toggleBlur()">Blur</button>
+<button type="button" id="repeat" [attr.aria-pressed]="settings.repeatUntilFive()"
+  [disabled]="!settings.sttEnabled()"
+  title="Retry until 5★: keeps a sentence in play until it scores five stars"
+  (click)="toggleRepeat()">Repeat</button>
 <button type="button" id="finish" class="shuffle-btn"
   title="End this activity and see your summary"
   (click)="finish()">Finish</button>

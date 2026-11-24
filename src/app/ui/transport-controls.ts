@@ -3,6 +3,7 @@ import { PlaybackService } from '../playback/playback-service';
 import { Speaker } from '../platform/speaker';
 import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
+import { SettingsStore } from '../state/settings-store';
 import { VoiceStore } from '../state/voice-store';
 
 const PLAY_TITLE = 'Auto Play/Pause (space) · Repeat current sentence (left arrow)';
@@ -19,6 +20,7 @@ export class TransportControls {
   private readonly flow = inject(FlowStore);
   private readonly voices = inject(VoiceStore);
   private readonly speaker = inject(Speaker);
+  protected readonly settings = inject(SettingsStore);
 
   protected readonly PLAY_TITLE = PLAY_TITLE;
 
@@ -33,5 +35,13 @@ export class TransportControls {
   protected finish(): void {
     this.playback.stop();
     this.flow.finish();
+  }
+
+  protected toggleBlur(): void {
+    this.settings.setBlur(!this.settings.blur());
+  }
+
+  protected toggleRepeat(): void {
+    this.settings.setRepeatUntilFive(!this.settings.repeatUntilFive());
   }
 }

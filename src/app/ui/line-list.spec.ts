@@ -13,18 +13,17 @@ import { PracticeStore } from '../state/practice-store';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from '../validation/validation-service';
 import { LineList } from './line-list';
-import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA: Catalog = {
   loadedAt: '2026-08-06T00:00:00Z',
-  levels: [{ id: 'A2', description: 'Elementary' }],
   topics: [{ id: 'a', name: 'A' }],
   sentences: [
-    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'plain one' },
-    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'with <b>a chunk</b> inside' },
-    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third' },
+    { id: 's-0', topicId: 'a', text: 'plain one' },
+    { id: 's-1', topicId: 'a', text: 'with <b>a chunk</b> inside' },
+    { id: 's-2', topicId: 'a', text: 'third' },
   ],
 };
 
@@ -57,7 +56,7 @@ function render(extra: readonly unknown[] = []) {
       ...extra,
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -240,6 +239,32 @@ describe('LineList renders custom text as text, never as markup', () => {
     lines.querySelectorAll<HTMLElement>('p')[2].click();
     fixture.detectChanges();
     expect(practice.index()).toBe(2);
+  });
+});
+
+describe('LineList blur preference', () => {
+  it('blurs the list while the preference is on', () => {
+    const { fixture, lines, settings } = render();
+    expect(lines.classList.contains('blurred')).toBe(false);
+
+    settings.setBlur(true);
+    fixture.detectChanges();
+    expect(lines.classList.contains('blurred')).toBe(true);
+
+    settings.setBlur(false);
+    fixture.detectChanges();
+    expect(lines.classList.contains('blurred')).toBe(false);
+  });
+
+  it('still renders custom text as literal text when blurring', () => {
+    const rendered = renderCustom(['<b>bold</b> attempt.']);
+    rendered.settings.setBlur(true);
+    rendered.fixture.detectChanges();
+
+    const text = rendered.lines.querySelector('p .text')!;
+    expect(rendered.lines.classList.contains('blurred')).toBe(true);
+    expect(text.querySelector('b')).toBeNull();
+    expect(text.textContent).toBe('<b>bold</b> attempt.');
   });
 });
 

@@ -2,10 +2,13 @@
   <button
     type="button"
     id="allTopics"
-    [attr.aria-pressed]="selected() === null"
-    title="Practise every topic at your level"
+    [attr.aria-pressed]="selected() === null && hasPick()"
+    title="Practise every topic"
     (click)="pick.emit(null)"
-  >All topics</button>
+  >
+    <span class="deck-name">All topics</span>
+    <span class="deck-count" [class.mastered]="countLabel(null) === 'Mastered'">{{ countLabel(null) }}</span>
+  </button>
 
   @for (topic of practice.topics(); track topic.id) {
     <button
@@ -14,6 +17,9 @@
       [attr.aria-pressed]="topic.id === selected()"
       [title]="'Practise only ' + topic.name"
       (click)="pick.emit(topic.id)"
-    >{{ topic.name }}</button>
+    >
+      <span class="deck-name">{{ topic.name }}</span>
+      <span class="deck-count" [class.mastered]="countLabel(topic.id) === 'Mastered'">{{ countLabel(topic.id) }}</span>
+    </button>
   }
 </div>

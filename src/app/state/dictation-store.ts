@@ -89,6 +89,19 @@ export class DictationStore {
     this.revealed.set(revealed);
   }
 
+  retry(): void {
+    const i = this.index();
+    const statuses = new Map(this.statuses());
+    statuses.delete(i);
+    this.statuses.set(statuses);
+
+    const revealed = new Set(this.revealed());
+    revealed.delete(i);
+    this.revealed.set(revealed);
+
+    this.showFull.set(false);
+  }
+
   reset(): void {
     this.statuses.set(new Map());
     this.revealed.set(new Set());

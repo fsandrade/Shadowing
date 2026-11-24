@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CUSTOM_TEXT_LIMIT } from '../core/sentences';
+import { PlaybackService } from '../playback/playback-service';
 import { CustomTopicStore } from '../state/custom-topic-store';
 import { PracticeStore } from '../state/practice-store';
 
@@ -12,6 +13,7 @@ import { PracticeStore } from '../state/practice-store';
 export class CustomTopic {
   protected readonly custom = inject(CustomTopicStore);
   protected readonly practice = inject(PracticeStore);
+  private readonly playback = inject(PlaybackService);
 
   protected readonly LIMIT = CUSTOM_TEXT_LIMIT;
 
@@ -32,6 +34,7 @@ export class CustomTopic {
   }
 
   protected save(): void {
+    this.playback.stop();
     this.custom.setText(this.draft());
     this.practice.useCustomText();
     this.editing.set(false);
@@ -43,6 +46,7 @@ export class CustomTopic {
   }
 
   protected clear(): void {
+    this.playback.stop();
     this.custom.clear();
     this.practice.useCustomText();
     this.draft.set('');

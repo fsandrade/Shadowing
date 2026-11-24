@@ -4,14 +4,10 @@ export const test = base;
 
 export { expect, type Page } from '@playwright/test';
 
-export const E2E_LEVEL = 'B1';
-
 export type ActivityChoice = 'speaking' | 'dictation';
 export type SourceChoice = 'catalog' | 'custom';
 
 export interface GotoOptions {
-  /** null skips seeding a level, so the app opens on onboarding. */
-  level?: string | null;
   /** null stops on the chooser instead of starting anything. */
   activity?: ActivityChoice | null;
   /** Defaults to the catalog (topic) source. */
@@ -30,21 +26,9 @@ export async function gotoApp(
   page: PlaywrightPage,
   opts: GotoOptions = {},
 ): Promise<void> {
-  const level = opts.level === undefined ? E2E_LEVEL : opts.level;
   const activity = opts.activity === undefined ? 'speaking' : opts.activity;
 
-  await page.addInitScript((chosen) => {
-    if (chosen === null) { return; }
-    localStorage.setItem('shadowing.profile', JSON.stringify({ levelId: chosen }));
-  }, level);
-
   await page.goto('/');
-
-  if (level === null) {
-    await page.locator('#levels').waitFor();
-    return;
-  }
-
   await page.locator('#activities').waitFor();
 
   if (activity === null) {

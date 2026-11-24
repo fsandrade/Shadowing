@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
@@ -11,8 +11,25 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { FlowStore } from '../state/flow-store';
 import { SettingsStore } from '../state/settings-store';
-import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
 import { ActivityChooser } from './activity-chooser';
+
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
+
+function master(...ids: string[]): void {
+  localStorage.setItem('shadowing.attempts', JSON.stringify(
+    ids.map((sentenceId) => ({
+      sentenceId,
+      status: 'scored',
+      stars: 5,
+      attemptedAt: new Date().toISOString(),
+    })),
+  ));
+}
 
 @Component({
   imports: [ActivityChooser],
@@ -36,7 +53,11 @@ class FakeRecognition {
 }
 
 function render(extra: unknown[] = []) {
-  const store = new Map<string, unknown>([['shadowing.profile', { levelId: TEST_LEVEL }]]);
+  const store = new Map<string, unknown>();
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) { store.set(key, JSON.parse(raw) as unknown); }
+  }
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -50,7 +71,8 @@ function render(extra: unknown[] = []) {
         provide: SafeStorage,
         useValue: {
           read: (key: string) => store.get(key) ?? null,
-          write: (key: string, value: unknown) => { store.set(key, value); },
+          write: (key: string, value: unknown) => { store.set(key, value); return true; },
+          remove: (key: string) => { store.delete(key); return true; },
         } as unknown as SafeStorage,
       },
     ],
@@ -106,7 +128,50 @@ describe('ActivityChooser', () => {
     expect(start().disabled).toBe(false);
   });
 
-  it('counts All topics as a topic pick', () => {
+  it('counts All topics as a topic pick and marks it pressed', () => {
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    expect(root.querySelector<HTMLButtonElement>('#allTopics')!.getAttribute('aria-pressed'))
+      .toBe('false');
+
+    root.querySelector<HTMLButtonElement>('#allTopics')!.click();
+    fixture.detectChanges();
+
+    expect(root.querySelector<HTMLButtonElement>('#allTopics')!.getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(start().disabled).toBe(false);
+  });
+
+  it('disables Start when every sentence in the picked topic has five stars', () => {
+    master('s-a1', 's-a2', 's-a3');
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="a"]')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(true);
+    expect(start().title).toBe('Every sentence in this topic has 5 stars');
+  });
+
+  it('still starts a topic that has sentences left', () => {
+    master('s-a1');
+    const { fixture, cards, root, start } = render();
+
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="a"]')!.click();
+    fixture.detectChanges();
+
+    expect(start().disabled).toBe(false);
+    expect(start().title).toBe('Start this activity');
+  });
+
+  it('disables Start for All topics once everything is mastered', () => {
+    master('s-a1', 's-a2', 's-a3', 's-b1', 's-c1', 's-c2');
     const { fixture, cards, root, start } = render();
 
     cards()[0].click();
@@ -114,7 +179,8 @@ describe('ActivityChooser', () => {
     root.querySelector<HTMLButtonElement>('#allTopics')!.click();
     fixture.detectChanges();
 
-    expect(start().disabled).toBe(false);
+    expect(start().disabled).toBe(true);
+    expect(start().title).toBe('Every sentence in the corpus has 5 stars');
   });
 
   it('keeps both cards enabled here, since the browser can transcribe speech', () => {
@@ -179,6 +245,27 @@ describe('ActivityChooser', () => {
     expect(settings.durationMin()).toBe(15);
   });
 
+  it('ignores a second Start click while the first is still starting', async () => {
+    const { fixture, cards, root, start, flow } = render();
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="b"]')!.click();
+    fixture.detectChanges();
+
+    let release!: () => void;
+    const pending = new Promise<void>((resolveNow) => { release = resolveNow; });
+    const startSpy = vi.spyOn(flow, 'start').mockImplementation(
+      () => pending as unknown as ReturnType<FlowStore['start']>,
+    );
+
+    start().click();
+    start().click();
+    expect(startSpy).toHaveBeenCalledTimes(1);
+
+    release();
+    await fixture.whenStable();
+  });
+
   it('a dictation session lands on the dictation screen with no topic', async () => {
     const { fixture, cards, root, start, flow, settings } = render();
 
@@ -240,7 +327,10 @@ describe('ActivityChooser practice panels', () => {
   async function renderWith(totals: unknown) {
     const r = render([{
       provide: HistoryService,
-      useValue: { totals: () => totals as ReturnType<HistoryService['totals']> } as unknown as HistoryService,
+      useValue: {
+        totals: () => totals as ReturnType<HistoryService['totals']>,
+        progress: () => new Map(),
+      } as unknown as HistoryService,
     }]);
     r.fixture.detectChanges();
     await r.fixture.whenStable();

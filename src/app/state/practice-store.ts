@@ -1,11 +1,12 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { type Level, type Sentence, sentencesAt, type Topic, topicsAt } from '../core/catalog';
-import { type Rng, shuffle } from '../core/shuffle';
+import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
+import { buildQueue, MASTERED_STARS } from '../core/progression';
+import { type Rng } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
+import { HistoryService } from '../data/history-service';
 import { CATALOG } from './catalog-token';
 import { CustomTopicStore } from './custom-topic-store';
-import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
 const FIRST_PAGE = 60;
@@ -17,49 +18,65 @@ export class PracticeStore {
   private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly custom = inject(CustomTopicStore);
-  private readonly profile = inject(ProfileStore);
+  private readonly history = inject(HistoryService);
   private readonly random = inject(RANDOM);
 
   private readonly revealed = signal(FIRST_PAGE);
-  private readonly reshuffle = signal(0);
   private readonly rng = signal<Rng | undefined>(undefined);
+  private readonly queue = signal<readonly Sentence[]>([]);
 
   readonly index = signal(0);
   readonly playing = signal(false);
   readonly spoken = signal<ReadonlySet<number>>(new Set<number>());
 
-  readonly levels = computed<readonly Level[]>(() => this.catalog.levels);
+  constructor() {
+    this.rebuildQueue();
+  }
+
+
 
   
   
   
   
-  private readonly pinnedLevel = signal<string | null>(null);
-
-  readonly level = computed<string | null>(
-    () => this.pinnedLevel() ?? this.profile.levelId(),
-  );
-
   readonly customActive = computed(() => this.settings.source() === 'custom');
 
   
   
-  readonly topics = computed<readonly Topic[]>(() => {
-    const level = this.profile.levelId();
-    return level ? topicsAt(this.catalog, level) : [];
-  });
+  readonly topics = computed<readonly Topic[]>(() => topicsIn(this.catalog));
 
   readonly topicId = computed(() => this.settings.topicId());
 
   readonly sentences = computed<readonly Sentence[]>(() => {
-    const level = this.level();
-    return level ? sentencesAt(this.catalog, level, this.settings.topicId()) : [];
+    return sentencesIn(this.catalog, this.settings.topicId());
   });
+
+  readonly remaining = computed<{
+    readonly all: number;
+    readonly byTopic: ReadonlyMap<string, number>;
+  }>(() => {
+    const progress = this.history.progress();
+    const byTopic = new Map<string, number>();
+    let all = 0;
+
+    for (const sentence of this.catalog.sentences) {
+      const seen = progress.get(sentence.id);
+      if (seen && seen.bestStars >= MASTERED_STARS) { continue; }
+      all++;
+      byTopic.set(sentence.topicId, (byTopic.get(sentence.topicId) ?? 0) + 1);
+    }
+
+    return { all, byTopic };
+  });
+
+  remainingFor(topicId: string | null): number {
+    const remaining = this.remaining();
+    return topicId === null ? remaining.all : remaining.byTopic.get(topicId) ?? 0;
+  }
 
   readonly lines = computed<readonly string[]>(() => {
     if (this.customActive()) { return this.custom.lines(); }
-    this.reshuffle();
-    return shuffle(this.sentences().map((s) => s.text), this.rng() ?? this.random);
+    return this.queue().map((s) => s.text);
   });
 
   readonly visibleLines = computed<readonly string[]>(
@@ -72,13 +89,10 @@ export class PracticeStore {
 
   
   
-  activateLevel(id: string | null): void {
-    this.pinnedLevel.set(id);
-  }
-
   selectTopic(id: string | null): void {
     this.settings.setTopicId(id);
     this.settings.setSource('catalog');
+    this.rebuildQueue();
     this.resetProgress();
   }
 
@@ -89,7 +103,7 @@ export class PracticeStore {
 
   shuffleLines(rng?: Rng): void {
     this.rng.set(rng);
-    this.reshuffle.update((n) => n + 1);
+    this.rebuildQueue();
     this.resetProgress();
   }
 
@@ -126,6 +140,14 @@ export class PracticeStore {
   private revealThrough(i: number): void {
     const needed = Math.min(i + 1 + LOOKAHEAD, this.lines().length);
     if (needed > this.revealed()) { this.revealed.set(needed); }
+  }
+
+  private rebuildQueue(): void {
+    this.queue.set(buildQueue(
+      this.sentences(),
+      this.history.progress(),
+      this.rng() ?? this.random,
+    ));
   }
 
   private resetProgress(): void {

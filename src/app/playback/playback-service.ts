@@ -104,18 +104,6 @@ export class PlaybackService {
     this.silentStreak = 0;
     this.play();
   }
-
-  
-  
-  
-  
-  
-  
-  repeatLine(): void {
-    this.speaker.cancel();
-    void this.speak(this.practice.index()).catch(() => {});
-  }
-
   playLine(i: number): void {
     this.practice.goTo(i);
     if (this.practice.playing()) {
@@ -130,6 +118,7 @@ export class PlaybackService {
     this.generation++;
     this.gap.cancel();
     this.speaker.cancel();
+    this.abortValidation?.();
     return this.generation;
   }
 

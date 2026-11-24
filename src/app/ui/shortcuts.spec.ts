@@ -7,7 +7,7 @@ import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { PracticeStore } from '../state/practice-store';
 import { Shortcuts } from './shortcuts';
-import { NO_SHUFFLE, signedOutBackend, storedProfile, TEST_CATALOG } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA = TEST_CATALOG;
@@ -46,7 +46,7 @@ function setup() {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: DATA },
       { provide: RANDOM, useValue: NO_SHUFFLE },

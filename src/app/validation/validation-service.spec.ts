@@ -9,7 +9,7 @@ import { BannerStore } from '../state/banner-store';
 import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 import { ValidationService } from './validation-service';
-import { signedOutBackend, storedProfile } from '../testing/catalog';
+import { signedOutBackend, storedSettings } from '../testing/catalog';
 
 function fakeRecognizer() {
   const sessions: Array<{ started: boolean; stopped: boolean; aborted: boolean }> = [];
@@ -54,7 +54,7 @@ function setup(options: { denied?: boolean } = {}) {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: SpeechRecognizer, useValue: rec.impl },
       { provide: MicrophoneService, useValue: mic as unknown as MicrophoneService },
@@ -426,6 +426,51 @@ describe('ValidationService end of speech', () => {
     const stoppedSessions = rec.sessions.length;
     await vi.advanceTimersByTimeAsync(60_000);
     expect(rec.sessions.length).toBe(stoppedSessions);
+  });
+
+  it('cancels an open listening turn without recording a failure', async () => {
+    const { validation, rec, resultAt } = setup();
+    let settled = false;
+    const done = validation.begin(0, 'hit the road')!;
+    void done.then(() => { settled = true; });
+
+    validation.cancel();
+
+    expect(rec.latest().aborted).toBe(true);
+    expect(resultAt(0)).toBeUndefined();
+    expect(validation.activeLine()).toBeNull();
+
+    await done;
+    expect(settled).toBe(true);
+  });
+
+  it('denial aborts recognition, turns STT off, and resolves', async () => {
+    const { validation, rec, resultAt, settings, banner } = setup();
+    const done = validation.begin(0, 'hit the road')!;
+    let settled = false;
+    void done.then(() => { settled = true; });
+
+    rec.opts().onError?.('not-allowed');
+
+    expect(rec.latest().aborted).toBe(true);
+    expect(settings.sttEnabled()).toBe(false);
+    expect(resultAt(0)?.status).toBe('failed');
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.micDeniedInline);
+    expect(banner.html()).toBe(MESSAGES.micDenied);
+
+    await done;
+  });
+
+  it('denial does not let a later end overwrite the denial', async () => {
+    const { validation, rec, resultAt } = setup();
+    void validation.begin(0, 'hit the road');
+    rec.opts().onError?.('not-allowed');
+
+    rec.endWithFinalText('hit the road');
+    await Promise.resolve();
+
+    expect(resultAt(0)?.status).toBe('failed');
+    expect(resultAt(0)?.transcript).toBe(MESSAGES.micDeniedInline);
   });
 });
 

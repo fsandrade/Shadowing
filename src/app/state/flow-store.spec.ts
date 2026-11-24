@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HistoryService } from '../data/history-service';
 import { ProgressService, SENTENCE_IDS } from '../data/progress-service';
 import { MicrophoneService } from '../platform/microphone';
 import { RANDOM } from '../platform/rng';
@@ -7,21 +8,31 @@ import {
   type RecognitionOptions, type RecognitionSession, SpeechRecognizer,
 } from '../platform/speech-recognition';
 import { SafeStorage } from '../platform/storage';
-import { NO_SHUFFLE, TEST_CATALOG, TEST_LEVEL } from '../testing/catalog';
+import { NO_SHUFFLE, TEST_CATALOG } from '../testing/catalog';
 import { ValidationService } from '../validation/validation-service';
 import { BannerStore } from './banner-store';
 import { CATALOG } from './catalog-token';
 import { FlowStore } from './flow-store';
 import { MESSAGES } from './messages';
 import { PracticeStore } from './practice-store';
-import { ProfileStore } from './profile-store';
 import { SettingsStore } from './settings-store';
 
-function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
-  const level = opts.level === undefined ? TEST_LEVEL : opts.level;
-  const store = new Map<string, unknown>([
-    ['shadowing.profile', level === null ? { levelId: null } : { levelId: level }],
-  ]);
+beforeEach(() => {
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    localStorage.removeItem(key);
+  }
+});
+
+function setup(opts: { micDenied?: boolean } = {}) {
+  const store = new Map<string, unknown>();
+  const readLocal = (key: string): unknown => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? null : JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  };
 
   let recognition: RecognitionOptions = {};
   const recognizer = {
@@ -58,8 +69,9 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
       {
         provide: SafeStorage,
         useValue: {
-          read: (key: string) => store.get(key) ?? null,
-          write: (key: string, value: unknown) => { store.set(key, value); },
+          read: (key: string) => store.get(key) ?? readLocal(key),
+          write: (key: string, value: unknown) => { store.set(key, value); return true; },
+          remove: (key: string) => { store.delete(key); return true; },
         } as unknown as SafeStorage,
       },
     ],
@@ -68,11 +80,11 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
   return {
     flow: TestBed.inject(FlowStore),
     settings: TestBed.inject(SettingsStore),
-    profile: TestBed.inject(ProfileStore),
     progress: TestBed.inject(ProgressService),
     banner: TestBed.inject(BannerStore),
     validation: TestBed.inject(ValidationService),
     practice: TestBed.inject(PracticeStore),
+    history: TestBed.inject(HistoryService),
     heard: (text: string) => recognition.onResult?.(text),
     setMicDenied: (value: boolean) => { denied = value; },
     setSeed: (value: number) => { seed = value; },
@@ -80,19 +92,8 @@ function setup(opts: { level?: string | null; micDenied?: boolean } = {}) {
 }
 
 describe('FlowStore screens', () => {
-  it('asks for a level on a first visit and nothing else', () => {
-    const { flow } = setup({ level: null });
-    expect(flow.screen()).toBe('onboarding');
-  });
-
-  it('opens on the chooser once a level is known', () => {
+  it('opens on the chooser with no session running', () => {
     const { flow } = setup();
-    expect(flow.screen()).toBe('chooser');
-  });
-
-  it('leaves onboarding the moment a level is chosen', () => {
-    const { flow, profile } = setup({ level: null });
-    profile.setLevel('A2');
     expect(flow.screen()).toBe('chooser');
   });
 
@@ -136,13 +137,6 @@ describe('FlowStore starting a session', () => {
     expect(settings.typingMode()).toBe(true);
   });
 
-  it('applies the pacing the level suggests', async () => {
-    const { flow, settings } = setup();
-    await flow.start('speaking', 'catalog', 'a', 10);
-    expect(settings.rate()).toBe(0.8);
-    expect(settings.slack()).toBe(2);
-  });
-
   it('sets the chosen topic and duration', async () => {
     const { flow, settings } = setup();
     await flow.start('speaking', 'catalog', 'a', 15);
@@ -151,10 +145,45 @@ describe('FlowStore starting a session', () => {
     expect(settings.source()).toBe('catalog');
   });
 
-  it('takes null to mean every topic at the level', async () => {
+  it('takes null to mean every topic', async () => {
     const { flow, settings } = setup();
     await flow.start('speaking', 'catalog', null, 10);
     expect(settings.topicId()).toBeNull();
+  });
+
+  it('reshuffles the study queue on every start', async () => {
+    const { flow, practice, setSeed } = setup();
+
+    await flow.start('speaking', 'catalog', 'a', 10);
+    expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
+
+    setSeed(0);
+    flow.finish();
+    await flow.start('speaking', 'catalog', 'a', 10);
+
+    expect(practice.lines()).not.toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('leaves a mastered sentence out of the next session queue', async () => {
+    const { flow, practice, history } = setup();
+
+    await flow.start('speaking', 'catalog', 'a', 10);
+    expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
+
+    localStorage.setItem('shadowing.attempts', JSON.stringify([
+      {
+        sentenceId: 's-a1',
+        status: 'scored',
+        stars: 5,
+        attemptedAt: new Date().toISOString(),
+      },
+    ]));
+    history.refresh();
+
+    flow.finish();
+    await flow.start('speaking', 'catalog', 'a', 10);
+
+    expect(practice.lines()).toEqual(['a2', 'a3']);
   });
 
   it('switches to the learner\'s own text for My text', async () => {
@@ -318,70 +347,3 @@ describe('FlowStore finishing', () => {
   });
 });
 
-describe('FlowStore reshuffles on every start', () => {
-  it('reorders the sentences when the same session restarts on the same topic', async () => {
-    const { flow, practice, setSeed } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const first = [...practice.lines()];
-    expect(first.length).toBeGreaterThan(1);
-
-    flow.finish();
-    setSeed(0);
-    await flow.start('speaking', 'catalog', 'a', 10);
-
-    expect(practice.lines()).not.toEqual(first);
-  });
-
-  it('keeps the same sentences, only in a different order', async () => {
-    const { flow, practice, setSeed } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const first = [...practice.lines()];
-
-    flow.finish();
-    setSeed(0);
-    await flow.start('speaking', 'catalog', 'a', 10);
-
-    expect([...practice.lines()].sort()).toEqual([...first].sort());
-  });
-});
-
-describe('FlowStore freezes the level for the running session', () => {
-  it('leaves the sentences alone when the profile level changes mid-session', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    const running = [...practice.lines()];
-    expect(running.length).toBeGreaterThan(0);
-
-    profile.setLevel('B1');
-
-    expect(practice.lines()).toEqual(running);
-    expect(practice.level()).toBe(TEST_LEVEL);
-  });
-
-  it('picks the new level up on the next session', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    profile.setLevel('B1');
-    flow.finish();
-
-    await flow.start('speaking', 'catalog', null, 10);
-
-    expect(practice.level()).toBe('B1');
-    expect([...practice.lines()].sort()).toEqual(['c1', 'c2']);
-  });
-
-  it('offers the profile level\'s topics for choosing, not the running one\'s', async () => {
-    const { flow, practice, profile } = setup();
-
-    await flow.start('speaking', 'catalog', 'a', 10);
-    expect(practice.topics().map((t) => t.id)).toEqual(['a', 'b']);
-
-    profile.setLevel('B1');
-
-    expect(practice.topics().map((t) => t.id)).toEqual(['c']);
-  });
-});

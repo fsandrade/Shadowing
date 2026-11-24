@@ -11,18 +11,16 @@ import { PracticeStore } from '../state/practice-store';
 import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { PlaybackService } from './playback-service';
-import { NO_SHUFFLE, signedOutBackend, storedProfile } from '../testing/catalog';
+import { NO_SHUFFLE, signedOutBackend, storedSettings } from '../testing/catalog';
 import type { Catalog } from '../core/catalog';
 import { RANDOM } from '../platform/rng';
 
 const DATA: Catalog = {
-  loadedAt: '2026-08-06T00:00:00Z',
-  levels: [{ id: 'A2', description: 'Elementary' }],
-  topics: [{ id: 'a', name: 'A' }],
+  loadedAt: '2026-08-06T00:00:00Z',  topics: [{ id: 'a', name: 'A' }],
   sentences: [
-    { id: 's-0', topicId: 'a', levelId: 'A2', text: 'first <b>line</b> is long enough to measure' },
-    { id: 's-1', topicId: 'a', levelId: 'A2', text: 'second line is long enough to measure' },
-    { id: 's-2', topicId: 'a', levelId: 'A2', text: 'third line is long enough to measure' },
+    { id: 's-0', topicId: 'a', text: 'first <b>line</b> is long enough to measure' },
+    { id: 's-1', topicId: 'a', text: 'second line is long enough to measure' },
+    { id: 's-2', topicId: 'a', text: 'third line is long enough to measure' },
   ],
 };
 
@@ -51,7 +49,7 @@ function setup(speakMs = 1000, corpus: Catalog = DATA) {
       ...signedOutBackend(),
       {
         provide: SafeStorage,
-        useValue: storedProfile() as unknown as SafeStorage,
+        useValue: storedSettings() as unknown as SafeStorage,
       },
       { provide: CATALOG, useValue: corpus },
       { provide: RANDOM, useValue: NO_SHUFFLE },
@@ -118,6 +116,47 @@ describe('PlaybackService transport', () => {
     expect(practice.index()).toBe(0);
     await vi.advanceTimersByTimeAsync(1000);
     expect(practice.index()).toBe(1);
+  });
+
+  it('cancels an open validation session when paused', async () => {
+    const { playback, speaker } = setup();
+    let settled = false;
+    let resolve!: () => void;
+    const listening = new Promise<void>((resolveNow) => { resolve = resolveNow; });
+    playback.setValidationHook(() => {
+      void listening.then(() => { settled = true; });
+      return listening;
+    });
+    const aborted = vi.fn();
+    playback.setValidationAbort(aborted);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    playback.pause();
+
+    expect(aborted).toHaveBeenCalled();
+    expect(settled).toBe(false);
+
+    resolve();
+    await Promise.resolve();
+    expect(settled).toBe(true);
+  });
+
+  it('cancels validation when clicking to another line', async () => {
+    const { playback } = setup();
+    let settle!: () => void;
+    const listening = new Promise<void>((resolveNow) => { settle = resolveNow; });
+    playback.setValidationHook(() => listening);
+    const aborted = vi.fn();
+    playback.setValidationAbort(aborted);
+
+    playback.play();
+    await vi.advanceTimersByTimeAsync(1000);
+    playback.playLine(1);
+
+    expect(aborted).toHaveBeenCalled();
+    settle();
+    await listening;
   });
 
   it('marks the line just passed as spoken before advancing', async () => {
@@ -296,11 +335,9 @@ describe('PlaybackService dead-voice detection', () => {
 
   it('does not count a short utterance of short text as a failure', async () => {
     const short: Catalog = {
-      loadedAt: '2026-08-06T00:00:00Z',
-      levels: [{ id: 'A2', description: 'Elementary' }],
-      topics: [{ id: 'a', name: 'A' }],
+      loadedAt: '2026-08-06T00:00:00Z',      topics: [{ id: 'a', name: 'A' }],
       sentences: ['hi', 'yo', 'ok'].map((text, i) => ({
-        id: `s-${i}`, topicId: 'a', levelId: 'A2', text,
+        id: `s-${i}`, topicId: 'a', text,
       })),
     };
     const { playback, banner } = setup(0, short);
@@ -782,57 +819,5 @@ describe('PlaybackService validation timing', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(aborted).toHaveBeenCalled();
-  });
-});
-
-describe('PlaybackService repeating a line for the typist', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it('says the current line again', async () => {
-    const { playback, practice, speaker } = setup(1000);
-    practice.goTo(1);
-
-    playback.repeatLine();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(speaker.spoken).toEqual(['second line is long enough to measure']);
-  });
-
-  it('does not move the learner off the line they are answering', () => {
-    const { playback, practice } = setup(1000);
-    practice.goTo(2);
-
-    playback.repeatLine();
-
-    expect(practice.index()).toBe(2);
-    expect(practice.spoken().has(2)).toBe(false);
-  });
-
-  it('leaves a running loop running, rather than cancelling the wait for an answer', async () => {
-    const { playback, practice, speaker } = setup(1000);
-    playback.play();
-    await vi.advanceTimersByTimeAsync(1500);
-    const midGap = speaker.spoken.length;
-
-    playback.repeatLine();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(speaker.spoken.length).toBe(midGap + 1);
-
-    
-    
-    expect(practice.playing()).toBe(true);
-    await vi.advanceTimersByTimeAsync(2000);
-    expect(practice.index()).toBeGreaterThan(0);
-  });
-
-  it('strips markup, like every other reading of a catalogue line', async () => {
-    const { playback, practice, speaker } = setup(1000);
-    practice.goTo(0);
-
-    playback.repeatLine();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(speaker.spoken).toEqual(['first line is long enough to measure']);
   });
 });

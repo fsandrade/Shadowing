@@ -1,15 +1,12 @@
 import { effect, inject, Injectable, untracked } from '@angular/core';
-import { isKnownLevel } from './core/catalog';
+import { MAX_STARS } from './core/scoring';
 import { ProgressService } from './data/progress-service';
-import { AuthStore } from './platform/auth';
 import { PlaybackService } from './playback/playback-service';
 import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
 import { BannerStore } from './state/banner-store';
-import { CATALOG } from './state/catalog-token';
 import { MESSAGES } from './state/messages';
 import { PracticeStore } from './state/practice-store';
-import { ProfileStore } from './state/profile-store';
 import { SessionTimerStore } from './state/session-timer-store';
 import { SettingsStore } from './state/settings-store';
 import { VoiceStore } from './state/voice-store';
@@ -18,12 +15,12 @@ const CLOCK_TICK_MS = 250;
 
 const KEEPALIVE_MS = 10_000;
 
+const MAX_REPEATS = 5;
+
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
-  private readonly catalog = inject(CATALOG);
   private readonly settings = inject(SettingsStore);
   private readonly practice = inject(PracticeStore);
-  private readonly profile = inject(ProfileStore);
   private readonly timer = inject(SessionTimerStore);
   private readonly banner = inject(BannerStore);
   private readonly voices = inject(VoiceStore);
@@ -31,12 +28,9 @@ export class AppStartup {
   private readonly playback = inject(PlaybackService);
   private readonly validation = inject(ValidationService);
   private readonly mic = inject(MicrophoneService);
-  private readonly auth = inject(AuthStore);
   private readonly progress = inject(ProgressService);
 
   run(): void {
-    this.forgetLevelThatNoLongerExists();
-
     this.timer.reset(this.settings.durationMin());
     this.voices.refresh();
     this.watchAudioAvailability();
@@ -44,12 +38,8 @@ export class AppStartup {
     setInterval(() => this.timer.tick(), CLOCK_TICK_MS);
     setInterval(() => this.speaker.keepAlive(), KEEPALIVE_MS);
 
-    this.auth.watch();
-    void this.profile.load();
-
-    this.progress.flush();
-
     this.attachValidator();
+    this.attachRepeatPolicy();
     this.dropResultsWhenOrderChanges();
     this.releaseMicOnUnload();
   }
@@ -75,20 +65,23 @@ export class AppStartup {
       return done?.finally(() => {
         this.validation.dispose();
         const result = this.validation.results().get(lineIndex);
-        this.timer.recordStars(lineIndex, result?.stars ?? 0);
+        if (result?.status !== 'scored' && result?.status !== 'failed') { return; }
+        this.timer.recordStars(lineIndex, result.stars ?? 0);
         this.recordAttempt(lineIndex, plainText, result);
       }) ?? null;
     });
 
-    this.playback.setValidationAbort(() => this.validation.dispose());
+    this.playback.setValidationAbort(() => this.validation.cancel());
   }
 
-  private forgetLevelThatNoLongerExists(): void {
-    const levelId = this.profile.levelId();
-    if (levelId !== null && !isKnownLevel(this.catalog, levelId)) {
-      this.profile.clear();
-      this.settings.setTopicId(null);
-    }
+  private attachRepeatPolicy(): void {
+    this.playback.setRepeatPolicy((lineIndex, repeatsDone) => {
+      if (!this.settings.sttEnabled() || !this.settings.repeatUntilFive()) { return false; }
+      if (repeatsDone >= MAX_REPEATS) { return false; }
+
+      const result = this.validation.results().get(lineIndex);
+      return !result || result.stars === null || result.stars < MAX_STARS;
+    });
   }
 
   private recordAttempt(

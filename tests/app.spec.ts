@@ -1,9 +1,54 @@
+import { createHash } from 'crypto';
 import {
   test, expect, gotoApp, startActivity, Page,
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
 
-const TOPICS_AT_LEVEL = 25;
+const TOPIC_COUNT = 25;
+
+/** Mirrors tools/generate-corpus-meta.js so e2e seeds can address real sentences. */
+function sentenceId(deckId: string, content: string): string {
+  const name = `sentence:${deckId}:${content}`;
+  const ns = 'b7c9f0a2-3e41-4f8d-9a6b-1d2e3f405162';
+  const nsBuf = Buffer.from(ns.replace(/-/g, ''), 'hex');
+  const hash = createHash('sha1')
+    .update(Buffer.concat([nsBuf, Buffer.from(name, 'utf8')]))
+    .digest();
+  const bytes = hash.subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = bytes.toString('hex');
+  return [h.slice(0, 8), h.slice(8, 12), h.slice(12, 16), h.slice(16, 20), h.slice(20, 32)].join('-');
+}
+
+async function installFakeSpeech(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as any).__fakeTranscript = '';
+    class FakeRec {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      maxAlternatives = 1;
+      onresult: any = null;
+      onerror: any = null;
+      onend: any = null;
+      start(): void {
+        const t = (window as any).__fakeTranscript || '';
+        if (t) {
+          this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: t }], { isFinal: true })] });
+        }
+        this.onend?.();
+      }
+      stop(): void {}
+      abort(): void {}
+    }
+    (window as any).SpeechRecognition = FakeRec;
+    const media = (navigator as any).mediaDevices;
+    if (media) {
+      media.getUserMedia = () => Promise.resolve({ getTracks: () => [] });
+    }
+  });
+}
 
 async function currentIndex(page: Page): Promise<number> {
   return page.locator('.lines p')
@@ -42,54 +87,6 @@ test('loads the corpus with numbered lines', async ({ page }) => {
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
 
-test('a first-time visitor is asked for a level before anything else', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { level: null });
-
-  await expect(page.locator('.level-title')).toHaveText('Choose your level');
-
-  await expect(page.locator('.lines p')).toHaveCount(0);
-  await expect(page.locator('#activities')).toHaveCount(0);
-
-  const cards = page.locator('.level-card');
-  await expect(cards).toHaveCount(6);
-  await expect(cards.filter({ hasText: 'Coming soon' })).toHaveCount(0);
-  await expect(page.locator('.level-card:disabled')).toHaveCount(0);
-  await expect(cards.first()).toContainText('You can follow very short');
-  await expect(cards.first()).not.toContainText(/\d+ sentences/);
-
-  await page.locator('.level-card[data-level-id="B1"]').click();
-
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-});
-
-test('a first visit asks for a level once, then never again', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { level: null });
-  await expect(page.locator('#levels')).toBeVisible();
-
-  await page.locator('#levels [data-level-id="B1"]').click();
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levels')).toHaveCount(0);
-
-  await page.reload();
-  await expect(page.locator('#activities')).toBeVisible();
-  await expect(page.locator('#levels')).toHaveCount(0);
-});
-
-test('the level survives a reload, and the app bar states it rather than changing it', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page);
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  await page.reload();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  // The level is asked once. The chip reports it; it is not a control.
-  await expect(page.locator('button#levelChip')).toHaveCount(0);
-});
-
 test('the chooser offers every activity, every topic and four durations', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
@@ -101,7 +98,7 @@ test('the chooser offers every activity, every topic and four durations', async 
   await page.locator('[data-kind-id="speaking"]').click();
 
   await expect(page.locator('#allTopics')).toBeVisible();
-  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
   await expect(page.locator('.durations button')).toHaveCount(4);
   await expect(page.locator('.durations button').first())
     .toHaveAttribute('title', /minute/i);
@@ -140,7 +137,7 @@ test('the header keeps its right-hand controls flush right on the chooser and in
     await gotoApp(page, { activity: null });
 
     // There is no clock on the chooser - the icon group must still be held
-    // against the right edge rather than collapsing next to the level chip.
+    // against the right edge rather than collapsing.
     const headerWidth = await page.locator('header').evaluate((el) => el.getBoundingClientRect().width);
     const chooserLeft = await page.locator('#settings')
       .evaluate((el) => el.getBoundingClientRect().left);
@@ -215,9 +212,9 @@ test('a banner can be dismissed with its close button', async ({ page }) => {
 
 test('starting on one topic narrows the list and renumbers from one', async ({ page }) => {
   installFakeAudio(page);
-  await gotoApp(page, { topic: 'socializing' });
+  await gotoApp(page, { topic: 'restaurants' });
 
-  await expect(page.locator('.lines p')).toHaveCount(26);
+  await expect(page.locator('.lines p')).toHaveCount(48);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -228,30 +225,6 @@ test('clicking a sentence highlights it, even when clicking the number', async (
 
   await page.locator('.lines p').nth(2).locator('.num').click();
   await expect(page.locator('.lines p.current .num')).toHaveText('3');
-});
-
-test('the level changes from the drawer, but not under a running activity', async ({ page }) => {
-  installFakeAudio(page);
-  await gotoApp(page, { activity: 'speaking', topic: null, minutes: 15 });
-
-  const opening = () => page.locator('.lines p .text').first().innerText();
-  const running = await opening();
-  await expect(page.locator('#levelChip')).toContainText('B1');
-
-  await openSettings(page);
-  await page.locator('#profileLevels [data-level-id="A2"]').click();
-
-  // The profile moved; the activity on screen did not.
-  await expect(page.locator('#levelChip')).toContainText('A2');
-  expect(await opening()).toBe(running);
-
-  // The next activity is the one that gets the new level.
-  await page.locator('#closeSettings').click();
-  await page.locator('#finish').click();
-  await page.locator('#backToChooser').click();
-  await startActivity(page, 'speaking');
-
-  expect(await opening()).not.toBe(running);
 });
 
 test('the chooser shows both practice panels, and still fits on one screen',
@@ -323,7 +296,7 @@ test('the chooser shows both practice panels, and still fits on one screen',
     // Choosing an activity hands the space to the choices: the panels are what
     // you read on arrival, and keeping them would push Start off a 720 screen.
     await page.locator('[data-kind-id="speaking"]').click();
-    await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPICS_AT_LEVEL);
+    await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
     await expect(page.locator('.panels')).toHaveCount(0);
 
     below = await page.evaluate(() => ['#startActivity', '.durations']
@@ -352,27 +325,6 @@ test('an unlimited session counts up and ends only when the learner finishes', a
   await page.locator('#finish').click();
   await expect(page.locator('.summary-title')).toContainText('Speaking');
   await expect(page.locator('[data-stat="minutes"]')).toContainText(/\d+ sec|\d+ min/);
-});
-
-test('every start reshuffles, keeping the corpus and renumbering from one', async ({ page }) => {
-  installFakeAudio(page);
-
-  // Five lines, not one: a single line collides by chance about once in 700
-  // runs, which is a flake. Five is one in 700^5.
-  const opening = () => page.evaluate(
-    () => [...document.querySelectorAll('.lines p .text')]
-      .slice(0, 5).map((el) => el.textContent).join('|'),
-  );
-
-  await gotoApp(page, { activity: 'speaking', topic: null });
-  const before = await opening();
-
-  await page.locator('#finish').click();
-  await page.locator('#backToChooser').click();
-  await startActivity(page, 'speaking');
-
-  await expect(page.locator('.lines p .num').first()).toHaveText('1');
-  expect(await opening()).not.toBe(before);
 });
 
 test('playback advances lines while the gap ring fills then disappears', async ({ page }) => {
@@ -448,7 +400,7 @@ test('the chooser fits one screen once an activity is picked', async ({ page }) 
   installFakeAudio(page);
   await gotoApp(page, { activity: null });
   await page.locator('[data-kind-id="speaking"]').click();
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
+  await expect(page.locator('#decks button')).toHaveCount(TOPIC_COUNT + 1);
 
   // One screen, three choices, one button: the topic list must not push the
   // duration control and Start below the fold.
@@ -482,9 +434,9 @@ test('mobile shows every topic in a two-column grid, nothing to swipe', async ({
   // The tap must land the learner in the topic grid, not leave focus on the card.
   await expect(page.locator('#decks')).toBeFocused();
 
-  await expect(page.locator('#decks button')).toHaveCount(TOPICS_AT_LEVEL + 1);
+  await expect(page.locator('#decks button')).toHaveCount(TOPIC_COUNT + 1);
 
-  // Two-column grid tiles: every topic at the level shows at once, no
+  // Two-column grid tiles: every topic shows at once, no
   // sideways swiping, and both columns are actually laid out.
   const layout = await page.locator('.decks').evaluate((el) => ({
     tracks: getComputedStyle(el).gridTemplateColumns.split(' ').filter((t) => t.trim()).length,
@@ -565,4 +517,157 @@ test('dictation can be started from the chooser', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null, minutes: 5 });
   await expect(page.locator('#dictInput')).toBeVisible();
+});
+
+test('no level picker or level chip on first load', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: null });
+  await page.locator('[data-kind-id="speaking"]').click();
+
+  await expect(page.locator('#level-picker')).toHaveCount(0);
+  await expect(page.locator('.level-chip')).toHaveCount(0);
+  await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
+  await expect(page.locator('#decks .deck-count')).toHaveCount(TOPIC_COUNT + 1);
+});
+
+test('a failed sentence stays and a five-star sentence leaves the queue', async ({ page }) => {
+  installFakeAudio(page);
+  await installFakeSpeech(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  const waitForAttempt = (mode: 'belowFive' | 'five') => page.waitForFunction((m) => {
+    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts') ?? '[]') as Array<Record<string, unknown>>;
+    return attempts.some((a) => m === 'five'
+      ? a['stars'] === 5
+      : a['stars'] === 0 || a['status'] === 'failed');
+  }, mode);
+
+  const finishSession = async () => {
+    await page.locator('#finish').click();
+    await expect(page.locator('.summary-title')).toBeVisible();
+    await page.locator('#backToChooser').click();
+  };
+
+  // 1. A below-five attempt counts as zero and must not remove the sentence.
+  const failedText = await page.locator('.lines p.current .text').innerText();
+  await page.evaluate(() => { (window as any).__fakeTranscript = 'completely wrong words'; });
+  await page.locator('#play').click();
+  await waitForAttempt('belowFive');
+  await finishSession();
+
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  let texts = await page.locator('.lines p .text').allInnerTexts();
+  expect(texts.length).toBe(30);
+  expect(texts).toContain(failedText);
+
+  // 2. A five-star attempt masters the sentence; the next queue drops it.
+  let masteredText = await page.locator('.lines p.current .text').innerText();
+  if (masteredText === failedText) {
+    await page.locator('#next').click();
+    masteredText = await page.locator('.lines p.current .text').innerText();
+  }
+  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
+  await page.locator('#play').click();
+  await waitForAttempt('five');
+  await finishSession();
+
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  texts = await page.locator('.lines p .text').allInnerTexts();
+  expect(texts.length).toBe(29);
+  expect(texts).not.toContain(masteredText);
+  expect(texts).toContain(failedText);
+});
+
+test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
+  installFakeAudio(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+  await expect(page.locator('.lines p')).toHaveCount(30);
+
+  const contents = await page.evaluate(() => [...document.querySelectorAll('.lines p .text')]
+    .map((el) => el.innerHTML));
+  const attempts = contents.map((c) => ({
+    sentenceId: sentenceId('nuance-debate', c),
+    status: 'scored' as const,
+    stars: 5,
+    attemptedAt: new Date().toISOString(),
+  }));
+  await page.evaluate((a) => { localStorage.setItem('shadowing.attempts', JSON.stringify(a)); }, attempts);
+  await page.reload();
+
+  await page.locator('[data-kind-id="speaking"]').click();
+  await page.locator('#srcCatalog').click();
+  await page.locator('[data-deck-id="nuance-debate"]').click();
+  await page.locator('.durations [data-min="15"]').click();
+
+  await expect(page.locator('#startActivity')).toBeDisabled();
+  await expect(page.locator('#startActivity')).toHaveAttribute('title', /Every sentence in this topic has 5 stars/);
+  await expect(page.locator('[data-deck-id="nuance-debate"] .deck-count')).toHaveText('Mastered');
+
+  // We are still on the chooser: no empty session, timer, or mic prompt was started.
+  await expect(page.locator('#activities')).toBeVisible();
+  await expect(page.locator('#clock')).toHaveCount(0);
+});
+
+test('blur hides unspoken lines and persists across reload', async ({ page }) => {
+  installFakeAudio(page);
+  await installFakeSpeech(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  await expect(page.locator('#blur')).toBeVisible();
+  await page.locator('#blur').click();
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.lines')).toHaveClass(/blurred/);
+
+  // unspoken lines are blurred; hovering a line makes it readable again
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p:nth-child(2) .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('blur(6px)');
+  await page.locator('.lines p:nth-child(2) .text').hover();
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p:nth-child(2) .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('none');
+
+  // a spoken line becomes readable too
+  const firstLine = await page.locator('.lines p.current .text').innerText();
+  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, firstLine);
+  await page.locator('#play').click();
+  await expect(page.locator('.lines p.spoken').first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p.spoken .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('none');
+
+  await page.reload();
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  await expect(page.locator('.lines')).toHaveClass(/blurred/);
+  await expect(page.locator('#blur')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#blur').click();
+  await expect(page.locator('.lines')).not.toHaveClass(/blurred/);
+});
+
+test('repeat keeps a below-five line in play and persists', async ({ page }) => {
+  installFakeAudio(page);
+  await installFakeSpeech(page);
+  await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
+
+  await page.evaluate(() => { (window as any).__fakeTranscript = 'garbage'; });
+  await page.locator('#play').click();
+
+  // Scoring is on now, so Repeat can be enabled.
+  await expect(page.locator('#repeat')).toBeEnabled();
+  await page.locator('#repeat').click();
+  await expect(page.locator('#repeat')).toHaveAttribute('aria-pressed', 'true');
+
+  const lineText = await page.locator('.lines p.current .text').innerText();
+  await page.waitForFunction((t) => {
+    const spoken = (window as any).__spokenText || [];
+    return spoken.filter((s) => s === t).length >= 2;
+  }, lineText);
+
+  await page.reload();
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  await expect(page.locator('#repeat')).toHaveAttribute('aria-pressed', 'true');
 });
