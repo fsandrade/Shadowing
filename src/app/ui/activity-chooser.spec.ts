@@ -170,6 +170,7 @@ describe('ActivityChooser', () => {
     fixture.detectChanges();
 
     expect(start().disabled).toBe(true);
+    expect(start().title).toBe('Every sentence in the corpus has 5 stars');
   });
 
   it('keeps both cards enabled here, since the browser can transcribe speech', () => {

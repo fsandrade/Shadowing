@@ -530,29 +530,52 @@ test('no level picker or level chip on first load', async ({ page }) => {
   await expect(page.locator('#decks .deck-count')).toHaveCount(TOPIC_COUNT + 1);
 });
 
-test('a sentence scored five stars leaves the next session queue', async ({ page }) => {
+test('a failed sentence stays and a five-star sentence leaves the queue', async ({ page }) => {
   installFakeAudio(page);
   await installFakeSpeech(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
 
-  const masteredText = await page.locator('.lines p.current .text').innerText();
-  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
+  const waitForAttempt = (mode: 'belowFive' | 'five') => page.waitForFunction((m) => {
+    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts') ?? '[]') as Array<Record<string, unknown>>;
+    return attempts.some((a) => m === 'five'
+      ? a['stars'] === 5
+      : a['stars'] === 0 || a['status'] === 'failed');
+  }, mode);
+
+  const finishSession = async () => {
+    await page.locator('#finish').click();
+    await expect(page.locator('.summary-title')).toBeVisible();
+    await page.locator('#backToChooser').click();
+  };
+
+  // 1. A below-five attempt counts as zero and must not remove the sentence.
+  const failedText = await page.locator('.lines p.current .text').innerText();
+  await page.evaluate(() => { (window as any).__fakeTranscript = 'completely wrong words'; });
   await page.locator('#play').click();
-
-  await page.waitForFunction(() => {
-    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts') ?? '[]') as Array<{ stars: number }>;
-    return attempts.some((a) => a.stars === 5);
-  });
-
-  await page.locator('#finish').click();
-  await expect(page.locator('.summary-title')).toBeVisible();
-  await page.locator('#backToChooser').click();
+  await waitForAttempt('belowFive');
+  await finishSession();
 
   await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  let texts = await page.locator('.lines p .text').allInnerTexts();
+  expect(texts.length).toBe(30);
+  expect(texts).toContain(failedText);
 
-  const restarts = await page.locator('.lines p .text').allInnerTexts();
-  expect(restarts.length).toBe(29);
-  expect(restarts).not.toContain(masteredText);
+  // 2. A five-star attempt masters the sentence; the next queue drops it.
+  let masteredText = await page.locator('.lines p.current .text').innerText();
+  if (masteredText === failedText) {
+    await page.locator('#next').click();
+    masteredText = await page.locator('.lines p.current .text').innerText();
+  }
+  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
+  await page.locator('#play').click();
+  await waitForAttempt('five');
+  await finishSession();
+
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  texts = await page.locator('.lines p .text').allInnerTexts();
+  expect(texts.length).toBe(29);
+  expect(texts).not.toContain(masteredText);
+  expect(texts).toContain(failedText);
 });
 
 test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
@@ -587,6 +610,7 @@ test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
 
 test('blur hides unspoken lines and persists across reload', async ({ page }) => {
   installFakeAudio(page);
+  await installFakeSpeech(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
 
   await expect(page.locator('#blur')).toBeVisible();
@@ -605,6 +629,16 @@ test('blur hides unspoken lines and persists across reload', async ({ page }) =>
     return el ? getComputedStyle(el).filter : null;
   })).toBe('none');
 
+  // a spoken line becomes readable too
+  const firstLine = await page.locator('.lines p.current .text').innerText();
+  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, firstLine);
+  await page.locator('#play').click();
+  await expect(page.locator('.lines p.spoken').first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const el = document.querySelector('.lines p.spoken .text');
+    return el ? getComputedStyle(el).filter : null;
+  })).toBe('none');
+
   await page.reload();
   await startActivity(page, 'speaking', { topic: 'nuance-debate' });
   await expect(page.locator('.lines')).toHaveClass(/blurred/);
@@ -614,7 +648,7 @@ test('blur hides unspoken lines and persists across reload', async ({ page }) =>
   await expect(page.locator('.lines')).not.toHaveClass(/blurred/);
 });
 
-test('repeat keeps a below-five line in play', async ({ page }) => {
+test('repeat keeps a below-five line in play and persists', async ({ page }) => {
   installFakeAudio(page);
   await installFakeSpeech(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
@@ -633,5 +667,7 @@ test('repeat keeps a below-five line in play', async ({ page }) => {
     return spoken.filter((s) => s === t).length >= 2;
   }, lineText);
 
-  await page.locator('#finish').click();
+  await page.reload();
+  await startActivity(page, 'speaking', { topic: 'nuance-debate' });
+  await expect(page.locator('#repeat')).toHaveAttribute('aria-pressed', 'true');
 });

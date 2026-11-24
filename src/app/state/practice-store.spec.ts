@@ -122,7 +122,7 @@ describe('PracticeStore lines', () => {
     expect(store.spoken().size).toBe(0);
   });
 
-  it('selectTopic with no topic practises the whole level', () => {
+  it('selectTopic with no topic practises the whole corpus', () => {
     const { store } = setup();
     store.selectTopic('b');
     store.selectTopic(null);

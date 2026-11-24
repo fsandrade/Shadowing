@@ -133,6 +133,8 @@ test('without Repeat, an incorrect check does not offer Try again', async ({ pag
   installFakeAudio(page);
   await gotoApp(page, { activity: 'dictation', topic: null });
 
+  // Blur is a Speaking preference; Dictation hides the answer on its own.
+  await expect(page.locator('#blur')).toHaveCount(0);
   await expect(page.locator('#dictRetry')).toHaveCount(0);
 
   const sentence = stripTags(await currentLineText(page));
@@ -165,4 +167,8 @@ test('Repeat keeps an incorrect dictation challenge in play', async ({ page }) =
   // Skip still moves on.
   await page.locator('#dictSkip').click();
   await expect(page.locator('#dictationCount')).toContainText('2 /');
+
+  // The preference survives a reload.
+  await gotoApp(page, { activity: 'dictation', topic: null });
+  await expect(page.locator('#dictRepeat')).toHaveAttribute('aria-pressed', 'true');
 });
