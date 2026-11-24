@@ -28,7 +28,7 @@
 
     @if (source() === 'catalog') {
       <h3 class="chooser-heading">Topic</h3>
-      <nav appTopicList [selected]="topicId()" (pick)="pickTopic($event)"></nav>
+      <nav appTopicList [selected]="topicId()" [hasPick]="topicPicked()" (pick)="pickTopic($event)"></nav>
     } @else {
       <div appCustomTopic></div>
     }

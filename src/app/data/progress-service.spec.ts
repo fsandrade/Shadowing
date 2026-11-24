@@ -1,16 +1,27 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { localDay } from '../core/days';
+import { SafeStorage } from '../platform/storage';
+import { BannerStore } from '../state/banner-store';
+import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 import { HistoryService } from './history-service';
+import { PROGRESS_KEY, RECENT_ATTEMPTS_KEY } from './progress-storage';
 import { SENTENCE_IDS, type Attempt, ProgressService } from './progress-service';
 
 const LINE = 'I must\'ve <b>hit the snooze button</b> like four times this morning.';
 const PLAIN = 'I must\'ve hit the snooze button like four times this morning.';
 
-function setup(sentenceIds: Map<string, string> = new Map([[LINE, 'sentence-uuid']])) {
+function setup(
+  sentenceIds: Map<string, string> = new Map([[LINE, 'sentence-uuid']]),
+  storage?: SafeStorage,
+) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
-    providers: [{ provide: SENTENCE_IDS, useValue: sentenceIds }],
+    providers: [
+      { provide: SENTENCE_IDS, useValue: sentenceIds },
+      ...(storage ? [{ provide: SafeStorage, useValue: storage }] : []),
+    ],
   });
 
   return {
@@ -30,129 +41,124 @@ function storageKeys() {
   return Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'));
 }
 
+function storedProgress() {
+  return JSON.parse(localStorage.getItem(PROGRESS_KEY)!);
+}
+
+function storedAttempts() {
+  return JSON.parse(localStorage.getItem(RECENT_ATTEMPTS_KEY)!);
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   for (const key of storageKeys()) { localStorage.removeItem(key); }
 });
 
 describe('ProgressService', () => {
-  it('records a session and an attempt to localStorage', async () => {
+  it('records per-sentence progress, daily time and a bounded recent attempt', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', null, 10);
     progress.record(scored);
-    progress.endSession();
+    progress.endSession(60_000);
 
-    const sessions = JSON.parse(localStorage.getItem('shadowing.sessions')!);
-    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts')!);
+    const data = storedProgress();
+    expect(data.sentences['sentence-uuid']).toMatchObject({
+      bestStars: 5,
+      lastStars: 5,
+    });
+    expect(data.days[localDay(new Date())].practisedMs).toBe(60_000);
 
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0].activity).toBe('speaking');
-    expect(sessions[0].deckId).toBeNull();
-    expect(sessions[0].plannedDurationMin).toBe(10);
-    expect(sessions[0].endedAt).toBeTruthy();
-    expect(sessions[0].elapsedMs).toBeGreaterThanOrEqual(0);
-
+    const attempts = storedAttempts();
     expect(attempts).toHaveLength(1);
-    expect(attempts[0].sessionId).toBe(sessions[0].id);
     expect(attempts[0].sentenceId).toBe('sentence-uuid');
     expect(attempts[0].stars).toBe(5);
     expect(attempts[0].status).toBe('scored');
+    expect(attempts[0].sessionId).toBeTruthy();
   });
 
-  it('reuses one session across attempts', async () => {
+  it('reuses one session across attempts', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', null, 10);
     progress.record(scored);
     progress.record({ ...scored, stars: 3 });
 
-    const sessions = JSON.parse(localStorage.getItem('shadowing.sessions')!);
-    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts')!);
-
-    expect(sessions).toHaveLength(1);
+    const attempts = storedAttempts();
     expect(attempts).toHaveLength(2);
-    expect(attempts.every((a: { sessionId: string }) => a.sessionId === sessions[0].id)).toBe(true);
+    expect(attempts[0].sessionId).toBe(attempts[1].sessionId);
   });
 
-  it('records a failed attempt with no stars', async () => {
+  it('records a failed attempt with no stars', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', null, 10);
     progress.record({ ...scored, stars: null, status: 'failed', transcript: '' });
 
-    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts')!);
+    const attempts = storedAttempts();
     expect(attempts[0].status).toBe('failed');
     expect(attempts[0].stars).toBeNull();
+    expect(storedProgress().days[localDay(new Date())]?.scoredAttempts ?? 0).toBe(0);
   });
 
-  it('uses typing mode counts when typing', async () => {
+  it('uses typing mode counts when typing', () => {
     const { progress } = setup();
     TestBed.inject(SettingsStore).setTypingMode(true);
 
     progress.startSession('speaking', null, 10);
     progress.record(scored);
 
-    const attempts = JSON.parse(localStorage.getItem('shadowing.attempts')!);
-    expect(attempts[0].mode).toBe('typing');
+    expect(storedAttempts()[0].mode).toBe('typing');
   });
 
-  it('records nothing for a line not in the corpus', async () => {
+  it('records nothing for a line not in the corpus', () => {
     const { progress } = setup(new Map());
 
     progress.startSession('speaking', null, 10);
     progress.record({ ...scored, line: 'Unknown line.' });
 
-    const attemptsRaw = localStorage.getItem('shadowing.attempts');
-    const attempts = attemptsRaw ? JSON.parse(attemptsRaw) : [];
-    expect(attempts).toHaveLength(0);
+    expect(localStorage.getItem(RECENT_ATTEMPTS_KEY)).toBeNull();
+    expect(localStorage.getItem(PROGRESS_KEY)).toBeNull();
   });
 
-  it('does not close a session that was never opened', async () => {
+  it('does not write anything when a session was never opened', () => {
     const { progress } = setup();
 
     progress.endSession();
 
-    expect(localStorage.getItem('shadowing.sessions')).toBeNull();
+    expect(localStorage.getItem(PROGRESS_KEY)).toBeNull();
+    expect(localStorage.getItem(RECENT_ATTEMPTS_KEY)).toBeNull();
   });
 
-  it('starting a second activity closes the first session', async () => {
+  it('starting a second activity closes the first session', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', 'travel', 10);
+    progress.record(scored);
     progress.startSession('dictation', 'travel', 5);
+    progress.record({ ...scored, stars: 4 });
 
-    const sessions = JSON.parse(localStorage.getItem('shadowing.sessions')!);
-    expect(sessions).toHaveLength(2);
-    expect(sessions[0].endedAt).toBeTruthy();
-    expect(sessions[0].activity).toBe('speaking');
-    expect(sessions[1].activity).toBe('dictation');
-    expect(sessions[1].endedAt).toBeNull();
+    const attempts = storedAttempts();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0].sessionId).not.toBe(attempts[1].sessionId);
   });
 
-  it('records no practice time for a session that never played', async () => {
+  it('records no practice time for a session that never played', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', null, 10);
     progress.endSession();
 
-    const sessions = JSON.parse(localStorage.getItem('shadowing.sessions')!);
-    expect(sessions[0].practisedMs).toBe(0);
+    expect(localStorage.getItem(PROGRESS_KEY)).toBeNull();
   });
 
-  it('never sends a negative practice time', async () => {
+  it('never sends a negative practice time', () => {
     const { progress } = setup();
 
     progress.startSession('speaking', null, 10);
     progress.endSession(-5000);
 
-    const sessions = JSON.parse(localStorage.getItem('shadowing.sessions')!);
-    expect(sessions[0].practisedMs).toBe(0);
-  });
-
-  it('flush is a no-op since localStorage writes are synchronous', () => {
-    const { progress } = setup();
-    expect(() => progress.flush()).not.toThrow();
+    expect(localStorage.getItem(PROGRESS_KEY)).toBeNull();
   });
 
   it('refreshes sentence history after recording an attempt', () => {
@@ -164,5 +170,19 @@ describe('ProgressService', () => {
     progress.record(scored);
 
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it('shows a banner when progress cannot be written', () => {
+    const storage = {
+      read: () => null,
+      write: () => false,
+      remove: () => false,
+    } as unknown as SafeStorage;
+    const { progress } = setup(undefined, storage);
+
+    progress.startSession('speaking', null, 10);
+    progress.record(scored);
+
+    expect(TestBed.inject(BannerStore).html()).toBe(MESSAGES.storageFull);
   });
 });

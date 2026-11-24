@@ -1,11 +1,14 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RANDOM } from '../platform/rng';
 import { Speaker } from '../platform/speaker';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
+import { DictationStore } from '../state/dictation-store';
+import { FlowStore } from '../state/flow-store';
 import { PracticeStore } from '../state/practice-store';
+import { SessionTimerStore } from '../state/session-timer-store';
 import { SettingsStore } from '../state/settings-store';
 import { NO_SHUFFLE, signedOutBackend, storedSettings, TEST_CATALOG } from '../testing/catalog';
 import { Dictation } from './dictation';
@@ -45,8 +48,17 @@ function render() {
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
   const root = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('main.dictation')!;
-  return { fixture, root };
+  return {
+    fixture,
+    root,
+    flow: TestBed.inject(FlowStore),
+    timer: TestBed.inject(SessionTimerStore),
+    settings: TestBed.inject(SettingsStore),
+  };
 }
+
+beforeEach(() => vi.useRealTimers());
+afterEach(() => vi.useRealTimers());
 
 function type(fixture: { detectChanges(): void }, root: HTMLElement, text: string) {
   const input = root.querySelector<HTMLInputElement>('#dictInput')!;
@@ -93,6 +105,38 @@ describe('Dictation screen', () => {
     expect(masked?.textContent).toBe('**');
   });
 
+  it('reveals the current wrong answer as soon as Show answer immediately is turned on', () => {
+    const { fixture, root } = render();
+    TestBed.inject(DictationStore).showAnswerImmediately.set(false);
+    type(fixture, root, 'nope');
+    clicked(root, 'dictCheck');
+    fixture.detectChanges();
+    expect(root.querySelector('.dict-answer')?.textContent?.trim()).toBe('');
+
+    const toggle = root.querySelector<HTMLInputElement>('#dictShowImmediate')!;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(root.querySelector('.dict-answer .dict-masked')?.textContent).toBe('**');
+  });
+
+  it('shows the full text when Show full answer is turned on', () => {
+    const { fixture, root } = render();
+    type(fixture, root, 'nope');
+    clicked(root, 'dictCheck');
+    fixture.detectChanges();
+    expect(root.querySelector('.dict-answer .dict-masked')?.textContent).toBe('**');
+
+    const toggle = root.querySelector<HTMLInputElement>('#dictShowFull')!;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(root.querySelector('.dict-answer .dict-masked')).toBeNull();
+    expect(root.querySelector('.dict-answer')?.textContent?.trim()).toBe('a1');
+  });
+
   it('Skip reveals the answer and advances to the next challenge', () => {
     const { fixture, root } = render();
     clicked(root, 'dictSkip');
@@ -117,6 +161,34 @@ describe('Dictation screen', () => {
     fixture.detectChanges();
 
     expect(root.querySelector('#dictationCount')?.textContent?.trim()).toBe('3 / 3');
+  });
+
+  it('finishes a timed dictation session when the timer expires', async () => {
+    vi.useFakeTimers();
+    const now = 1_000_000_000_000;
+    vi.setSystemTime(now);
+
+    const { fixture, root, flow, timer, settings } = render();
+    await flow.start('dictation', 'catalog', 'a', 1);
+    settings.setDurationMin(1);
+    timer.reset(1);
+    fixture.detectChanges();
+
+    expect(root.querySelector('#dictationCount')).not.toBeNull();
+    expect(flow.screen()).toBe('dictation');
+
+    vi.setSystemTime(now + 60_000);
+    timer.tick();
+    fixture.detectChanges();
+
+    const dictFixture = TestBed.createComponent(Dictation);
+    dictFixture.detectChanges();
+    const component = dictFixture.componentInstance;
+    component.checkExpiry();
+    dictFixture.detectChanges();
+
+    expect(flow.screen()).toBe('summary');
+    vi.useRealTimers();
   });
 });
 

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryService } from '../data/history-service';
 import { SENTENCE_IDS } from '../data/progress-service';
 import { RANDOM } from '../platform/rng';
@@ -54,6 +54,10 @@ class FakeRecognition {
 
 function render(extra: unknown[] = []) {
   const store = new Map<string, unknown>();
+  for (const key of Object.keys(localStorage).filter((k) => k.startsWith('shadowing.'))) {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) { store.set(key, JSON.parse(raw) as unknown); }
+  }
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -67,7 +71,8 @@ function render(extra: unknown[] = []) {
         provide: SafeStorage,
         useValue: {
           read: (key: string) => store.get(key) ?? null,
-          write: (key: string, value: unknown) => { store.set(key, value); },
+          write: (key: string, value: unknown) => { store.set(key, value); return true; },
+          remove: (key: string) => { store.delete(key); return true; },
         } as unknown as SafeStorage,
       },
     ],
@@ -123,14 +128,19 @@ describe('ActivityChooser', () => {
     expect(start().disabled).toBe(false);
   });
 
-  it('counts All topics as a topic pick', () => {
+  it('counts All topics as a topic pick and marks it pressed', () => {
     const { fixture, cards, root, start } = render();
 
     cards()[0].click();
     fixture.detectChanges();
+    expect(root.querySelector<HTMLButtonElement>('#allTopics')!.getAttribute('aria-pressed'))
+      .toBe('false');
+
     root.querySelector<HTMLButtonElement>('#allTopics')!.click();
     fixture.detectChanges();
 
+    expect(root.querySelector<HTMLButtonElement>('#allTopics')!.getAttribute('aria-pressed'))
+      .toBe('true');
     expect(start().disabled).toBe(false);
   });
 
@@ -233,6 +243,27 @@ describe('ActivityChooser', () => {
     expect(flow.kind()).toBe('speaking');
     expect(settings.topicId()).toBe('b');
     expect(settings.durationMin()).toBe(15);
+  });
+
+  it('ignores a second Start click while the first is still starting', async () => {
+    const { fixture, cards, root, start, flow } = render();
+    cards()[0].click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[data-deck-id="b"]')!.click();
+    fixture.detectChanges();
+
+    let release!: () => void;
+    const pending = new Promise<void>((resolveNow) => { release = resolveNow; });
+    const startSpy = vi.spyOn(flow, 'start').mockImplementation(
+      () => pending as unknown as ReturnType<FlowStore['start']>,
+    );
+
+    start().click();
+    start().click();
+    expect(startSpy).toHaveBeenCalledTimes(1);
+
+    release();
+    await fixture.whenStable();
   });
 
   it('a dictation session lands on the dictation screen with no topic', async () => {

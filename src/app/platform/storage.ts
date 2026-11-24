@@ -24,10 +24,23 @@ export class SafeStorage {
     }
   }
 
-  write(key: string, value: unknown): void {
+  write(key: string, value: unknown): boolean {
+    if (!this.store) { return false; }
     try {
-      this.store?.setItem(key, JSON.stringify(value));
+      this.store.setItem(key, JSON.stringify(value));
+      return true;
     } catch {
+      return false;
+    }
+  }
+
+  remove(key: string): boolean {
+    if (!this.store) { return false; }
+    try {
+      this.store.removeItem(key);
+      return true;
+    } catch {
+      return false;
     }
   }
 }

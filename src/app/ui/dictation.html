@@ -51,10 +51,10 @@
     @if (status() === 'incorrect') {
       <label><input type="checkbox" id="dictShowImmediate"
         [checked]="store.showAnswerImmediately()"
-        (change)="store.showAnswerImmediately.set($any($event.target).checked)"> Show answer immediately</label>
+        (change)="setShowImmediate($any($event.target).checked)"> Show answer immediately</label>
       <label><input type="checkbox" id="dictShowFull"
         [checked]="store.showFull()"
-        (change)="store.showFull.set($any($event.target).checked); store.revealFull()"> Show full answer</label>
+        (change)="setShowFull($any($event.target).checked)"> Show full answer</label>
     }
   }
 </div>

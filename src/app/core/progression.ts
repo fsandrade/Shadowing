@@ -1,4 +1,5 @@
 import type { Sentence } from './catalog';
+import { MAX_STARS } from './scoring';
 import { type Rng, shuffle } from './shuffle';
 
 export interface SentenceProgress {
@@ -7,7 +8,7 @@ export interface SentenceProgress {
   readonly lastAttemptedAt: number;
 }
 
-export const MASTERED_STARS = 5;
+export const MASTERED_STARS = MAX_STARS;
 
 export function buildQueue(
   sentences: readonly Sentence[],

@@ -2,7 +2,7 @@
   <button
     type="button"
     id="allTopics"
-    [attr.aria-pressed]="selected() === null"
+    [attr.aria-pressed]="selected() === null && hasPick()"
     title="Practise every topic"
     (click)="pick.emit(null)"
   >

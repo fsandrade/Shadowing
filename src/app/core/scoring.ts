@@ -1,6 +1,8 @@
 import { spellNumbers } from './numbers';
 import { canonicalWord } from './variants';
 
+export const MAX_STARS = 5;
+
 export function normalizeSpeech(text: unknown): string[] {
   return spellNumbers(String(text ?? '').toLowerCase())
     .replace(/'/g, '')

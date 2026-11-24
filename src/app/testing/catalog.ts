@@ -27,11 +27,42 @@ export const NO_SHUFFLE = (): number => 1;
 
 export function storedSettings(
   overrides: Record<string, unknown> = {},
-): { read: (key: string) => unknown; write: () => void } {
+): { read: (key: string) => unknown; write: (key: string, value: unknown) => boolean; remove: (key: string) => boolean } {
   const settings = { ...overrides };
   return {
-    read: (key: string) => (key === 'shadowing.settings' ? settings : null),
-    write: () => {},
+    read: (key: string) => {
+      if (key === 'shadowing.settings') { return settings; }
+      try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? null : JSON.parse(raw) as unknown;
+      } catch {
+        return null;
+      }
+    },
+    write: (key: string, value: unknown) => {
+      try {
+        if (key === 'shadowing.settings') {
+          Object.assign(settings, value);
+        } else {
+          localStorage.setItem(key, JSON.stringify(value));
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    remove: (key: string) => {
+      try {
+        if (key === 'shadowing.settings') {
+          for (const own of Object.keys(settings)) { delete settings[own]; }
+        } else {
+          localStorage.removeItem(key);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }
 

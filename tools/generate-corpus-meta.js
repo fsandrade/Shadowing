@@ -38,33 +38,28 @@ function readCorpus() {
 
 function main() {
   const corpus = readCorpus();
-  const byContent = new Map();
+  const byContent = new Set();
+  const deckIds = {};
+  let sentenceCount = 0;
+
   for (const deck of corpus.decks) {
+    const ids = [];
     for (const content of deck.lines) {
       if (byContent.has(content)) {
         throw new Error(`Duplicate sentence content: ${content}`);
       }
-      byContent.set(content, {
-        id: uuidV5(`sentence:${deck.id}:${content}`),
-        deckId: deck.id,
-      });
+      byContent.add(content);
+      ids.push(uuidV5(`sentence:${deck.id}:${content}`));
+      sentenceCount++;
     }
+    deckIds[deck.id] = ids;
   }
 
-  const entries = [...byContent.entries()]
-    .map(([content, { id, deckId }]) => {
-      return `  [${JSON.stringify(content)}, { id: ${JSON.stringify(id)}, deckId: ${JSON.stringify(deckId)} }],`;
-    })
-    .join('\n');
-
-  const out = `export type SentenceMeta = {
-  readonly id: string;
-  readonly deckId: string;
-};
-
-export const SENTENCE_META: ReadonlyMap<string, SentenceMeta> = new Map([
-${entries}
-]);
+  const out = `export const DECK_SENTENCE_IDS: Readonly<Record<string, readonly string[]>> = ${JSON.stringify(
+    deckIds,
+    null,
+    2
+  )};
 
 export const DECKS = ${JSON.stringify(
     corpus.decks.map((d) => ({ id: d.id, name: d.name })),
@@ -75,7 +70,7 @@ export const DECKS = ${JSON.stringify(
 `;
 
   fs.writeFileSync(OUT, out, 'utf8');
-  console.log(`Wrote ${path.relative(ROOT, OUT)}: ${byContent.size} sentences, ${corpus.decks.length} decks.`);
+  console.log(`Wrote ${path.relative(ROOT, OUT)}: ${sentenceCount} sentences, ${corpus.decks.length} decks.`);
 }
 
 main();

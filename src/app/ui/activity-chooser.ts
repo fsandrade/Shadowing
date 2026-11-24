@@ -74,7 +74,8 @@ export class ActivityChooser {
   @ViewChild(TopicList, { read: ElementRef }) private readonly topics?: ElementRef<HTMLElement>;
 
   private focusTopics = false;
-  private readonly topicPicked = signal(false);
+  private starting = false;
+  protected readonly topicPicked = signal(false);
 
   constructor() {
     this.totals.set(this.history.totals());
@@ -110,17 +111,24 @@ export class ActivityChooser {
   }
 
   private onPhone(): boolean {
-    return window.matchMedia('(max-width: 640px)').matches;
+    return window.matchMedia?.('(max-width: 640px)').matches ?? false;
   }
 
   protected async begin(): Promise<void> {
+    if (this.starting) { return; }
     const kind = this.kind();
     if (!kind) { return; }
-    await this.flow.start(
-      kind.id,
-      this.source(),
-      this.source() === 'catalog' ? this.topicId() : null,
-      this.minutes(),
-    );
+
+    this.starting = true;
+    try {
+      await this.flow.start(
+        kind.id,
+        this.source(),
+        this.source() === 'catalog' ? this.topicId() : null,
+        this.minutes(),
+      );
+    } finally {
+      this.starting = false;
+    }
   }
 }

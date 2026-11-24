@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_TEXT_LIMIT } from '../core/sentences';
+import { PlaybackService } from '../playback/playback-service';
 import { SafeStorage } from '../platform/storage';
 import { CATALOG } from '../state/catalog-token';
 import { CustomTopicStore } from '../state/custom-topic-store';
@@ -45,6 +46,7 @@ function render(stored: unknown = null) {
     fixture,
     written,
     practice,
+    playback: TestBed.inject(PlaybackService),
     custom: TestBed.inject(CustomTopicStore),
     panel: root.querySelector('.custom-topic')!,
     area: () => root.querySelector('textarea'),
@@ -145,6 +147,14 @@ describe('CustomTopic saving', () => {
     expect(practice.lines()).toEqual(['Only one now.']);
     expect(practice.index()).toBe(0);
   });
+
+  it('stops playback before saving new text', () => {
+    const { btn, type, playback } = render();
+    const stop = vi.spyOn(playback, 'stop');
+    type('Fresh text.');
+    btn('customSave')!.click();
+    expect(stop).toHaveBeenCalled();
+  });
 });
 
 describe('CustomTopic with saved text', () => {
@@ -185,5 +195,12 @@ describe('CustomTopic with saved text', () => {
     expect(practice.lines()).toEqual([]);
     expect(written.get('shadowing.customTopic')).toBe('');
     expect(area()).not.toBeNull();
+  });
+
+  it('stops playback before clearing saved text', () => {
+    const { btn, playback } = render('Stored one.');
+    const stop = vi.spyOn(playback, 'stop');
+    btn('customClear')!.click();
+    expect(stop).toHaveBeenCalled();
   });
 });

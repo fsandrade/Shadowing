@@ -136,6 +136,22 @@ export class ValidationService {
     this.finish();
   }
 
+  /** Aborts an open listening turn without recording a failure result. */
+  cancel(): void {
+    this.clearWatch();
+    this.session?.abort();
+    this.session = null;
+
+    const active = this.activeLine();
+    this.activeLine.set(null);
+    if (active !== null) {
+      const next = new Map(this.results());
+      next.delete(active);
+      this.results.set(next);
+    }
+    this.finish();
+  }
+
   reset(): void {
     this.dispose();
     this.results.set(new Map());
@@ -207,6 +223,9 @@ export class ValidationService {
 
   private onDenied(lineIndex: number): void {
     this.mic.markDenied();
+    this.session?.abort();
+    this.session = null;
+    this.settings.setSttEnabled(false);
     this.put(lineIndex, {
       transcript: MESSAGES.micDeniedInline,
       stars: null,
@@ -217,6 +236,7 @@ export class ValidationService {
       this.deniedWarned = true;
       this.banner.show(MESSAGES.micDenied, 'stt-denied');
     }
+    this.finish();
   }
 
   private finish(): void {

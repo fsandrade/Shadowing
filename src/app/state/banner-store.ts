@@ -4,7 +4,8 @@ export type BannerSource =
   | 'no-voice'
   | 'unsupported'
   | 'dead-voice'
-  | 'stt-denied';
+  | 'stt-denied'
+  | 'storage';
 
 
 

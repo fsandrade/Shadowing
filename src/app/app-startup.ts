@@ -1,6 +1,6 @@
 import { effect, inject, Injectable, untracked } from '@angular/core';
+import { MAX_STARS } from './core/scoring';
 import { ProgressService } from './data/progress-service';
-import { AuthStore } from './platform/auth';
 import { PlaybackService } from './playback/playback-service';
 import { MicrophoneService } from './platform/microphone';
 import { Speaker } from './platform/speaker';
@@ -16,7 +16,6 @@ const CLOCK_TICK_MS = 250;
 const KEEPALIVE_MS = 10_000;
 
 const MAX_REPEATS = 5;
-const MAX_STARS = 5;
 
 @Injectable({ providedIn: 'root' })
 export class AppStartup {
@@ -29,7 +28,6 @@ export class AppStartup {
   private readonly playback = inject(PlaybackService);
   private readonly validation = inject(ValidationService);
   private readonly mic = inject(MicrophoneService);
-  private readonly auth = inject(AuthStore);
   private readonly progress = inject(ProgressService);
 
   run(): void {
@@ -39,10 +37,6 @@ export class AppStartup {
 
     setInterval(() => this.timer.tick(), CLOCK_TICK_MS);
     setInterval(() => this.speaker.keepAlive(), KEEPALIVE_MS);
-
-    this.auth.watch();
-
-    this.progress.flush();
 
     this.attachValidator();
     this.attachRepeatPolicy();
@@ -71,12 +65,13 @@ export class AppStartup {
       return done?.finally(() => {
         this.validation.dispose();
         const result = this.validation.results().get(lineIndex);
-        this.timer.recordStars(lineIndex, result?.stars ?? 0);
+        if (result?.status !== 'scored' && result?.status !== 'failed') { return; }
+        this.timer.recordStars(lineIndex, result.stars ?? 0);
         this.recordAttempt(lineIndex, plainText, result);
       }) ?? null;
     });
 
-    this.playback.setValidationAbort(() => this.validation.dispose());
+    this.playback.setValidationAbort(() => this.validation.cancel());
   }
 
   private attachRepeatPolicy(): void {

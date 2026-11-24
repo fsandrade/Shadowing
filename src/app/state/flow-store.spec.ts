@@ -25,6 +25,14 @@ beforeEach(() => {
 
 function setup(opts: { micDenied?: boolean } = {}) {
   const store = new Map<string, unknown>();
+  const readLocal = (key: string): unknown => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? null : JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  };
 
   let recognition: RecognitionOptions = {};
   const recognizer = {
@@ -61,8 +69,9 @@ function setup(opts: { micDenied?: boolean } = {}) {
       {
         provide: SafeStorage,
         useValue: {
-          read: (key: string) => store.get(key) ?? null,
-          write: (key: string, value: unknown) => { store.set(key, value); },
+          read: (key: string) => store.get(key) ?? readLocal(key),
+          write: (key: string, value: unknown) => { store.set(key, value); return true; },
+          remove: (key: string) => { store.delete(key); return true; },
         } as unknown as SafeStorage,
       },
     ],

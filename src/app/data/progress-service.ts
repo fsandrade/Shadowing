@@ -4,9 +4,12 @@ import {
   type AttemptCounts, similarityFromCounts, speechCounts,
 } from '../core/scoring';
 import { typingCounts } from '../core/typing';
+import { BannerStore } from '../state/banner-store';
+import { MESSAGES } from '../state/messages';
 import { SettingsStore } from '../state/settings-store';
 import type { SentenceIds } from './corpus-source';
 import { HistoryService } from './history-service';
+import { ProgressStorage } from './progress-storage';
 
 export const SENTENCE_IDS = new InjectionToken<SentenceIds>('SENTENCE_IDS');
 
@@ -21,32 +24,8 @@ export interface Attempt {
   readonly status: AttemptStatus;
 }
 
-const SESSIONS_KEY = 'shadowing.sessions';
-const ATTEMPTS_KEY = 'shadowing.attempts';
-
-type JsonRecord = Record<string, unknown>;
-
 function uuid(): string {
   return crypto.randomUUID();
-}
-
-function readStore(key: string): JsonRecord[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null || raw === undefined) { return []; }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed as JsonRecord[] : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeStore<T>(key: string, value: T[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    
-  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,30 +33,20 @@ export class ProgressService {
   private readonly settings = inject(SettingsStore);
   private readonly sentenceIds = inject(SENTENCE_IDS);
   private readonly history = inject(HistoryService);
+  private readonly storage = inject(ProgressStorage);
+  private readonly banner = inject(BannerStore);
 
   private sessionId: string | null = null;
   private sessionStartedAt = 0;
 
   startSession(activity: PracticeKind, topicId: string | null, minutes: number): void {
-    
-    this.endSession();
+    void activity;
+    void topicId;
+    void minutes;
 
+    this.endSession();
     this.sessionId = uuid();
     this.sessionStartedAt = Date.now();
-
-    const session = {
-      id: this.sessionId,
-      activity,
-      deckId: topicId,
-      startedAt: new Date(this.sessionStartedAt).toISOString(),
-      plannedDurationMin: minutes,
-      endedAt: null,
-      elapsedMs: 0,
-      practisedMs: 0,
-      sentencesPracticed: 0,
-      starsEarned: 0,
-    };
-    writeStore(SESSIONS_KEY, [...readStore(SESSIONS_KEY), session]);
   }
 
   record(attempt: Attempt): void {
@@ -88,8 +57,7 @@ export class ProgressService {
     if (!sentenceId) { return; }
 
     const counts = this.countsFor(attempt);
-    const record = {
-      id: uuid(),
+    const saved = this.storage.recordAttempt({
       sessionId,
       sentenceId,
       mode: this.mode(),
@@ -100,32 +68,24 @@ export class ProgressService {
       matchedWordCount: counts.matched,
       similarity: Number(similarityFromCounts(counts).toFixed(4)),
       attemptedAt: new Date().toISOString(),
-    };
-    writeStore(ATTEMPTS_KEY, [...readStore(ATTEMPTS_KEY), record]);
+    });
+    if (!saved) { this.showStorageFull(); }
     this.history.refresh();
   }
 
-  
-  
   endSession(practisedMs = 0): void {
     if (!this.sessionId) { return; }
 
-    writeStore(SESSIONS_KEY, readStore(SESSIONS_KEY).map((s) =>
-      s['id'] === this.sessionId
-        ? {
-          ...s,
-          endedAt: new Date().toISOString(),
-          elapsedMs: Math.max(0, Date.now() - this.sessionStartedAt),
-          practisedMs: Math.max(0, Math.round(practisedMs)),
-        }
-        : s
-    ));
+    const ms = Math.max(0, Math.round(practisedMs));
+    if (ms > 0 && !this.storage.addPractice(this.sessionStartedAt, ms)) {
+      this.showStorageFull();
+    }
 
     this.sessionId = null;
   }
 
-  flush(): void {
-    
+  private showStorageFull(): void {
+    this.banner.show(MESSAGES.storageFull, 'storage');
   }
 
   private mode(): PracticeMode {

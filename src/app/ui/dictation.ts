@@ -1,6 +1,6 @@
 import {
   afterEveryRender, afterRenderEffect, ChangeDetectionStrategy, Component, computed,
-  ElementRef, inject, signal, untracked, viewChild,
+  effect, ElementRef, inject, signal, untracked, viewChild,
 } from '@angular/core';
 import { maskedWords } from '../core/typing';
 import { PlaybackService } from '../playback/playback-service';
@@ -31,13 +31,13 @@ export class Dictation {
   private readonly flow = inject(FlowStore);
 
   protected readonly typed = signal('');
-  protected readonly playing = signal(false);
   protected readonly repeatUntilFive = this.settings.repeatUntilFive;
 
   protected readonly status = computed(() => this.store.status(this.store.index()));
 
   private readonly input = viewChild<ElementRef<HTMLInputElement>>('dictInput');
   private focusInput = false;
+  private finished = false;
 
   constructor() {
     afterRenderEffect(() => {
@@ -51,6 +51,18 @@ export class Dictation {
       this.focusInput = false;
       this.input()?.nativeElement.focus();
     });
+
+    effect(() => {
+      this.timer.clockText();
+      untracked(() => this.checkExpiry());
+    });
+  }
+
+  public checkExpiry(): void {
+    if (this.timer.expired() && !this.finished) {
+      this.finished = true;
+      this.finish();
+    }
   }
 
   protected masked(): readonly { text: string; ok: boolean }[] {
@@ -60,6 +72,16 @@ export class Dictation {
   }
 
   protected issue(): boolean { return this.status() !== 'todo'; }
+
+  protected setShowImmediate(checked: boolean): void {
+    this.store.showAnswerImmediately.set(checked);
+    if (checked) { this.store.revealFull(); }
+  }
+
+  protected setShowFull(checked: boolean): void {
+    this.store.showFull.set(checked);
+    if (checked) { this.store.revealFull(); }
+  }
 
   protected onReplay(): void { void this.playCurrent(); }
 
@@ -84,9 +106,7 @@ export class Dictation {
     const i = this.store.index();
     const text = this.store.textAt(i);
     if (!text) { return; }
-    this.playing.set(true);
     await this.speakText(text);
-    this.playing.set(false);
   }
 
   private speakText(text: string): Promise<void> {

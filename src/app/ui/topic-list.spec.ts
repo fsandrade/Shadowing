@@ -28,12 +28,13 @@ function master(...ids: string[]): void {
 
 @Component({
   imports: [TopicList],
-  template: `<nav appTopicList [selected]="selected()" (pick)="picked.push($event)"></nav>`,
+  template: `<nav appTopicList [selected]="selected()" [hasPick]="hasPick()" (pick)="picked.push($event)"></nav>`,
 })
 class Host {
   
   
   readonly selected = signal<string | null>(null);
+  readonly hasPick = signal(false);
   readonly picked: Array<string | null> = [];
 }
 
@@ -68,13 +69,21 @@ describe('TopicList', () => {
     expect(buttons().slice(1).map((b) => b.dataset['deckId'])).toEqual(['a', 'b', 'c']);
   });
 
-  it('marks All topics when nothing is selected', () => {
+  it('does not mark All topics before any pick', () => {
     const { buttons } = render();
+    expect(buttons()[0].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('marks All topics once it is picked', () => {
+    const { fixture, host, buttons } = render();
+    host.hasPick.set(true);
+    fixture.detectChanges();
     expect(buttons()[0].getAttribute('aria-pressed')).toBe('true');
   });
 
   it('marks the selected topic instead', () => {
     const { fixture, host, buttons } = render();
+    host.hasPick.set(true);
     host.selected.set('b');
     fixture.detectChanges();
     expect(buttons()[0].getAttribute('aria-pressed')).toBe('false');

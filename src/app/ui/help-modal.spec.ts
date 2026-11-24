@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { HelpModal } from './help-modal';
 
 @Component({
@@ -109,6 +109,30 @@ describe('HelpModal focus', () => {
     host.open.set(false);
     fixture.detectChanges();
     expect(document.activeElement).toBe(opener);
+
+    root.remove();
+  });
+
+  it('keeps Tab focus inside the open dialog', () => {
+    const { fixture, host } = render(false);
+    const root = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(root);
+
+    host.open.set(true);
+    fixture.detectChanges();
+    const close = root.querySelector<HTMLButtonElement>('#helpClose')!;
+
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    const tabPrevented = vi.spyOn(tab, 'preventDefault');
+    close.dispatchEvent(tab);
+    expect(tabPrevented).toHaveBeenCalled();
+
+    const shiftTab = new KeyboardEvent('keydown', {
+      key: 'Tab', shiftKey: true, bubbles: true, cancelable: true,
+    });
+    const shiftPrevented = vi.spyOn(shiftTab, 'preventDefault');
+    close.dispatchEvent(shiftTab);
+    expect(shiftPrevented).toHaveBeenCalled();
 
     root.remove();
   });
