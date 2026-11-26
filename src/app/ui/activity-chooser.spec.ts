@@ -21,13 +21,14 @@ beforeEach(() => {
 });
 
 function master(...ids: string[]): void {
+  const base = Date.parse('2026-11-20T09:00:00.000Z');
   localStorage.setItem('shadowing.attempts', JSON.stringify(
-    ids.map((sentenceId) => ({
+    ids.flatMap((sentenceId) => [0, 1, 2].map((i) => ({
       sentenceId,
       status: 'scored',
       stars: 5,
-      attemptedAt: new Date().toISOString(),
-    })),
+      attemptedAt: new Date(base + i).toISOString(),
+    }))),
   ));
 }
 

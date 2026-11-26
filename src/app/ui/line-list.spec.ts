@@ -127,7 +127,7 @@ describe('LineList structure', () => {
 
   it('renders the chunk markup inside .text', () => {
     const { lines } = render();
-    const text = lines.querySelectorAll('p .text')[1];
+    const text = lines.querySelectorAll('p .text')[2];
     expect(text.querySelector('b')?.textContent).toBe('a chunk');
   });
 
@@ -271,7 +271,7 @@ describe('LineList blur preference', () => {
 describe('LineList still trusts the built-in corpus', () => {
   it('renders chunk markup for corpus decks', () => {
     const { lines } = render();
-    expect(lines.querySelectorAll('p .text')[1].querySelector('b')?.textContent)
+    expect(lines.querySelectorAll('p .text')[2].querySelector('b')?.textContent)
       .toBe('a chunk');
   });
 });

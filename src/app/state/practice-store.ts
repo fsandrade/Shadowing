@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
-import { buildQueue, MASTERED_STARS } from '../core/progression';
+import { buildQueue } from '../core/progression';
+import { unlockedSentences } from '../core/unlock';
 import { type Rng } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
 import { nextIndex } from '../core/timing';
@@ -51,6 +52,22 @@ export class PracticeStore {
     return sentencesIn(this.catalog, this.settings.topicId());
   });
 
+  private readonly masteredIds = computed<ReadonlySet<string>>(() => new Set(
+    [...this.history.progress()]
+      .filter(([, progress]) => progress.mastered)
+      .map(([id]) => id),
+  ));
+
+  private readonly pool = computed(() => unlockedSentences(
+    this.catalog.sentences,
+    this.masteredIds(),
+  ));
+
+  private readonly available = computed(() => unlockedSentences(
+    this.sentences(),
+    this.masteredIds(),
+  ));
+
   readonly remaining = computed<{
     readonly all: number;
     readonly byTopic: ReadonlyMap<string, number>;
@@ -59,9 +76,8 @@ export class PracticeStore {
     const byTopic = new Map<string, number>();
     let all = 0;
 
-    for (const sentence of this.catalog.sentences) {
-      const seen = progress.get(sentence.id);
-      if (seen && seen.bestStars >= MASTERED_STARS) { continue; }
+    for (const sentence of this.pool()) {
+      if (progress.get(sentence.id)?.mastered) { continue; }
       all++;
       byTopic.set(sentence.topicId, (byTopic.get(sentence.topicId) ?? 0) + 1);
     }
@@ -144,7 +160,7 @@ export class PracticeStore {
 
   private rebuildQueue(): void {
     this.queue.set(buildQueue(
-      this.sentences(),
+      this.available(),
       this.history.progress(),
       this.rng() ?? this.random,
     ));

@@ -35,6 +35,11 @@ function attempt(
   };
 }
 
+function master(sentenceId: string): Record<string, unknown>[] {
+  const base = Date.parse('2026-11-20T09:00:00.000Z');
+  return [0, 1, 2].map((i) => attempt(sentenceId, 4, new Date(base + i).toISOString()));
+}
+
 function setup() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -151,11 +156,12 @@ describe('PracticeStore progressive rendering', () => {
   const many: Catalog = {
     loadedAt: '2026-08-06T00:00:00Z',    topics: [{ id: 'big', name: 'Big' }],
     sentences: Array.from({ length: 200 }, (_, i) => ({
-      id: `s-${i}`, topicId: 'big', text: `line ${i}`,
+      id: `s-${String(i).padStart(3, '0')}`, topicId: 'big', text: `line ${i}`,
     })),
   };
 
   function withMany() {
+    seedAttempts(many.sentences.flatMap((s) => master(s.id)));
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -245,18 +251,18 @@ describe('PracticeStore progressive rendering', () => {
 });
 
 describe('PracticeStore study queue', () => {
-  it('leaves mastered sentences out of the queue', () => {
-    seedAttempts([attempt('s-a1', 5)]);
+  it('keeps mastered sentences for review, after learning and new sentences', () => {
+    seedAttempts(master('s-a1'));
     const { store } = setup();
     store.selectTopic('a');
-    expect(store.lines()).toEqual(['a2', 'a3']);
+    expect(store.lines()).toEqual(['a2', 'a3', 'a1']);
   });
 
-  it('puts unseen sentences before weaker grades and stronger grades last', () => {
+  it('puts weaker grades first, then unseen sentences', () => {
     seedAttempts([attempt('s-a1', 2), attempt('s-a2', 4)]);
     const { store } = setup();
     store.selectTopic('a');
-    expect(store.lines()).toEqual(['a3', 'a1', 'a2']);
+    expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
   });
 
   it('keeps the queue snapshot when history changes mid-session', () => {
@@ -275,7 +281,7 @@ describe('PracticeStore study queue', () => {
     const { store } = setup();
 
     store.selectTopic('b');
-    expect(store.lines()).toEqual([]);
+    expect(store.lines()).toEqual(['b1']);
 
     store.selectTopic('a');
     expect(store.lines()).toEqual(['a1', 'a2', 'a3']);
@@ -290,19 +296,96 @@ describe('PracticeStore study queue', () => {
   });
 });
 
+describe('PracticeStore progressive pool', () => {
+  const twentyFive: Catalog = {
+    loadedAt: '2026-08-06T00:00:00Z',
+    topics: [{ id: 'big', name: 'Big' }],
+    sentences: Array.from({ length: 25 }, (_, i) => ({
+      id: `s-${String(i).padStart(3, '0')}`, topicId: 'big', text: `line ${i}`,
+    })),
+  };
+
+  function setupCatalog(catalog: Catalog) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ...signedOutBackend(),
+        {
+          provide: SafeStorage,
+          useValue: storedSettings() as unknown as SafeStorage,
+        },
+        { provide: CATALOG, useValue: catalog },
+        { provide: RANDOM, useValue: NO_SHUFFLE },
+      ],
+    });
+    return {
+      store: TestBed.inject(PracticeStore),
+      history: TestBed.inject(HistoryService),
+    };
+  }
+
+  function setupBig() {
+    return setupCatalog(twentyFive);
+  }
+
+  it('starts with twenty lines and unlocks the next on mastery', () => {
+    const { store, history } = setupBig();
+    store.selectTopic('big');
+
+    expect(store.lines()).toHaveLength(20);
+    expect(store.lines()[0]).toBe('line 0');
+    expect(store.lines()).not.toContain('line 20');
+
+    seedAttempts(master('s-000'));
+    history.refresh();
+    expect(store.lines()).toHaveLength(20);
+
+    store.selectTopic('big');
+    expect(store.lines()).toHaveLength(21);
+    expect(store.lines()).toContain('line 20');
+    expect(store.lines().at(-1)).toBe('line 0');
+    expect(store.remainingFor('big')).toBe(20);
+  });
+
+  it('counts unlocked lines per topic without leaking unlocks across topics', () => {
+    const catalog: Catalog = {
+      loadedAt: twentyFive.loadedAt,
+      topics: [{ id: 'big', name: 'Big' }, { id: 'other', name: 'Other' }],
+      sentences: [
+        ...twentyFive.sentences,
+        ...Array.from({ length: 25 }, (_, i) => ({
+          id: `t-${String(i).padStart(3, '0')}`,
+          topicId: 'other',
+          text: `other ${i}`,
+        })),
+      ],
+    };
+    const { store, history } = setupCatalog(catalog);
+
+    seedAttempts(master('s-000'));
+    history.refresh();
+    store.selectTopic(null);
+
+    expect(store.lines()).toHaveLength(41);
+    expect(store.remainingFor('big')).toBe(20);
+    expect(store.remainingFor('other')).toBe(20);
+    expect(store.remainingFor(null)).toBe(40);
+  });
+});
+
 describe('PracticeStore remaining counts', () => {
-  it('counts every unmastered sentence, overall and per topic', () => {
+  it('keeps a sentence remaining until it is mastered', () => {
     seedAttempts([attempt('s-a1', 5)]);
     const { store } = setup();
 
-    expect(store.remainingFor(null)).toBe(5);
-    expect(store.remainingFor('a')).toBe(2);
+    expect(store.remainingFor(null)).toBe(6);
+    expect(store.remainingFor('a')).toBe(3);
     expect(store.remainingFor('b')).toBe(1);
     expect(store.remainingFor('c')).toBe(2);
   });
 
   it('reports nothing remaining for a fully mastered topic', () => {
-    seedAttempts([attempt('s-a1', 5), attempt('s-a2', 5), attempt('s-a3', 5)]);
+    seedAttempts([...master('s-a1'), ...master('s-a2'), ...master('s-a3')]);
     const { store } = setup();
 
     expect(store.remainingFor('a')).toBe(0);
@@ -320,7 +403,7 @@ describe('PracticeStore remaining counts', () => {
     const { store, history } = setup();
     expect(store.remainingFor('a')).toBe(3);
 
-    seedAttempts([attempt('s-a1', 5)]);
+    seedAttempts(master('s-a1'));
     history.refresh();
 
     expect(store.remainingFor('a')).toBe(2);
