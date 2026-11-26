@@ -164,26 +164,25 @@ describe('FlowStore starting a session', () => {
     expect(practice.lines()).not.toEqual(['a1', 'a2', 'a3']);
   });
 
-  it('leaves a mastered sentence out of the next session queue', async () => {
+  it('keeps a mastered sentence in the next session queue, after learning sentences', async () => {
     const { flow, practice, history } = setup();
 
     await flow.start('speaking', 'catalog', 'a', 10);
     expect(practice.lines()).toEqual(['a1', 'a2', 'a3']);
 
-    localStorage.setItem('shadowing.attempts', JSON.stringify([
-      {
-        sentenceId: 's-a1',
-        status: 'scored',
-        stars: 5,
-        attemptedAt: new Date().toISOString(),
-      },
-    ]));
+    const base = Date.parse('2026-11-20T09:00:00.000Z');
+    localStorage.setItem('shadowing.attempts', JSON.stringify([0, 1, 2].map((i) => ({
+      sentenceId: 's-a1',
+      status: 'scored',
+      stars: 5,
+      attemptedAt: new Date(base + i).toISOString(),
+    }))));
     history.refresh();
 
     flow.finish();
     await flow.start('speaking', 'catalog', 'a', 10);
 
-    expect(practice.lines()).toEqual(['a2', 'a3']);
+    expect(practice.lines()).toEqual(['a2', 'a3', 'a1']);
   });
 
   it('switches to the learner\'s own text for My text', async () => {

@@ -75,11 +75,15 @@ describe('HistoryService sentence progress', () => {
       bestStars: 5,
       lastStars: 5,
       lastAttemptedAt: Date.parse(newer),
+      streak: 1,
+      mastered: false,
     });
     expect(history.progress().get('s2')).toEqual({
       bestStars: 4,
       lastStars: 4,
       lastAttemptedAt: Date.parse(newer),
+      streak: 1,
+      mastered: false,
     });
   });
 
@@ -98,6 +102,8 @@ describe('HistoryService sentence progress', () => {
       bestStars: 4,
       lastStars: 0,
       lastAttemptedAt: Date.parse(newer),
+      streak: 0,
+      mastered: false,
     });
   });
 

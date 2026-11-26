@@ -1,25 +1,10 @@
-import { createHash } from 'crypto';
 import {
   test, expect, gotoApp, startActivity, Page,
 } from './helpers/fixtures';
 import { installFakeAudio } from './helpers/fake-audio';
+import { DECK_SENTENCE_IDS } from '../src/app/data/corpus-meta';
 
 const TOPIC_COUNT = 25;
-
-/** Mirrors tools/generate-corpus-meta.js so e2e seeds can address real sentences. */
-function sentenceId(deckId: string, content: string): string {
-  const name = `sentence:${deckId}:${content}`;
-  const ns = 'b7c9f0a2-3e41-4f8d-9a6b-1d2e3f405162';
-  const nsBuf = Buffer.from(ns.replace(/-/g, ''), 'hex');
-  const hash = createHash('sha1')
-    .update(Buffer.concat([nsBuf, Buffer.from(name, 'utf8')]))
-    .digest();
-  const bytes = hash.subarray(0, 16);
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const h = bytes.toString('hex');
-  return [h.slice(0, 8), h.slice(8, 12), h.slice(12, 16), h.slice(16, 20), h.slice(20, 32)].join('-');
-}
 
 async function installFakeSpeech(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -214,7 +199,7 @@ test('starting on one topic narrows the list and renumbers from one', async ({ p
   installFakeAudio(page);
   await gotoApp(page, { topic: 'restaurants' });
 
-  await expect(page.locator('.lines p')).toHaveCount(48);
+  await expect(page.locator('.lines p')).toHaveCount(20);
   await expect(page.locator('.lines p .num').first()).toHaveText('1');
   await expect(page.locator('.lines p .num').nth(1)).toHaveText('2');
 });
@@ -530,17 +515,18 @@ test('no level picker or level chip on first load', async ({ page }) => {
   await expect(page.locator('#decks .deck-count')).toHaveCount(TOPIC_COUNT + 1);
 });
 
-test('a failed sentence stays and a five-star sentence leaves the queue', async ({ page }) => {
+test('a failed sentence stays and mastering one unlocks another', async ({ page }) => {
   installFakeAudio(page);
   await installFakeSpeech(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
 
-  const waitForAttempt = (mode: 'belowFive' | 'five') => page.waitForFunction((m) => {
+  const waitForAttempt = (mode: 'belowFive' | 'five', count = 1) => page.waitForFunction(({ m, n }) => {
     const attempts = JSON.parse(localStorage.getItem('shadowing.attempts') ?? '[]') as Array<Record<string, unknown>>;
-    return attempts.some((a) => m === 'five'
+    const matches = attempts.filter((a) => m === 'five'
       ? a['stars'] === 5
       : a['stars'] === 0 || a['status'] === 'failed');
-  }, mode);
+    return matches.length >= n;
+  }, { m: mode, n: count });
 
   const finishSession = async () => {
     await page.locator('#finish').click();
@@ -557,40 +543,39 @@ test('a failed sentence stays and a five-star sentence leaves the queue', async 
 
   await startActivity(page, 'speaking', { topic: 'nuance-debate' });
   let texts = await page.locator('.lines p .text').allInnerTexts();
-  expect(texts.length).toBe(30);
+  expect(texts).toHaveLength(20);
   expect(texts).toContain(failedText);
 
-  // 2. A five-star attempt masters the sentence; the next queue drops it.
-  let masteredText = await page.locator('.lines p.current .text').innerText();
-  if (masteredText === failedText) {
-    await page.locator('#next').click();
-    masteredText = await page.locator('.lines p.current .text').innerText();
+  // 2. Three five-star ratings master a sentence, keep it, and unlock one more.
+  const masteredText = texts[1];
+  for (let i = 1; i <= 3; i++) {
+    if (i > 1) { await startActivity(page, 'speaking', { topic: 'nuance-debate' }); }
+    await page.locator('.lines p').nth(1).click();
+    await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
+    await page.locator('#play').click();
+    await waitForAttempt('five', i);
+    await finishSession();
   }
-  await page.evaluate((t) => { (window as any).__fakeTranscript = t; }, masteredText);
-  await page.locator('#play').click();
-  await waitForAttempt('five');
-  await finishSession();
 
   await startActivity(page, 'speaking', { topic: 'nuance-debate' });
   texts = await page.locator('.lines p .text').allInnerTexts();
-  expect(texts.length).toBe(29);
-  expect(texts).not.toContain(masteredText);
+  expect(texts).toHaveLength(21);
+  expect(texts).toContain(masteredText);
   expect(texts).toContain(failedText);
 });
 
 test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
-  await expect(page.locator('.lines p')).toHaveCount(30);
+  await expect(page.locator('.lines p')).toHaveCount(20);
 
-  const contents = await page.evaluate(() => [...document.querySelectorAll('.lines p .text')]
-    .map((el) => el.innerHTML));
-  const attempts = contents.map((c) => ({
-    sentenceId: sentenceId('nuance-debate', c),
+  const now = Date.now();
+  const attempts = DECK_SENTENCE_IDS['nuance-debate'].flatMap((id, i) => [0, 1, 2].map((n) => ({
+    sentenceId: id,
     status: 'scored' as const,
     stars: 5,
-    attemptedAt: new Date().toISOString(),
-  }));
+    attemptedAt: new Date(now + i * 3 + n).toISOString(),
+  })));
   await page.evaluate((a) => { localStorage.setItem('shadowing.attempts', JSON.stringify(a)); }, attempts);
   await page.reload();
 
@@ -600,7 +585,7 @@ test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
   await page.locator('.durations [data-min="15"]').click();
 
   await expect(page.locator('#startActivity')).toBeDisabled();
-  await expect(page.locator('#startActivity')).toHaveAttribute('title', /Every sentence in this topic has 5 stars/);
+  await expect(page.locator('#startActivity')).toHaveAttribute('title', /Every sentence in this topic is mastered/);
   await expect(page.locator('[data-deck-id="nuance-debate"] .deck-count')).toHaveText('Mastered');
 
   // We are still on the chooser: no empty session, timer, or mic prompt was started.
