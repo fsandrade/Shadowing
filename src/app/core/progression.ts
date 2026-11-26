@@ -1,27 +1,22 @@
 import type { Sentence } from './catalog';
-import { MAX_STARS } from './scoring';
 import { type Rng, shuffle } from './shuffle';
 
 export interface SentenceProgress {
   readonly bestStars: number;
   readonly lastStars: number;
   readonly lastAttemptedAt: number;
+  readonly streak: number;
+  readonly mastered: boolean;
 }
 
-export const MASTERED_STARS = MAX_STARS;
-
-export function buildQueue(
+function byGrade(
   sentences: readonly Sentence[],
   progress: ReadonlyMap<string, SentenceProgress>,
   rng: Rng,
 ): Sentence[] {
   const groups = new Map<number, Sentence[]>();
-
   for (const sentence of sentences) {
-    const seen = progress.get(sentence.id);
-    if (seen && seen.bestStars >= MASTERED_STARS) { continue; }
-
-    const grade = seen ? seen.lastStars : 0;
+    const grade = progress.get(sentence.id)!.lastStars;
     const group = groups.get(grade);
     if (group) {
       group.push(sentence);
@@ -35,4 +30,31 @@ export function buildQueue(
     queue.push(...shuffle(groups.get(grade)!, rng));
   }
   return queue;
+}
+
+export function buildQueue(
+  sentences: readonly Sentence[],
+  progress: ReadonlyMap<string, SentenceProgress>,
+  rng: Rng,
+): Sentence[] {
+  const learning: Sentence[] = [];
+  const fresh: Sentence[] = [];
+  const mastered: Sentence[] = [];
+
+  for (const sentence of sentences) {
+    const seen = progress.get(sentence.id);
+    if (!seen) {
+      fresh.push(sentence);
+    } else if (seen.mastered) {
+      mastered.push(sentence);
+    } else {
+      learning.push(sentence);
+    }
+  }
+
+  return [
+    ...byGrade(learning, progress, rng),
+    ...shuffle(fresh, rng),
+    ...byGrade(mastered, progress, rng),
+  ];
 }
