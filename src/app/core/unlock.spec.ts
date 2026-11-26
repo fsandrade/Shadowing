@@ -57,6 +57,15 @@ describe('unlockedSentences', () => {
     expect(ids(all)).toEqual(ids(sortByDifficulty([...a, ...b])));
   });
 
+  it('keeps mastery from outside the shortest pool reachable', () => {
+    const sentences = deck('a', 48);
+    const mastered = new Set(ids(sentences.slice(45, 48)));
+
+    const pool = unlockedSentences(sentences, mastered);
+
+    expect(ids(pool)).toEqual([...ids(sentences.slice(0, 20)), ...mastered]);
+  });
+
   it('ignores mastered ids that are not in the input', () => {
     expect(unlockedSentences(deck('a', 25), new Set(['missing'])))
       .toHaveLength(INITIAL_POOL_SIZE);

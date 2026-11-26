@@ -17,8 +17,11 @@ export function unlockedSentences(
   const pool: Sentence[] = [];
   for (const group of groups.values()) {
     const sorted = sortByDifficulty(group);
-    const mastered = sorted.filter((s) => masteredIds.has(s.id)).length;
-    pool.push(...sorted.slice(0, Math.min(INITIAL_POOL_SIZE + mastered, sorted.length)));
+    const mastered = sorted.filter((s) => masteredIds.has(s.id));
+    const rest = sorted.filter((s) => !masteredIds.has(s.id));
+    const count = Math.min(INITIAL_POOL_SIZE + mastered.length, sorted.length);
+    // Legacy mastery can sit outside the shortest pool; keep those sentences reachable.
+    pool.push(...mastered, ...rest.slice(0, Math.max(0, count - mastered.length)));
   }
   return sortByDifficulty(pool);
 }
