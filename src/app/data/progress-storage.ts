@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { localDay } from '../core/days';
+import { nextMastery } from '../core/mastery';
+import { MAX_STARS } from '../core/scoring';
 import { SafeStorage } from '../platform/storage';
 
 export const PROGRESS_KEY = 'shadowing.progress';
@@ -11,6 +13,8 @@ export interface StoredSentenceProgress {
   readonly bestStars: number;
   readonly lastStars: number;
   readonly lastAttemptedAt: number;
+  readonly streak: number;
+  readonly mastered: boolean;
 }
 
 export interface StoredDay {
@@ -21,7 +25,7 @@ export interface StoredDay {
 }
 
 export interface StoredProgress {
-  readonly version: 2;
+  readonly version: 3;
   readonly sentences: Readonly<Record<string, StoredSentenceProgress>>;
   readonly days: Readonly<Record<string, StoredDay>>;
 }
@@ -59,7 +63,7 @@ export interface AttemptToStore {
 type JsonRecord = Record<string, unknown>;
 
 function emptyProgress(): StoredProgress {
-  return { version: 2, sentences: {}, days: {} };
+  return { version: 3, sentences: {}, days: {} };
 }
 
 function count(value: unknown): number {
@@ -84,9 +88,39 @@ function attemptTime(value: unknown): number {
 
 function isStoredProgress(value: unknown): value is StoredProgress {
   const raw = record(value);
+  return raw?.['version'] === 3
+    && record(raw['sentences']) !== null
+    && record(raw['days']) !== null;
+}
+
+function isVersion2Progress(value: unknown): boolean {
+  const raw = record(value);
   return raw?.['version'] === 2
     && record(raw['sentences']) !== null
     && record(raw['days']) !== null;
+}
+
+function upgrade(value: unknown): StoredProgress {
+  const raw = record(value) ?? {};
+  const sentences: Record<string, StoredSentenceProgress> = {};
+  for (const [id, entry] of Object.entries(record(raw['sentences']) ?? {})) {
+    const old = record(entry);
+    if (!old) { continue; }
+    const bestStars = count(old['bestStars']);
+    const lastStars = count(old['lastStars']);
+    sentences[id] = {
+      bestStars,
+      lastStars,
+      lastAttemptedAt: count(old['lastAttemptedAt']),
+      streak: lastStars >= 4 ? 1 : 0,
+      mastered: bestStars >= MAX_STARS,
+    };
+  }
+  return {
+    version: 3,
+    sentences,
+    days: (record(raw['days']) ?? {}) as StoredProgress['days'],
+  };
 }
 
 function isStoredAttempt(value: unknown): value is StoredAttempt {
@@ -105,10 +139,17 @@ function updateSentence(
 ): void {
   const previous = sentences[sentenceId];
   const latest = !previous || at >= previous.lastAttemptedAt;
+  const mastery = latest
+    ? nextMastery(
+      { streak: previous?.streak ?? 0, mastered: previous?.mastered ?? false },
+      stars,
+    )
+    : { streak: previous!.streak, mastered: previous!.mastered };
   sentences[sentenceId] = {
     bestStars: Math.max(previous?.bestStars ?? 0, stars),
     lastStars: latest ? stars : previous!.lastStars,
     lastAttemptedAt: Math.max(previous?.lastAttemptedAt ?? 0, at),
+    ...mastery,
   };
 }
 
@@ -175,7 +216,7 @@ function migrate(attempts: readonly unknown[], sessions: readonly unknown[]): St
     addPracticeTime(days, attemptTime(raw['startedAt']), practisedMs);
   }
 
-  return { version: 2, sentences, days };
+  return { version: 3, sentences, days };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -185,6 +226,11 @@ export class ProgressStorage {
   read(): StoredProgress {
     const stored = this.storage.read<unknown>(PROGRESS_KEY);
     if (isStoredProgress(stored)) { return stored; }
+    if (isVersion2Progress(stored)) {
+      const upgraded = upgrade(stored);
+      this.storage.write(PROGRESS_KEY, upgraded);
+      return upgraded;
+    }
 
     const attempts = array(this.storage.read<unknown>(RECENT_ATTEMPTS_KEY));
     const sessions = array(this.storage.read<unknown>(LEGACY_SESSIONS_KEY));
@@ -217,7 +263,7 @@ export class ProgressStorage {
       updateDay(days, localDay(new Date(at)), attempt.sentenceId, stars);
     }
 
-    const saved = this.storage.write(PROGRESS_KEY, { version: 2, sentences, days });
+    const saved = this.storage.write(PROGRESS_KEY, { version: 3, sentences, days });
     const recent = this.readRecent();
     recent.push({
       ...attempt,
@@ -232,7 +278,7 @@ export class ProgressStorage {
     const days = { ...progress.days };
     addPracticeTime(days, startedAt, practisedMs);
     const saved = this.storage.write(PROGRESS_KEY, {
-      version: 2,
+      version: 3,
       sentences: progress.sentences,
       days,
     });

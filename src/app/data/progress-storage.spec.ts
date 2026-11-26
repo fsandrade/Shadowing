@@ -100,11 +100,15 @@ describe('ProgressStorage', () => {
       bestStars: 5,
       lastStars: 5,
       lastAttemptedAt: Date.parse(at),
+      streak: 1,
+      mastered: false,
     });
     expect(progress.sentences['s2']).toEqual({
       bestStars: 0,
       lastStars: 0,
       lastAttemptedAt: Date.parse(at),
+      streak: 0,
+      mastered: false,
     });
     expect(progress.days['2026-11-24']).toEqual({
       practisedMs: 0,
@@ -181,5 +185,87 @@ describe('ProgressStorage', () => {
 
     expect(record(store, 's1', 5)).toBe(false);
     expect(() => record(store, 's1', 5)).not.toThrow();
+  });
+
+  it('masters a sentence after three consecutive good ratings and writes version 3', () => {
+    const { store, storage } = setup();
+    const start = Date.parse('2026-11-24T09:00:00.000Z');
+    const at = (i: number) => new Date(start + i).toISOString();
+
+    record(store, 's1', 4, at(0));
+    record(store, 's1', 5, at(1));
+    record(store, 's1', 4, at(2));
+
+    const progress = store.read();
+    expect(progress.version).toBe(3);
+    expect(progress.sentences['s1']).toMatchObject({
+      bestStars: 5, lastStars: 4, streak: 3, mastered: true,
+    });
+    expect((storage.map.get(PROGRESS_KEY) as { version: number }).version).toBe(3);
+  });
+
+  it('resets the streak on a failed rating but keeps mastery once earned', () => {
+    const { store } = setup();
+    const start = Date.parse('2026-11-24T09:00:00.000Z');
+    const at = (i: number) => new Date(start + i).toISOString();
+
+    record(store, 's1', 4, at(0));
+    record(store, 's1', null, at(1));
+    expect(store.read().sentences['s1']).toMatchObject({ streak: 0, mastered: false });
+
+    record(store, 's1', 4, at(2));
+    record(store, 's1', 5, at(3));
+    record(store, 's1', 4, at(4));
+    record(store, 's1', null, at(5));
+    expect(store.read().sentences['s1']).toMatchObject({ streak: 0, mastered: true });
+  });
+
+  it('breaks a streak on a three-star rating', () => {
+    const { store } = setup();
+    const start = Date.parse('2026-11-24T09:00:00.000Z');
+    const at = (i: number) => new Date(start + i).toISOString();
+
+    record(store, 's1', 4, at(0));
+    record(store, 's1', 4, at(1));
+    record(store, 's1', 3, at(2));
+
+    expect(store.read().sentences['s1']).toMatchObject({ streak: 0, mastered: false });
+  });
+
+  it('ignores an older rating when updating the streak', () => {
+    const { store } = setup();
+    const start = Date.parse('2026-11-24T09:00:00.000Z');
+    const at = (i: number) => new Date(start + i).toISOString();
+
+    record(store, 's1', 4, at(5));
+    record(store, 's1', 4, at(0));
+
+    expect(store.read().sentences['s1']).toMatchObject({
+      lastStars: 4, streak: 1, lastAttemptedAt: Date.parse(at(5)),
+    });
+  });
+
+  it('upgrades stored version 2 progress, treating five stars as mastered', () => {
+    const at = '2026-11-24T09:00:00.000Z';
+    const day = {
+      practisedMs: 60_000, scoredAttempts: 2, starsSum: 9, sentenceIds: ['s1'],
+    };
+    const { store, storage } = setup({
+      [PROGRESS_KEY]: {
+        version: 2,
+        sentences: {
+          s1: { bestStars: 5, lastStars: 4, lastAttemptedAt: Date.parse(at) },
+          s2: { bestStars: 4, lastStars: 0, lastAttemptedAt: Date.parse(at) },
+        },
+        days: { '2026-11-24': day },
+      },
+    });
+
+    const progress = store.read();
+    expect(progress.version).toBe(3);
+    expect(progress.sentences['s1']).toMatchObject({ streak: 1, mastered: true });
+    expect(progress.sentences['s2']).toMatchObject({ streak: 0, mastered: false });
+    expect(progress.days['2026-11-24']).toEqual(day);
+    expect((storage.map.get(PROGRESS_KEY) as { version: number }).version).toBe(3);
   });
 });

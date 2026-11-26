@@ -66,6 +66,8 @@ describe('ProgressService', () => {
     expect(data.sentences['sentence-uuid']).toMatchObject({
       bestStars: 5,
       lastStars: 5,
+      streak: 1,
+      mastered: false,
     });
     expect(data.days[localDay(new Date())].practisedMs).toBe(60_000);
 
