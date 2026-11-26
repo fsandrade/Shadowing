@@ -145,7 +145,7 @@ describe('ActivityChooser', () => {
     expect(start().disabled).toBe(false);
   });
 
-  it('disables Start when every sentence in the picked topic has five stars', () => {
+  it('disables Start when every sentence in the picked topic is mastered', () => {
     master('s-a1', 's-a2', 's-a3');
     const { fixture, cards, root, start } = render();
 
@@ -155,7 +155,7 @@ describe('ActivityChooser', () => {
     fixture.detectChanges();
 
     expect(start().disabled).toBe(true);
-    expect(start().title).toBe('Every sentence in this topic has 5 stars');
+    expect(start().title).toBe('Every sentence in this topic is mastered');
   });
 
   it('still starts a topic that has sentences left', () => {
@@ -181,7 +181,7 @@ describe('ActivityChooser', () => {
     fixture.detectChanges();
 
     expect(start().disabled).toBe(true);
-    expect(start().title).toBe('Every sentence in the corpus has 5 stars');
+    expect(start().title).toBe('Every sentence in the corpus is mastered');
   });
 
   it('keeps both cards enabled here, since the browser can transcribe speech', () => {
