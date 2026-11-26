@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { localDay } from '../core/days';
-import { nextMastery } from '../core/mastery';
+import { MASTERY_STARS, nextMastery } from '../core/mastery';
 import { MAX_STARS } from '../core/scoring';
 import { SafeStorage } from '../platform/storage';
 
@@ -108,12 +108,13 @@ function upgrade(value: unknown): StoredProgress {
     if (!old) { continue; }
     const bestStars = count(old['bestStars']);
     const lastStars = count(old['lastStars']);
+    const mastered = bestStars >= MAX_STARS;
     sentences[id] = {
       bestStars,
       lastStars,
       lastAttemptedAt: count(old['lastAttemptedAt']),
-      streak: lastStars >= 4 ? 1 : 0,
-      mastered: bestStars >= MAX_STARS,
+      streak: mastered && lastStars >= MASTERY_STARS ? 1 : 0,
+      mastered,
     };
   }
   return {

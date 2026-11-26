@@ -232,6 +232,18 @@ describe('ProgressStorage', () => {
     expect(store.read().sentences['s1']).toMatchObject({ streak: 0, mastered: false });
   });
 
+  it('restarts the streak after a three-star rating', () => {
+    const { store } = setup();
+    const start = Date.parse('2026-11-24T09:00:00.000Z');
+    const at = (i: number) => new Date(start + i).toISOString();
+
+    record(store, 's1', 4, at(0));
+    record(store, 's1', 3, at(1));
+    record(store, 's1', 4, at(2));
+
+    expect(store.read().sentences['s1']).toMatchObject({ streak: 1, mastered: false });
+  });
+
   it('ignores an older rating when updating the streak', () => {
     const { store } = setup();
     const start = Date.parse('2026-11-24T09:00:00.000Z');
@@ -256,6 +268,7 @@ describe('ProgressStorage', () => {
         sentences: {
           s1: { bestStars: 5, lastStars: 4, lastAttemptedAt: Date.parse(at) },
           s2: { bestStars: 4, lastStars: 0, lastAttemptedAt: Date.parse(at) },
+          s3: { bestStars: 4, lastStars: 4, lastAttemptedAt: Date.parse(at) },
         },
         days: { '2026-11-24': day },
       },
@@ -265,6 +278,7 @@ describe('ProgressStorage', () => {
     expect(progress.version).toBe(3);
     expect(progress.sentences['s1']).toMatchObject({ streak: 1, mastered: true });
     expect(progress.sentences['s2']).toMatchObject({ streak: 0, mastered: false });
+    expect(progress.sentences['s3']).toMatchObject({ streak: 0, mastered: false });
     expect(progress.days['2026-11-24']).toEqual(day);
     expect((storage.map.get(PROGRESS_KEY) as { version: number }).version).toBe(3);
   });
