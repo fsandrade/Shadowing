@@ -113,30 +113,43 @@ describe('TopicList', () => {
     expect(root.querySelector('#myText')).toBeNull();
   });
 
-  it('shows how many sentences are left, per topic and overall', () => {
+  it('shows new, learning and due counts per topic and overall', () => {
     const { root } = render();
-    const label = (selector: string) =>
-      root.querySelector(`${selector} .deck-count`)?.textContent?.trim();
+    const count = (selector: string, kind: string) =>
+      root.querySelector(`${selector} .deck-count.${kind}`)?.textContent?.trim();
 
-    expect(label('#allTopics')).toBe('6 left');
-    expect(label('[data-deck-id="a"]')).toBe('3 left');
-    expect(label('[data-deck-id="b"]')).toBe('1 left');
-    expect(label('[data-deck-id="c"]')).toBe('2 left');
+    for (const [selector, expected] of [
+      ['#allTopics', ['N 6', 'L 0', 'D 0']],
+      ['[data-deck-id="a"]', ['N 3', 'L 0', 'D 0']],
+      ['[data-deck-id="b"]', ['N 1', 'L 0', 'D 0']],
+      ['[data-deck-id="c"]', ['N 2', 'L 0', 'D 0']],
+    ] as const) {
+      expect([count(selector, 'new'), count(selector, 'learn'), count(selector, 'due')])
+        .toEqual(expected);
+    }
   });
 
-  it('shows Mastered when every sentence in a topic has five stars', () => {
+  it('moves a sentence from new to learning after one attempt', () => {
+    const base = Date.parse('2026-11-20T09:00:00.000Z');
+    localStorage.setItem('shadowing.attempts', JSON.stringify([{
+      sentenceId: 's-a1', status: 'scored', stars: 5,
+      attemptedAt: new Date(base).toISOString(),
+    }]));
+    const { root } = render();
+    const count = (kind: string) =>
+      root.querySelector(`[data-deck-id="a"] .deck-count.${kind}`)?.textContent?.trim();
+
+    expect([count('new'), count('learn'), count('due')]).toEqual(['N 2', 'L 1', 'D 0']);
+  });
+
+  it('counts mastered sentences as due, with an accessible label', () => {
     master('s-a1', 's-a2', 's-a3');
     const { root } = render();
+    const button = root.querySelector<HTMLButtonElement>('[data-deck-id="a"]')!;
 
-    expect(root.querySelector('[data-deck-id="a"] .deck-count')?.textContent?.trim())
-      .toBe('Mastered');
-    expect(root.querySelector('#allTopics .deck-count')?.textContent?.trim()).toBe('3 left');
-  });
-
-  it('marks All topics mastered once everything is done', () => {
-    master('s-a1', 's-a2', 's-a3', 's-b1', 's-c1', 's-c2');
-    const { root } = render();
-
-    expect(root.querySelector('#allTopics .deck-count')?.textContent?.trim()).toBe('Mastered');
+    expect([...button.querySelectorAll('.deck-count')].map((el) => el.textContent?.trim()))
+      .toEqual(['N 0', 'L 0', 'D 3']);
+    expect(button.querySelector('.deck-counts')?.getAttribute('aria-label'))
+      .toBe('0 new, 0 learning, 3 due');
   });
 });

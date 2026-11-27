@@ -136,8 +136,12 @@ header h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01e
   cursor: pointer;
 }
 .deck-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.deck-count { color: var(--dim-2); font-size: 12px; white-space: nowrap; }
-.deck-count.mastered { color: var(--accent); }
+.deck-counts { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.deck-count { font-size: 12px; }
+.deck-count.new { color: var(--accent); }
+.deck-count.learn { color: var(--danger); }
+.deck-count.due { color: var(--success); }
+.deck-count.zero { color: var(--dim-2); opacity: 0.7; }
 .decks button:hover { color: var(--text); background: #1f232a; }
 .decks button[aria-pressed="true"] {
   color: var(--text);
@@ -889,6 +893,9 @@ main[appDictation] .transport #clock {
     text-align: left;
     padding: 12px 12px;
     min-height: 44px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
   }
   .decks button[aria-pressed="true"] { border-color: var(--accent); }
 
