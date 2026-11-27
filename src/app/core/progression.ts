@@ -9,6 +9,50 @@ export interface SentenceProgress {
   readonly mastered: boolean;
 }
 
+export interface DeckCounts {
+  readonly fresh: number;
+  readonly learning: number;
+  readonly due: number;
+}
+
+export const EMPTY_DECK_COUNTS: DeckCounts = { fresh: 0, learning: 0, due: 0 };
+
+type DeckGroup = 'fresh' | 'learning' | 'due';
+
+function deckGroup(
+  progress: ReadonlyMap<string, SentenceProgress>,
+  id: string,
+): DeckGroup {
+  const seen = progress.get(id);
+  if (!seen) { return 'fresh'; }
+  return seen.mastered ? 'due' : 'learning';
+}
+
+export function deckCounts(
+  sentences: readonly Sentence[],
+  progress: ReadonlyMap<string, SentenceProgress>,
+): DeckCounts {
+  let fresh = 0;
+  let learning = 0;
+  let due = 0;
+  for (const sentence of sentences) {
+    switch (deckGroup(progress, sentence.id)) {
+      case 'fresh': fresh++; break;
+      case 'learning': learning++; break;
+      case 'due': due++; break;
+    }
+  }
+  return { fresh, learning, due };
+}
+
+export function addDeckCounts(a: DeckCounts, b: DeckCounts): DeckCounts {
+  return {
+    fresh: a.fresh + b.fresh,
+    learning: a.learning + b.learning,
+    due: a.due + b.due,
+  };
+}
+
 function byGrade(
   sentences: readonly Sentence[],
   progress: ReadonlyMap<string, SentenceProgress>,
@@ -42,13 +86,10 @@ export function buildQueue(
   const mastered: Sentence[] = [];
 
   for (const sentence of sentences) {
-    const seen = progress.get(sentence.id);
-    if (!seen) {
-      fresh.push(sentence);
-    } else if (seen.mastered) {
-      mastered.push(sentence);
-    } else {
-      learning.push(sentence);
+    switch (deckGroup(progress, sentence.id)) {
+      case 'fresh': fresh.push(sentence); break;
+      case 'due': mastered.push(sentence); break;
+      case 'learning': learning.push(sentence); break;
     }
   }
 

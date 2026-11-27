@@ -7,7 +7,11 @@
     (click)="pick.emit(null)"
   >
     <span class="deck-name">All topics</span>
-    <span class="deck-count" [class.mastered]="countLabel(null) === 'Mastered'">{{ countLabel(null) }}</span>
+    <span class="deck-counts" [attr.aria-label]="countLabel(null)">
+      <span class="deck-count new" [class.zero]="countsFor(null).fresh === 0" [attr.title]="countLabel(null)">N {{ countsFor(null).fresh }}</span>
+      <span class="deck-count learn" [class.zero]="countsFor(null).learning === 0" [attr.title]="countLabel(null)">L {{ countsFor(null).learning }}</span>
+      <span class="deck-count due" [class.zero]="countsFor(null).due === 0" [attr.title]="countLabel(null)">D {{ countsFor(null).due }}</span>
+    </span>
   </button>
 
   @for (topic of practice.topics(); track topic.id) {
@@ -19,7 +23,11 @@
       (click)="pick.emit(topic.id)"
     >
       <span class="deck-name">{{ topic.name }}</span>
-      <span class="deck-count" [class.mastered]="countLabel(topic.id) === 'Mastered'">{{ countLabel(topic.id) }}</span>
+      <span class="deck-counts" [attr.aria-label]="countLabel(topic.id)">
+        <span class="deck-count new" [class.zero]="countsFor(topic.id).fresh === 0" [attr.title]="countLabel(topic.id)">N {{ countsFor(topic.id).fresh }}</span>
+        <span class="deck-count learn" [class.zero]="countsFor(topic.id).learning === 0" [attr.title]="countLabel(topic.id)">L {{ countsFor(topic.id).learning }}</span>
+        <span class="deck-count due" [class.zero]="countsFor(topic.id).due === 0" [attr.title]="countLabel(topic.id)">D {{ countsFor(topic.id).due }}</span>
+      </span>
     </button>
   }
 </div>

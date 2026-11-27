@@ -344,7 +344,7 @@ describe('PracticeStore progressive pool', () => {
     expect(store.lines()).toHaveLength(21);
     expect(store.lines()).toContain('line 20');
     expect(store.lines().at(-1)).toBe('line 0');
-    expect(store.remainingFor('big')).toBe(20);
+    expect(store.countsFor('big')).toEqual({ fresh: 20, learning: 0, due: 1 });
   });
 
   it('counts unlocked lines per topic without leaking unlocks across topics', () => {
@@ -367,46 +367,54 @@ describe('PracticeStore progressive pool', () => {
     store.selectTopic(null);
 
     expect(store.lines()).toHaveLength(41);
-    expect(store.remainingFor('big')).toBe(20);
-    expect(store.remainingFor('other')).toBe(20);
-    expect(store.remainingFor(null)).toBe(40);
+    expect(store.countsFor('big')).toEqual({ fresh: 20, learning: 0, due: 1 });
+    expect(store.countsFor('other')).toEqual({ fresh: 20, learning: 0, due: 0 });
+    expect(store.countsFor(null)).toEqual({ fresh: 40, learning: 0, due: 1 });
   });
 });
 
-describe('PracticeStore remaining counts', () => {
-  it('keeps a sentence remaining until it is mastered', () => {
+describe('PracticeStore deck counts', () => {
+  it('counts new and learning sentences across all topics', () => {
     seedAttempts([attempt('s-a1', 5)]);
     const { store } = setup();
 
-    expect(store.remainingFor(null)).toBe(6);
-    expect(store.remainingFor('a')).toBe(3);
-    expect(store.remainingFor('b')).toBe(1);
-    expect(store.remainingFor('c')).toBe(2);
+    expect(store.countsFor(null)).toEqual({ fresh: 5, learning: 1, due: 0 });
+    expect(store.countsFor('a')).toEqual({ fresh: 2, learning: 1, due: 0 });
+    expect(store.countsFor('b')).toEqual({ fresh: 1, learning: 0, due: 0 });
+    expect(store.countsFor('c')).toEqual({ fresh: 2, learning: 0, due: 0 });
   });
 
-  it('reports nothing remaining for a fully mastered topic', () => {
-    seedAttempts([...master('s-a1'), ...master('s-a2'), ...master('s-a3')]);
-    const { store } = setup();
-
-    expect(store.remainingFor('a')).toBe(0);
-    expect(store.remainingFor(null)).toBe(3);
-  });
-
-  it('keeps a sentence that only failed attempts remain', () => {
+  it('counts a failed sentence as learning', () => {
     seedAttempts([attempt('s-a1', null)]);
     const { store } = setup();
 
-    expect(store.remainingFor('a')).toBe(3);
+    expect(store.countsFor('a')).toEqual({ fresh: 2, learning: 1, due: 0 });
+  });
+
+  it('counts a mastered sentence as due once it has three good ratings', () => {
+    seedAttempts([...master('s-a1')]);
+    const { store } = setup();
+
+    expect(store.countsFor('a')).toEqual({ fresh: 2, learning: 0, due: 1 });
+    expect(store.countsFor(null)).toEqual({ fresh: 5, learning: 0, due: 1 });
+  });
+
+  it('reports only due sentences for a fully mastered topic', () => {
+    seedAttempts([...master('s-a1'), ...master('s-a2'), ...master('s-a3')]);
+    const { store } = setup();
+
+    expect(store.countsFor('a')).toEqual({ fresh: 0, learning: 0, due: 3 });
+    expect(store.countsFor(null)).toEqual({ fresh: 3, learning: 0, due: 3 });
   });
 
   it('updates when history refreshes', () => {
     const { store, history } = setup();
-    expect(store.remainingFor('a')).toBe(3);
+    expect(store.countsFor('a')).toEqual({ fresh: 3, learning: 0, due: 0 });
 
     seedAttempts(master('s-a1'));
     history.refresh();
 
-    expect(store.remainingFor('a')).toBe(2);
+    expect(store.countsFor('a')).toEqual({ fresh: 2, learning: 0, due: 1 });
   });
 });
 

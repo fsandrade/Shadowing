@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Sentence } from './catalog';
-import { buildQueue, type SentenceProgress } from './progression';
+import {
+  addDeckCounts, buildQueue, deckCounts, EMPTY_DECK_COUNTS, type SentenceProgress,
+} from './progression';
 
 function sentence(id: string): Sentence {
   return { id, topicId: 'a', text: id };
@@ -79,5 +81,42 @@ describe('buildQueue', () => {
       () => 0,
     );
     expect(queue.map((s) => s.id)).toEqual(['g2', 'g1', 'u2', 'u3', 'u1', 'm2', 'm1']);
+  });
+});
+
+describe('deckCounts', () => {
+  it('is empty for no sentences', () => {
+    expect(deckCounts([], new Map())).toEqual(EMPTY_DECK_COUNTS);
+  });
+
+  it('classifies fresh, learning and due sentences', () => {
+    expect(deckCounts(
+      [sentence('unseen'), sentence('weak'), sentence('done')],
+      progress({
+        weak: { lastStars: 2, streak: 0, mastered: false },
+        done: { bestStars: 5, lastStars: 5, mastered: true },
+      }),
+    )).toEqual({ fresh: 1, learning: 1, due: 1 });
+  });
+
+  it('counts a failed sentence as learning', () => {
+    expect(deckCounts(
+      [sentence('failed')],
+      progress({ failed: { lastStars: 0, streak: 0, mastered: false } }),
+    )).toEqual({ fresh: 0, learning: 1, due: 0 });
+  });
+
+  it('keeps a mastered sentence due when its latest rating is low', () => {
+    expect(deckCounts(
+      [sentence('done')],
+      progress({ done: { lastStars: 0, mastered: true } }),
+    )).toEqual({ fresh: 0, learning: 0, due: 1 });
+  });
+
+  it('adds counts field by field', () => {
+    expect(addDeckCounts(
+      { fresh: 2, learning: 1, due: 0 },
+      { fresh: 3, learning: 0, due: 4 },
+    )).toEqual({ fresh: 5, learning: 1, due: 4 });
   });
 });

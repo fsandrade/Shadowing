@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import type { DeckCounts } from '../core/progression';
 import { PracticeStore } from '../state/practice-store';
 
 @Component({
@@ -14,8 +15,12 @@ export class TopicList {
   readonly hasPick = input(false);
   readonly pick = output<string | null>();
 
+  protected countsFor(topicId: string | null): DeckCounts {
+    return this.practice.countsFor(topicId);
+  }
+
   protected countLabel(topicId: string | null): string {
-    const remaining = this.practice.remainingFor(topicId);
-    return remaining === 0 ? 'Mastered' : `${remaining} left`;
+    const counts = this.countsFor(topicId);
+    return `${counts.fresh} new, ${counts.learning} learning, ${counts.due} due`;
   }
 }
