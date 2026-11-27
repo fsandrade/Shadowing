@@ -431,8 +431,10 @@ test('mobile shows every topic in a two-column grid, nothing to swipe', async ({
   expect(layout.scrolls).toBe(false);
 
   await expect(page.locator('#allTopics .deck-counts')).toBeVisible();
-  expect(await page.locator('#decks button').first()
-    .evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  const overflowing = await page.locator('#decks button').evaluateAll((buttons) =>
+    buttons.filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .map((el) => el.querySelector('.deck-name')?.textContent?.trim() ?? 'unknown'));
+  expect(overflowing).toEqual([]);
 
   await page.locator('#allTopics').click();
   await page.locator('.durations [data-min="15"]').click();
