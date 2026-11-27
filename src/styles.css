@@ -898,6 +898,7 @@ main[appDictation] .transport #clock {
     gap: 2px;
   }
   .decks button[aria-pressed="true"] { border-color: var(--accent); }
+  .decks .deck-name { max-width: 100%; }
 
   .chooser-section:has(.decks) { flex: 0 0 auto; }
   .chooser .decks {

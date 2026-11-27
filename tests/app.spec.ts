@@ -430,6 +430,10 @@ test('mobile shows every topic in a two-column grid, nothing to swipe', async ({
   expect(layout.tracks).toBe(2);
   expect(layout.scrolls).toBe(false);
 
+  await expect(page.locator('#allTopics .deck-counts')).toBeVisible();
+  expect(await page.locator('#decks button').first()
+    .evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+
   await page.locator('#allTopics').click();
   await page.locator('.durations [data-min="15"]').click();
   await page.locator('#startActivity').click();
@@ -512,7 +516,7 @@ test('no level picker or level chip on first load', async ({ page }) => {
   await expect(page.locator('#level-picker')).toHaveCount(0);
   await expect(page.locator('.level-chip')).toHaveCount(0);
   await expect(page.locator('#decks [data-deck-id]')).toHaveCount(TOPIC_COUNT);
-  await expect(page.locator('#decks .deck-count')).toHaveCount(TOPIC_COUNT + 1);
+  await expect(page.locator('#decks .deck-counts')).toHaveCount(TOPIC_COUNT + 1);
 });
 
 test('a failed sentence stays and mastering one unlocks another', async ({ page }) => {
@@ -564,7 +568,7 @@ test('a failed sentence stays and mastering one unlocks another', async ({ page 
   expect(texts).toContain(failedText);
 });
 
-test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
+test('a mastered topic disables Start and shows only Due counts', async ({ page }) => {
   installFakeAudio(page);
   await gotoApp(page, { activity: 'speaking', topic: 'nuance-debate' });
   await expect(page.locator('.lines p')).toHaveCount(20);
@@ -586,7 +590,8 @@ test('a mastered topic disables Start and shows Mastered', async ({ page }) => {
 
   await expect(page.locator('#startActivity')).toBeDisabled();
   await expect(page.locator('#startActivity')).toHaveAttribute('title', /Every sentence in this topic is mastered/);
-  await expect(page.locator('[data-deck-id="nuance-debate"] .deck-count')).toHaveText('Mastered');
+  await expect(page.locator('[data-deck-id="nuance-debate"] .deck-counts'))
+    .toHaveAttribute('aria-label', '0 new, 0 learning, 30 due');
 
   // We are still on the chooser: no empty session, timer, or mic prompt was started.
   await expect(page.locator('#activities')).toBeVisible();
