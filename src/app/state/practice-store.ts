@@ -1,6 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { type Sentence, sentencesIn, type Topic, topicsIn } from '../core/catalog';
-import { buildQueue } from '../core/progression';
+import {
+  addDeckCounts, buildQueue, deckCounts, EMPTY_DECK_COUNTS, type DeckCounts,
+} from '../core/progression';
 import { unlockedSentences } from '../core/unlock';
 import { type Rng } from '../core/shuffle';
 import { RANDOM } from '../platform/rng';
@@ -68,26 +70,31 @@ export class PracticeStore {
     this.masteredIds(),
   ));
 
-  readonly remaining = computed<{
-    readonly all: number;
-    readonly byTopic: ReadonlyMap<string, number>;
+  private readonly counts = computed<{
+    readonly all: DeckCounts;
+    readonly byTopic: ReadonlyMap<string, DeckCounts>;
   }>(() => {
     const progress = this.history.progress();
-    const byTopic = new Map<string, number>();
-    let all = 0;
-
+    const groups = new Map<string, Sentence[]>();
     for (const sentence of this.pool()) {
-      if (progress.get(sentence.id)?.mastered) { continue; }
-      all++;
-      byTopic.set(sentence.topicId, (byTopic.get(sentence.topicId) ?? 0) + 1);
+      const group = groups.get(sentence.topicId) ?? [];
+      group.push(sentence);
+      groups.set(sentence.topicId, group);
     }
 
+    const byTopic = new Map<string, DeckCounts>();
+    let all = EMPTY_DECK_COUNTS;
+    for (const [topicId, group] of groups) {
+      const counts = deckCounts(group, progress);
+      byTopic.set(topicId, counts);
+      all = addDeckCounts(all, counts);
+    }
     return { all, byTopic };
   });
 
-  remainingFor(topicId: string | null): number {
-    const remaining = this.remaining();
-    return topicId === null ? remaining.all : remaining.byTopic.get(topicId) ?? 0;
+  countsFor(topicId: string | null): DeckCounts {
+    const counts = this.counts();
+    return topicId === null ? counts.all : counts.byTopic.get(topicId) ?? EMPTY_DECK_COUNTS;
   }
 
   readonly lines = computed<readonly string[]>(() => {
