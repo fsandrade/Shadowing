@@ -59,7 +59,8 @@ export class ActivityChooser {
 
   protected readonly mastered = computed(() => {
     if (this.source() !== 'catalog' || !this.topicPicked()) { return false; }
-    return this.practice.remainingFor(this.topicId()) === 0;
+    const counts = this.practice.countsFor(this.topicId());
+    return counts.fresh === 0 && counts.learning === 0;
   });
 
   protected readonly sourceReady = computed(() => {
